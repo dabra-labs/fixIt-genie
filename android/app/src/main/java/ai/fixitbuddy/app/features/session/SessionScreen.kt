@@ -2,6 +2,7 @@ package ai.fixitbuddy.app.features.session
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,10 +51,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -60,6 +65,7 @@ import kotlinx.coroutines.delay
 import ai.fixitbuddy.app.R
 import ai.fixitbuddy.app.features.session.components.CameraViewfinder
 import ai.fixitbuddy.app.features.session.components.StatusIndicator
+import ai.fixitbuddy.app.features.session.components.ToolCallChip
 import ai.fixitbuddy.app.features.session.components.TranscriptOverlay
 
 @Composable
@@ -70,6 +76,7 @@ fun SessionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val view = LocalView.current
 
     // Permission state
     var permissionsGranted by remember {
@@ -146,6 +153,43 @@ fun SessionScreen(
             }
         }
 
+        // Tool call chip — shows briefly when the agent invokes a tool
+        ToolCallChip(
+            toolName = uiState.lastToolCall,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .systemBarsPadding()
+                .padding(top = 56.dp)
+        )
+
+        // Idle state guidance overlay
+        AnimatedVisibility(
+            visible = uiState.sessionState == SessionState.Idle && uiState.errorMessage == null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(horizontal = 48.dp)
+            ) {
+                Text(
+                    text = "FixIt Buddy",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Point your camera at equipment\nand tap Start Session",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = 0.85f),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 24.sp
+                )
+            }
+        }
+
         // Transcript overlay (bottom area, above controls)
         AnimatedVisibility(
             visible = uiState.transcript.isNotBlank() && uiState.sessionState == SessionState.Active,
@@ -181,7 +225,10 @@ fun SessionScreen(
                 // Flashlight toggle
                 if (uiState.hasTorch) {
                     IconButton(
-                        onClick = { viewModel.toggleFlashlight() },
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            viewModel.toggleFlashlight()
+                        },
                         modifier = Modifier
                             .size(48.dp)
                             .background(
@@ -193,7 +240,7 @@ fun SessionScreen(
                         Icon(
                             imageVector = if (uiState.isTorchOn) Icons.Default.FlashlightOn else Icons.Default.FlashlightOff,
                             contentDescription = stringResource(R.string.flashlight_toggle),
-                            tint = Color.White
+                            tint = if (uiState.isTorchOn) MaterialTheme.colorScheme.primary else Color.White
                         )
                     }
                 } else {
@@ -204,7 +251,10 @@ fun SessionScreen(
                 when (uiState.sessionState) {
                     SessionState.Idle, SessionState.Error -> {
                         Button(
-                            onClick = { viewModel.startSession() },
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                viewModel.startSession()
+                            },
                             modifier = Modifier
                                 .height(56.dp)
                                 .width(200.dp),
@@ -223,12 +273,21 @@ fun SessionScreen(
                     }
                     SessionState.Connecting -> {
                         FilledTonalButton(
-                            onClick = { viewModel.stopSession() },
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                viewModel.stopSession()
+                            },
                             modifier = Modifier
                                 .height(56.dp)
                                 .width(200.dp),
                             shape = RoundedCornerShape(28.dp)
                         ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(Modifier.width(8.dp))
                             Text(
                                 stringResource(R.string.status_connecting),
                                 style = MaterialTheme.typography.labelLarge
@@ -237,7 +296,10 @@ fun SessionScreen(
                     }
                     SessionState.Active -> {
                         Button(
-                            onClick = { viewModel.stopSession() },
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                viewModel.stopSession()
+                            },
                             modifier = Modifier
                                 .height(56.dp)
                                 .width(200.dp),
@@ -261,8 +323,12 @@ fun SessionScreen(
             }
         }
 
-        // Error snackbar
+        // Error snackbar with auto-dismiss
         uiState.errorMessage?.let { error ->
+            LaunchedEffect(error) {
+                delay(5000)
+                viewModel.dismissError()
+            }
             Snackbar(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
