@@ -8,7 +8,7 @@ See. Hear. Fix. — point your camera at equipment, describe the problem, get st
 - **Android-native** (not web) — Kotlin + Jetpack Compose + Material 3
 - **Backend**: Python ADK bidi-streaming agent on Google Cloud Run
 - **Database**: Firestore (knowledge base + session logs)
-- **AI**: Gemini Live API via Vertex AI
+- **AI Model**: gemini-2.5-flash (verified working with live API; google_search removed — cannot combine built-in + custom tools)
 - **100% Google Cloud** — Firebase Hosting not needed (native app)
 - **Package**: `ai.fixitbuddy.app`
 - **Monorepo**: `fixitbuddy/android/` + `fixitbuddy/backend/`
@@ -54,7 +54,9 @@ See. Hear. Fix. — point your camera at equipment, describe the problem, get st
 - [x] **APK builds successfully** — assembleDebug BUILD SUCCESSFUL (22MB APK)
 - [x] **Android unit tests pass** — 109/109 tests (4 test classes)
 - [x] **ViewModel bugs fixed** — stopSession now clears errorMessage, DISCONNECTED after ERROR transitions to Idle
-- [ ] Backend runs end-to-end with Gemini API key
+- [x] **Backend tested live with Gemini 2.5 Flash** — agent responds with proper tool calls (safety warnings, knowledge base, diagnostic logging)
+- [x] **Agent model switched** — gemini-2.0-flash-live-001 → gemini-2.5-flash (old model unavailable; google_search removed)
+- [x] **GitHub repo initialized** — https://github.com/dabra-labs/fixbuddy.git (needs auth push from local machine)
 - [ ] Knowledge base seeded to Firestore
 - [ ] Deployed to Cloud Run
 - [ ] Demo video recorded (4 min)
@@ -78,7 +80,7 @@ The development VM is aarch64 but Android SDK tools are x86_64. Solved by:
 - **3 Gradle Kotlin files** — Build config
 - **6 Markdown files** — Documentation
 - **~4,500 lines** of source code + tests
-- **88 backend tests** passing
+- **115 backend tests** passing
 - **109 Android tests** passing
 - **22MB debug APK** built successfully
 
@@ -86,9 +88,9 @@ The development VM is aarch64 but Android SDK tools are x86_64. Solved by:
 | Suite | Tests | Status |
 |-------|-------|--------|
 | Backend: test_tools.py | 35 | PASS |
-| Backend: test_agent.py | 10 | PASS |
+| Backend: test_agent.py | 10 | PASS (updated for gemini-2.5-flash + 3 tools) |
 | Backend: test_knowledge_integrity.py | 17 | PASS |
-| Backend: test_websocket_e2e.py | 26 | PASS |
+| Backend: test_websocket_e2e.py | 26 | PASS (updated for gemini-2.5-flash + 3 tools) |
 | Backend: test_integration.py | 27 | PASS (requires server) |
 | Android: AgentWebSocketTest | 29 | PASS |
 | Android: AppConfigTest | 38 | PASS |

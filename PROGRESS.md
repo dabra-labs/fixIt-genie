@@ -3,9 +3,9 @@
 > Plan: gemini-live-agent-challenge/PROJECT-PLAN.md
 > Skill: gemini-live-agent-challenge/hackathon-android-app/SKILL.md
 
-## Current Status: Phase 2 — Core Verification COMPLETE
+## Current Status: Phase 2 COMPLETE + Agent Live-Tested
 **Last updated:** 2026-03-08
-**Build status:** APK BUILDS ✅ | 109 Android Tests PASS ✅ | 88 Backend Tests PASS ✅
+**Build status:** APK BUILDS ✅ | 109 Android Tests PASS ✅ | 115 Backend Tests PASS ✅ | Agent Live-Tested with Gemini 2.5 Flash ✅
 
 ## Phase 1: Project Scaffolding — COMPLETE ✅
 | # | Task | Status | Notes |
@@ -46,6 +46,9 @@
 | 6 | Cross-reference validation | DONE | All imports, routes, configs verified |
 | 7 | Backend ADK restructure | DONE | fixitbuddy/ subdir + root_agent export |
 | 8 | Duplicate file cleanup | DONE | Removed root-level copies |
+| 9 | Agent live-tested with Gemini API | DONE | gemini-2.5-flash works, proper tool calls |
+| 10 | Model + tests updated | DONE | gemini-2.5-flash, 3 tools (google_search removed) |
+| 11 | GitHub repo initialized | DONE | https://github.com/dabra-labs/fixbuddy.git |
 
 ## Phase 3: Knowledge Base + Settings
 | # | Task | Status | Notes |
