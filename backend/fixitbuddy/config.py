@@ -11,5 +11,5 @@ PORT = int(os.environ.get("PORT", "8080"))
 HOST = os.environ.get("HOST", "0.0.0.0")
 
 # Agent
-AGENT_MODEL = os.environ.get("AGENT_MODEL", "gemini-2.0-flash-live-001")
+AGENT_MODEL = os.environ.get("AGENT_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
 AGENT_VOICE = os.environ.get("AGENT_VOICE", "Aoede")

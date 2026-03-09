@@ -1,10 +1,17 @@
 """FixIt Buddy — ADK Agent Definition."""
+import os
+
 from google.adk.agents import Agent
-from google.adk.tools import google_search
 try:
     from tools import lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step
 except ImportError:
     from .tools import lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step
+
+# Default to the native audio model for live streaming (bidiGenerateContent).
+# For text-only testing via REST /run endpoint, override with:
+#   AGENT_MODEL=gemini-2.5-flash
+_DEFAULT_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
+_MODEL = os.environ.get("AGENT_MODEL", _DEFAULT_MODEL)
 
 SYSTEM_INSTRUCTION = """You are FixIt Buddy, an expert equipment diagnosis and repair assistant.
 You can see through the user's camera and hear them describe problems.
@@ -28,8 +35,6 @@ SAFETY RULES (NON-NEGOTIABLE):
 TOOL USAGE:
 - Use lookup_equipment_knowledge when you identify specific equipment, error codes,
   or need diagnostic procedures. This queries our curated knowledge base.
-- Use google_search when you need to look up specific model numbers, part numbers,
-  or manufacturer-specific information not in the knowledge base.
 - Use get_safety_warnings before ANY instruction that involves physical action
   (turning valves, touching wires, opening panels, etc.)
 - Use log_diagnostic_step to record each significant step for the session transcript
@@ -50,7 +55,7 @@ VISUAL AWARENESS:
 """
 
 agent = Agent(
-    model="gemini-2.5-flash",
+    model=_MODEL,
     name="fixitbuddy",
     description="A multimodal equipment diagnosis and repair assistant that sees through your camera and talks you through fixes step-by-step.",
     instruction=SYSTEM_INSTRUCTION,

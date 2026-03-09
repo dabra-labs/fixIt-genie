@@ -1,0 +1,11 @@
+# Docker ignore for FixIt Buddy backend
+tests/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.env.*
+.pytest_cache/
+pytest-cache-files-*
+.adk/
+*.db
