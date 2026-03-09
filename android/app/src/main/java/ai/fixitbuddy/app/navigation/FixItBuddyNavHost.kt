@@ -12,6 +12,7 @@ import ai.fixitbuddy.app.features.history.HistoryScreen
 import ai.fixitbuddy.app.features.onboarding.OnboardingScreen
 import ai.fixitbuddy.app.features.session.SessionScreen
 import ai.fixitbuddy.app.features.settings.SettingsScreen
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -32,13 +33,10 @@ fun FixItBuddyNavHost() {
     // Determine start destination: onboarding on first launch, session otherwise
     var startDestination by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        context.dataStore.data
+        val done = context.dataStore.data
             .map { it[ONBOARDING_DONE] ?: false }
-            .collect { done ->
-                if (startDestination == null) {
-                    startDestination = if (done) Routes.SESSION else Routes.ONBOARDING
-                }
-            }
+            .first()
+        startDestination = if (done) Routes.SESSION else Routes.ONBOARDING
     }
 
     val destination = startDestination ?: return  // Wait until resolved

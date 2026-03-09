@@ -28,6 +28,7 @@
     <string name="permission_camera_body">FixIt Buddy needs camera access to see your equipment and guide you through repairs.</string>
     <string name="permission_audio_title">Microphone Access</string>
     <string name="permission_audio_body">FixIt Buddy needs microphone access so you can describe problems and hear voice guidance.</string>
+    <string name="permission_main_body">To help you diagnose and fix equipment, FixIt Buddy needs access to your camera and microphone.</string>
     <string name="permission_grant">Grant Permissions</string>
 
     <!-- History -->

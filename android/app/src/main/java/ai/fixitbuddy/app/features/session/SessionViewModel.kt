@@ -1,6 +1,7 @@
 package ai.fixitbuddy.app.features.session
 
 import android.Manifest
+import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -17,6 +18,7 @@ import ai.fixitbuddy.app.features.history.SessionRecord
 import ai.fixitbuddy.app.features.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -30,6 +32,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
+/** Immutable snapshot of session UI state, consumed by [SessionScreen]. */
 data class SessionUiState(
     val sessionState: SessionState = SessionState.Idle,
     val transcript: String = "",
@@ -41,6 +44,7 @@ data class SessionUiState(
     val errorMessage: String? = null
 )
 
+/** High-level session lifecycle states. */
 enum class SessionState {
     Idle, Connecting, Active, Error
 }
@@ -63,6 +67,9 @@ class SessionViewModel @Inject constructor(
 
     /** Track session start time for duration calculation */
     private var sessionStartMs: Long = 0L
+
+    /** Jobs for streaming forwarding — cancelled on stopSession() */
+    private var sessionJob: Job? = null
 
     init {
         observeConnectionState()
@@ -135,7 +142,7 @@ class SessionViewModel @Inject constructor(
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun startSession() {
         sessionStartMs = System.currentTimeMillis()
-        viewModelScope.launch(Dispatchers.IO) {
+        sessionJob = viewModelScope.launch(Dispatchers.IO) {
             val baseUrl = dataStore.data.map { prefs ->
                 prefs[SettingsViewModel.BACKEND_URL_KEY] ?: AppConfig.BACKEND_URL
             }.first()
@@ -165,14 +172,14 @@ class SessionViewModel @Inject constructor(
             // Step 3: Connect WebSocket
             webSocket.connect(wsUrl)
 
-            // Step 4: Forward camera frames
+            // Step 4: Forward camera frames (child coroutine — cancelled with parent)
             launch {
                 cameraManager.frames.collect { frame ->
                     webSocket.sendVideoFrame(frame)
                 }
             }
 
-            // Step 5: Forward audio chunks
+            // Step 5: Forward audio chunks (child coroutine — cancelled with parent)
             launch {
                 audioManager.audioChunks.collect { chunk ->
                     webSocket.sendAudioChunk(chunk)
@@ -196,18 +203,24 @@ class SessionViewModel @Inject constructor(
                     .url(url)
                     .post("{}".toRequestBody("application/json".toMediaType()))
                     .build()
-                val response = okHttpClient.newCall(request).execute()
-                if (!response.isSuccessful) return@withContext null
-                val body = response.body?.string() ?: return@withContext null
-                // Parse {"id":"..."} from response
-                val match = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(body)
-                match?.groupValues?.get(1)
-            } catch (_: Exception) {
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext null
+                    val body = response.body?.string() ?: return@withContext null
+                    // Parse {"id":"..."} from response
+                    val match = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(body)
+                    match?.groupValues?.get(1)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to create ADK session", e)
                 null
             }
         }
 
     fun stopSession() {
+        // Cancel streaming forwarding jobs
+        sessionJob?.cancel()
+        sessionJob = null
+
         // Save session to history if it was active
         val current = _uiState.value
         if (current.sessionState == SessionState.Active && sessionStartMs > 0) {
@@ -235,6 +248,7 @@ class SessionViewModel @Inject constructor(
                 transcript = "",
                 agentState = "idle",
                 lastToolCall = null,
+                toolCallCount = 0,
                 errorMessage = null
             )
         }
@@ -257,5 +271,9 @@ class SessionViewModel @Inject constructor(
         stopSession()
         cameraManager.stopCamera()
         super.onCleared()
+    }
+
+    companion object {
+        private const val TAG = "SessionViewModel"
     }
 }

@@ -1,8 +1,13 @@
 """Seed Firestore with equipment knowledge base data."""
+from __future__ import annotations
+
 import os
+
 from google.cloud import firestore
 
-def seed():
+
+def seed() -> None:
+    """Upload the embedded knowledge base to Firestore for production use."""
     project = os.environ.get("GOOGLE_CLOUD_PROJECT", "fixitbuddy")
     db = firestore.Client(project=project)
 

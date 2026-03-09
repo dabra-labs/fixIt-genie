@@ -30,7 +30,7 @@ except ImportError:
     print("Missing dependency: pip install websockets")
     sys.exit(1)
 
-BACKEND_URL = "https://fixitbuddy-agent-hybxqwgczq-uc.a.run.app"
+BACKEND_URL = "http://localhost:8080"
 APP_NAME = "fixitbuddy"
 USER_ID = "test_script_user"
 

@@ -1,6 +1,7 @@
 package ai.fixitbuddy.app.core.websocket
 
 import android.util.Base64
+import android.util.Log
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -21,10 +22,12 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** WebSocket connection lifecycle states. */
 enum class ConnectionState {
     DISCONNECTED, CONNECTING, CONNECTED, ERROR
 }
 
+/** Sealed hierarchy of messages received from the ADK agent. */
 sealed class AgentMessage {
     data class Transcript(val text: String, val isFinal: Boolean) : AgentMessage()
     data class Audio(val data: ByteArray) : AgentMessage() {
@@ -49,6 +52,13 @@ private data class LiveRequest(
 
 private val json = Json { ignoreUnknownKeys = true }
 
+/**
+ * OkHttp WebSocket wrapper that speaks the Google ADK LiveRequest/Event protocol.
+ *
+ * Sends audio and video blobs to the agent and parses incoming events
+ * (text transcripts, audio responses, tool calls) into [AgentMessage] instances
+ * emitted via [incomingMessages].
+ */
 @Singleton
 class AgentWebSocket @Inject constructor(
     private val okHttpClient: OkHttpClient
@@ -79,6 +89,7 @@ class AgentWebSocket @Inject constructor(
 
         webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                Log.d(TAG, "WebSocket connected")
                 _connectionState.value = ConnectionState.CONNECTED
             }
 
@@ -91,15 +102,18 @@ class AgentWebSocket @Inject constructor(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                Log.e(TAG, "WebSocket failure: ${t.message}", t)
                 _connectionState.value = ConnectionState.ERROR
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d(TAG, "WebSocket closing: code=$code reason=$reason")
                 _connectionState.value = ConnectionState.DISCONNECTED
                 webSocket.close(1000, null)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d(TAG, "WebSocket closed: code=$code reason=$reason")
                 _connectionState.value = ConnectionState.DISCONNECTED
             }
         })
@@ -168,8 +182,8 @@ class AgentWebSocket @Inject constructor(
                     AgentMessage.Status(if (isPartial) "speaking" else "listening")
                 )
             }
-        } catch (_: Exception) {
-            // Malformed event — skip
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse ADK event", e)
         }
     }
 
@@ -178,12 +192,17 @@ class AgentWebSocket @Inject constructor(
      * {"blob": {"mime_type": "image/jpeg", "data": "<base64>"}}
      */
     fun sendVideoFrame(frameData: ByteArray) {
+        val ws = webSocket
+        if (ws == null) {
+            Log.d(TAG, "sendVideoFrame called but WebSocket is null — frame dropped")
+            return
+        }
         try {
             val b64 = Base64.encodeToString(frameData, Base64.NO_WRAP)
             val request = LiveRequest(blob = LiveBlob(mimeType = "image/jpeg", data = b64))
-            webSocket?.send(json.encodeToString(LiveRequest.serializer(), request))
-        } catch (_: Exception) {
-            // Skip frame on error
+            ws.send(json.encodeToString(LiveRequest.serializer(), request))
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send video frame", e)
         }
     }
 
@@ -192,20 +211,25 @@ class AgentWebSocket @Inject constructor(
      * {"blob": {"mime_type": "audio/pcm;rate=16000", "data": "<base64>"}}
      */
     fun sendAudioChunk(audioData: ByteArray) {
+        val ws = webSocket
+        if (ws == null) {
+            Log.d(TAG, "sendAudioChunk called but WebSocket is null — chunk dropped")
+            return
+        }
         try {
             val b64 = Base64.encodeToString(audioData, Base64.NO_WRAP)
             val request = LiveRequest(blob = LiveBlob(mimeType = "audio/pcm;rate=16000", data = b64))
-            webSocket?.send(json.encodeToString(LiveRequest.serializer(), request))
-        } catch (_: Exception) {
-            // Skip chunk on error
+            ws.send(json.encodeToString(LiveRequest.serializer(), request))
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send audio chunk", e)
         }
     }
 
     fun disconnect() {
         try {
             webSocket?.close(1000, "User disconnected")
-        } catch (_: Exception) {
-            // Already closed
+        } catch (e: Exception) {
+            Log.w(TAG, "Error closing WebSocket", e)
         }
         webSocket = null
         _connectionState.value = ConnectionState.DISCONNECTED
@@ -213,4 +237,8 @@ class AgentWebSocket @Inject constructor(
 
     val isConnected: Boolean
         get() = _connectionState.value == ConnectionState.CONNECTED
+
+    companion object {
+        private const val TAG = "AgentWebSocket"
+    }
 }

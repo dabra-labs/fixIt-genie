@@ -57,11 +57,12 @@ class SettingsViewModel @Inject constructor(
                         .url("$url/list-apps")
                         .get()
                         .build()
-                    val response = okHttpClient.newCall(request).execute()
-                    if (response.isSuccessful) {
-                        "Connected — agent is online"
-                    } else {
-                        "Server responded with ${response.code}"
+                    okHttpClient.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            "Connected — agent is online"
+                        } else {
+                            "Server responded with ${response.code}"
+                        }
                     }
                 } catch (e: Exception) {
                     "Failed: ${e.message?.take(60) ?: "unknown error"}"

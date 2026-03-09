@@ -3,11 +3,16 @@
 # Infrastructure-as-Code deployment script
 set -euo pipefail
 
-# Configuration
-PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-rational-investor-cf3ff}"
+# Configuration — GOOGLE_CLOUD_PROJECT must be set
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT:?Error: GOOGLE_CLOUD_PROJECT env var must be set}"
 REGION="${GOOGLE_CLOUD_REGION:-us-central1}"
 SERVICE_NAME="fixitbuddy-agent"
 AR_REPO="fixitbuddy"
+
+# Validate GOOGLE_API_KEY is set (needed unless using Vertex AI)
+if [ -z "${GOOGLE_API_KEY:-}" ]; then
+  echo "Warning: GOOGLE_API_KEY is not set. Set it or configure Vertex AI."
+fi
 
 echo "╔══════════════════════════════════════════════╗"
 echo "║   FixIt Buddy — Cloud Run Deployment         ║"
@@ -59,7 +64,7 @@ gcloud run deploy $SERVICE_NAME \
   --timeout 3600 \
   --max-instances 10 \
   --session-affinity \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_GENAI_USE_VERTEXAI=FALSE,GOOGLE_API_KEY=${GOOGLE_API_KEY},AGENT_MODEL=gemini-2.5-flash-native-audio-preview-12-2025"
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_GENAI_USE_VERTEXAI=FALSE,GOOGLE_API_KEY=${GOOGLE_API_KEY},AGENT_MODEL=${AGENT_MODEL:-gemini-2.5-flash-native-audio-latest}"
 
 # Step 5: Get service URL
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \

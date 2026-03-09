@@ -1,21 +1,37 @@
 """FixIt Buddy — Agent Tools (Function Calling)."""
-from google.cloud import firestore
+
+from __future__ import annotations
+
+import logging
 import os
+from typing import Any
 
-# Initialize Firestore client
-_db = None
+from google.cloud import firestore
 
-def _get_db():
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Firestore client (lazy singleton)
+# ---------------------------------------------------------------------------
+
+_db: firestore.Client | None = None
+
+
+def _get_db() -> firestore.Client | None:
     global _db
     if _db is None:
         try:
-            _db = firestore.Client(project=os.environ.get("GOOGLE_CLOUD_PROJECT", "fixitbuddy"))
+            _db = firestore.Client(
+                project=os.environ.get("GOOGLE_CLOUD_PROJECT", "fixitbuddy")
+            )
         except Exception:
+            logger.warning("Firestore unavailable — using embedded knowledge base", exc_info=True)
             _db = None
     return _db
 
+
 # ===== Embedded Knowledge Base (fallback when Firestore is unavailable) =====
-_KNOWLEDGE_BASE = {
+_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
     "automotive_oil_system": {
         "category": "automotive",
         "name": "Engine Oil System",
@@ -188,7 +204,10 @@ _KNOWLEDGE_BASE = {
     }
 }
 
-def lookup_equipment_knowledge(query: str, category: str = "", error_code: str = "") -> dict:
+
+def lookup_equipment_knowledge(
+    query: str, category: str = "", error_code: str = ""
+) -> dict[str, Any]:
     """Look up equipment knowledge from the curated database.
 
     Args:
@@ -199,19 +218,23 @@ def lookup_equipment_knowledge(query: str, category: str = "", error_code: str =
     Returns:
         Relevant equipment knowledge including diagnostic steps and solutions
     """
-    results = []
+    results: list[dict[str, Any]] = []
 
     # Try Firestore first
     db = _get_db()
     if db:
         try:
             if error_code:
-                docs = db.collection("equipment").where("error_codes", "array_contains", error_code.upper()).stream()
+                docs = db.collection("equipment").where(
+                    "error_codes", "array_contains", error_code.upper()
+                ).stream()
                 for doc in docs:
                     results.append(doc.to_dict())
 
             if category and not results:
-                docs = db.collection("equipment").where("category", "==", category.lower()).stream()
+                docs = db.collection("equipment").where(
+                    "category", "==", category.lower()
+                ).stream()
                 for doc in docs:
                     data = doc.to_dict()
                     if any(kw in query.lower() for kw in data.get("keywords", [])):
@@ -222,12 +245,12 @@ def lookup_equipment_knowledge(query: str, category: str = "", error_code: str =
                 if doc.exists:
                     results.append(doc.to_dict())
         except Exception:
-            pass  # Fall through to embedded knowledge base
+            logger.warning("Firestore query failed — falling back to embedded KB", exc_info=True)
 
     # Fallback to embedded knowledge base
     if not results:
         query_lower = query.lower()
-        for doc_id, data in _KNOWLEDGE_BASE.items():
+        for _doc_id, data in _KNOWLEDGE_BASE.items():
             # Match by error code
             if error_code and error_code.upper() in data.get("error_codes", []):
                 results.append(data)
@@ -248,7 +271,9 @@ def lookup_equipment_knowledge(query: str, category: str = "", error_code: str =
     }
 
 
-def get_safety_warnings(action_type: str, equipment_category: str = "") -> dict:
+def get_safety_warnings(
+    action_type: str, equipment_category: str = ""
+) -> dict[str, Any]:
     """Get safety warnings before guiding a physical action. MUST be called before any hands-on instruction.
 
     Args:
@@ -258,7 +283,7 @@ def get_safety_warnings(action_type: str, equipment_category: str = "") -> dict:
     Returns:
         Safety warnings and precautions that MUST be communicated to the user
     """
-    warnings = {
+    warnings: dict[str, list[str]] = {
         "electrical": [
             "Ensure power is completely disconnected before touching any wiring",
             "Use a non-contact voltage tester to verify circuits are dead",
@@ -304,14 +329,19 @@ def get_safety_warnings(action_type: str, equipment_category: str = "") -> dict:
         "If unsure, consult a professional"
     ])
 
-    return {
+    response: dict[str, Any] = {
         "warnings": result,
         "general": "Always prioritize safety. If at any point you feel unsafe, stop and call a professional.",
-        "action_type": action_type
+        "action_type": action_type,
     }
+    if equipment_category:
+        response["equipment_category"] = equipment_category
+    return response
 
 
-def log_diagnostic_step(step_number: int, description: str, observation: str = "", result: str = "") -> dict:
+def log_diagnostic_step(
+    step_number: int, description: str, observation: str = "", result: str = ""
+) -> dict[str, Any]:
     """Log a diagnostic step for the session transcript.
 
     Args:

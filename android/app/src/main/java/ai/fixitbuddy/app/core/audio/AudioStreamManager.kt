@@ -6,10 +6,13 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaRecorder
+import android.util.Log
 import androidx.annotation.RequiresPermission
 import ai.fixitbuddy.app.core.config.AppConfig
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -21,13 +24,26 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.sqrt
 
+/**
+ * Manages bidirectional audio streaming for a FixIt Buddy session.
+ *
+ * Recording: captures 16 kHz mono PCM from the device microphone and emits
+ * chunks via [audioChunks] for forwarding to the ADK backend.
+ *
+ * Playback: accepts PCM audio from the backend and writes it to an
+ * [AudioTrack] configured at the output sample rate.
+ */
 @Singleton
 class AudioStreamManager @Inject constructor() {
 
     // ── Recording (mic → backend) ──────────────────────────
 
     private var audioRecord: AudioRecord? = null
-    private var isRecording = false
+    @Volatile private var isRecording = false
+
+    /** Managed scope for the recording coroutine; cancelled in [stopRecording]. */
+    private val recordingScope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var recordingJob: Job? = null
 
     private val _audioChunks = MutableSharedFlow<ByteArray>(extraBufferCapacity = 5)
     val audioChunks: SharedFlow<ByteArray> = _audioChunks
@@ -55,7 +71,7 @@ class AudioStreamManager @Inject constructor() {
         isRecording = true
         audioRecord?.startRecording()
 
-        CoroutineScope(Dispatchers.IO).launch {
+        recordingJob = recordingScope.launch {
             val buffer = ByteArray(bufferSize)
             while (isRecording) {
                 val bytesRead = audioRecord?.read(buffer, 0, buffer.size) ?: 0
@@ -70,13 +86,16 @@ class AudioStreamManager @Inject constructor() {
 
     fun stopRecording() {
         isRecording = false
+        recordingScope.coroutineContext.cancelChildren()
+        recordingJob = null
         try {
             audioRecord?.stop()
             audioRecord?.release()
-        } catch (_: Exception) {
-            // Already stopped
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "AudioRecord already stopped", e)
         }
         audioRecord = null
+        _audioLevel.value = 0f
     }
 
     // ── Playback (backend → speaker) ──────────────────────
@@ -84,6 +103,9 @@ class AudioStreamManager @Inject constructor() {
     private var audioTrack: AudioTrack? = null
 
     fun initPlayback() {
+        // Release any existing AudioTrack to prevent leaks
+        stopPlayback()
+
         val bufferSize = AudioTrack.getMinBufferSize(
             AppConfig.AUDIO_OUTPUT_SAMPLE_RATE,
             AudioFormat.CHANNEL_OUT_MONO,
@@ -119,8 +141,8 @@ class AudioStreamManager @Inject constructor() {
         try {
             audioTrack?.stop()
             audioTrack?.release()
-        } catch (_: Exception) {
-            // Already stopped
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "AudioTrack already stopped", e)
         }
         audioTrack = null
     }
@@ -153,5 +175,9 @@ class AudioStreamManager @Inject constructor() {
         val db = if (rms > 1.0) 20.0 * Math.log10(rms / 32768.0) else -96.0
         // Map -60dB..0dB → 0..1 (anything below -60dB is silence)
         return ((db + 60.0) / 60.0).coerceIn(0.0, 1.0).toFloat()
+    }
+
+    companion object {
+        private const val TAG = "AudioStreamManager"
     }
 }
