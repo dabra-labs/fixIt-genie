@@ -11,10 +11,15 @@ import ai.fixitbuddy.app.core.config.AppConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.sqrt
 
 @Singleton
 class AudioStreamManager @Inject constructor() {
@@ -26,6 +31,10 @@ class AudioStreamManager @Inject constructor() {
 
     private val _audioChunks = MutableSharedFlow<ByteArray>(extraBufferCapacity = 5)
     val audioChunks: SharedFlow<ByteArray> = _audioChunks
+
+    /** Normalised audio level 0f..1f, updated each recording buffer read. */
+    private val _audioLevel = MutableStateFlow(0f)
+    val audioLevel: StateFlow<Float> = _audioLevel
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun startRecording() {
@@ -52,8 +61,10 @@ class AudioStreamManager @Inject constructor() {
                 val bytesRead = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                 if (bytesRead > 0) {
                     _audioChunks.emit(buffer.copyOf(bytesRead))
+                    _audioLevel.value = computeRmsLevel(buffer, bytesRead)
                 }
             }
+            _audioLevel.value = 0f
         }
     }
 
@@ -117,5 +128,30 @@ class AudioStreamManager @Inject constructor() {
     fun releaseAll() {
         stopRecording()
         stopPlayback()
+    }
+
+    /**
+     * Compute normalised RMS (0f..1f) from 16-bit PCM samples.
+     * Uses a simple log scale so quiet speech still shows visible movement.
+     */
+    private fun computeRmsLevel(buffer: ByteArray, bytesRead: Int): Float {
+        val shortBuffer = ByteBuffer.wrap(buffer, 0, bytesRead)
+            .order(ByteOrder.LITTLE_ENDIAN)
+            .asShortBuffer()
+        val sampleCount = shortBuffer.remaining()
+        if (sampleCount == 0) return 0f
+
+        var sumSquares = 0.0
+        for (i in 0 until sampleCount) {
+            val sample = shortBuffer[i].toDouble()
+            sumSquares += sample * sample
+        }
+        val rms = sqrt(sumSquares / sampleCount)
+
+        // Normalise: 16-bit PCM max is 32768; use log scale for better UX
+        // Clamp to 0..1 range
+        val db = if (rms > 1.0) 20.0 * Math.log10(rms / 32768.0) else -96.0
+        // Map -60dB..0dB → 0..1 (anything below -60dB is silence)
+        return ((db + 60.0) / 60.0).coerceIn(0.0, 1.0).toFloat()
     }
 }

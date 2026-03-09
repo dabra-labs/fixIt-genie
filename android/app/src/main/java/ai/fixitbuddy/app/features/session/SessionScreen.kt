@@ -8,7 +8,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,6 +78,7 @@ fun SessionScreen(
     viewModel: SessionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val audioLevel by viewModel.audioLevel.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val view = LocalView.current
 
@@ -296,25 +300,47 @@ fun SessionScreen(
                         }
                     }
                     SessionState.Active -> {
-                        Button(
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                viewModel.stopSession()
-                            },
-                            modifier = Modifier
-                                .height(56.dp)
-                                .width(200.dp),
-                            shape = RoundedCornerShape(28.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
+                        // Animated ring that pulses with mic audio level
+                        val animatedLevel by animateFloatAsState(
+                            targetValue = audioLevel,
+                            animationSpec = tween(durationMillis = 100),
+                            label = "audioLevel"
+                        )
+                        val ringAlpha = (0.2f + animatedLevel * 0.6f).coerceIn(0f, 0.8f)
+                        val ringWidth = (1f + animatedLevel * 3f).dp
+
+                        Box(contentAlignment = Alignment.Center) {
+                            // Outer glow ring driven by audio level
+                            Box(
+                                modifier = Modifier
+                                    .height(56.dp + ringWidth * 2)
+                                    .width(200.dp + ringWidth * 2)
+                                    .border(
+                                        width = ringWidth,
+                                        color = MaterialTheme.colorScheme.error.copy(alpha = ringAlpha),
+                                        shape = RoundedCornerShape(28.dp + ringWidth)
+                                    )
                             )
-                        ) {
-                            Icon(Icons.Default.MicOff, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                stringResource(R.string.stop_session),
-                                style = MaterialTheme.typography.labelLarge
-                            )
+                            Button(
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                    viewModel.stopSession()
+                                },
+                                modifier = Modifier
+                                    .height(56.dp)
+                                    .width(200.dp),
+                                shape = RoundedCornerShape(28.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Default.MicOff, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    stringResource(R.string.stop_session),
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            }
                         }
                     }
                 }

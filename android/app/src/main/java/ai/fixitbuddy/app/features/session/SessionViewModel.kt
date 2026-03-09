@@ -55,6 +55,9 @@ class SessionViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SessionUiState())
     val uiState: StateFlow<SessionUiState> = _uiState
 
+    /** Normalised mic level 0f..1f — exposed separately to avoid recomposing entire UI. */
+    val audioLevel: StateFlow<Float> = audioManager.audioLevel
+
     init {
         observeConnectionState()
         observeIncomingMessages()
