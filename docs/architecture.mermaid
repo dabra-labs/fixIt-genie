@@ -1,51 +1,49 @@
 graph TB
-    subgraph "Android App (Kotlin)"
-        UI[SessionScreen<br/>Jetpack Compose]
-        VM[SessionViewModel]
-        CAM[CameraManager<br/>CameraX 1 FPS]
-        AUD[AudioStreamManager<br/>16kHz in / 24kHz out]
-        WS[AgentWebSocket<br/>OkHttp]
+    subgraph "Android App (Kotlin + Jetpack Compose)"
+        UI[SessionScreen<br/>Material 3 UI]
+        VM[SessionViewModel<br/>Hilt DI]
+        CAM[CameraManager<br/>CameraX 1 FPS JPEG]
+        AUD[AudioStreamManager<br/>16kHz PCM in / 24kHz out]
+        WS[AgentWebSocket<br/>OkHttp — ADK LiveRequest protocol]
     end
 
-    subgraph "Google Cloud"
-        CR[Cloud Run<br/>ADK Agent Server]
+    subgraph "Google Cloud Run"
+        CR[ADK Web Server<br/>adk web — bidi-streaming]
 
-        subgraph "Agent Tools"
-            KB[lookup_equipment_knowledge]
-            SW[get_safety_warnings]
-            LOG[log_diagnostic_step]
-            GS[google_search]
+        subgraph "Agent Tools (Function Calling)"
+            KB[lookup_equipment_knowledge<br/>7 docs · 33 error codes]
+            SW[get_safety_warnings<br/>6 hazard categories]
+            LOG[log_diagnostic_step<br/>Session transcript]
         end
 
-        GEMINI[Gemini 2.0 Flash Live<br/>Vertex AI]
-        FS[(Cloud Firestore<br/>Knowledge Base)]
+        KNOWLEDGEBASE[(Embedded Knowledge Base<br/>Automotive · Electrical · Appliance)]
     end
+
+    GEMINI[Gemini 2.5 Flash<br/>Native Audio Preview<br/>bidiGenerateContent]
 
     UI --> VM
     VM --> CAM
     VM --> AUD
     VM --> WS
 
-    WS -- "Video: JSON base64 JPEG<br/>Audio: Binary PCM 16kHz" --> CR
-    CR -- "Audio: PCM 24kHz<br/>Transcript: JSON<br/>Status: JSON" --> WS
+    WS -- "Audio: Base64 PCM 16kHz<br/>LiveRequest blobs" --> CR
+    CR -- "Audio: Base64 PCM 24kHz<br/>Transcripts · Status<br/>LiveEvent content" --> WS
 
-    CR --> GEMINI
-    GEMINI --> CR
+    CR -- "bidiGenerateContent<br/>+ Function Calling" --> GEMINI
+    GEMINI -- "Text + Audio + Tool Calls" --> CR
 
     CR --> KB
     CR --> SW
     CR --> LOG
-    CR --> GS
 
-    KB --> FS
-    LOG --> FS
+    KB --> KNOWLEDGEBASE
 
     classDef android fill:#E65100,color:#fff,stroke:#BF360C
     classDef gcloud fill:#1565C0,color:#fff,stroke:#0D47A1
     classDef gemini fill:#7B1FA2,color:#fff,stroke:#4A148C
-    classDef firestore fill:#2E7D32,color:#fff,stroke:#1B5E20
+    classDef knowledge fill:#2E7D32,color:#fff,stroke:#1B5E20
 
     class UI,VM,CAM,AUD,WS android
-    class CR,KB,SW,LOG,GS gcloud
+    class CR,KB,SW,LOG gcloud
     class GEMINI gemini
-    class FS firestore
+    class KNOWLEDGEBASE knowledge
