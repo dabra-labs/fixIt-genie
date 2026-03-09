@@ -73,7 +73,7 @@ We've all stood in front of broken equipment scrolling through YouTube, trying t
 - **GitHub**: https://github.com/dabra-labs/fixbuddy
 - **Demo Video**: [YouTube link — REPLACE BEFORE SUBMISSION]
 - **Blog Post**: [Medium/Dev.to link — REPLACE BEFORE SUBMISSION]
-- **Live Backend**: https://fixitbuddy-agent-hybxqwgczq-uc.a.run.app
+- **Live Backend**: Deployed on Google Cloud Run (see deploy.sh for setup)
 
 ---
 

@@ -2,6 +2,7 @@ package ai.fixitbuddy.app.core.camera
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -17,23 +18,32 @@ import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
+/**
+ * Manages CameraX lifecycle and periodically emits JPEG-compressed video
+ * frames via [frames] for streaming to the ADK backend.
+ *
+ * Frames are throttled to [AppConfig.FRAME_INTERVAL_MS] and resized to
+ * [AppConfig.FRAME_SIZE] px before compression.
+ */
 @Singleton
 class CameraManager @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) {
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
+    private var cameraExecutor: ExecutorService? = null
 
     private val _frames = MutableSharedFlow<ByteArray>(extraBufferCapacity = 1)
     val frames: SharedFlow<ByteArray> = _frames
 
-    private var lastFrameTime = 0L
+    @Volatile private var lastFrameTime = 0L
 
     private val imageAnalyzer = ImageAnalysis.Analyzer { imageProxy ->
         val now = System.currentTimeMillis()
@@ -57,8 +67,8 @@ class CameraManager @Inject constructor(
 
             if (scaled !== bitmap) scaled.recycle()
             bitmap.recycle()
-        } catch (_: Exception) {
-            // Frame processing error — skip this frame
+        } catch (e: Exception) {
+            Log.w(TAG, "Frame processing error — skipping frame", e)
         } finally {
             imageProxy.close()
         }
@@ -68,11 +78,14 @@ class CameraManager @Inject constructor(
         lifecycleOwner: LifecycleOwner,
         previewView: PreviewView
     ) {
+        val executor = Executors.newSingleThreadExecutor()
+        cameraExecutor = executor
+
         val provider = suspendCoroutine { cont ->
             val future = ProcessCameraProvider.getInstance(context)
             future.addListener(
                 { cont.resume(future.get()) },
-                Executors.newSingleThreadExecutor()
+                executor
             )
         }
         cameraProvider = provider
@@ -99,6 +112,8 @@ class CameraManager @Inject constructor(
     fun stopCamera() {
         cameraProvider?.unbindAll()
         camera = null
+        cameraExecutor?.shutdown()
+        cameraExecutor = null
     }
 
     fun toggleTorch(): Boolean {
@@ -113,4 +128,8 @@ class CameraManager @Inject constructor(
 
     val hasTorch: Boolean
         get() = camera?.cameraInfo?.hasFlashUnit() == true
+
+    companion object {
+        private const val TAG = "CameraManager"
+    }
 }

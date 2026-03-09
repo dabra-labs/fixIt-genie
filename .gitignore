@@ -1,37 +1,69 @@
 # FixIt Buddy — Root .gitignore
 
-# OS
+# ─── OS ──────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
-
-# IDE
-.idea/
-*.iml
-.vscode/
+Desktop.ini
 *.swp
 *.swo
 *~
 
-# Python
+# ─── IDE / Editor ────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+.fleet/
+*.code-workspace
+
+# ─── Python ──────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
 .venv/
 venv/
-.env
+env/
 *.egg-info/
+dist/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Android
+# ─── Environment & Secrets ───────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.keystore
+*.jks
+service-account*.json
+credentials*.json
+google-services.json
+
+# ─── Android ─────────────────────────────────────────────
 android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
 android/captures/
+android/gradle/wrap-aapt2.gradle
 *.apk
 *.aab
+*.hprof
 
-# Secrets
-*.keystore
-*.jks
-google-services.json
+# ─── Backend / ADK ───────────────────────────────────────
 backend/fixitbuddy/.adk/
+
+# ─── Dev / Internal ──────────────────────────────────────
+CLAUDE.md
+MEMORY.md
+HANDOFF.md
+PROGRESS.md
+.claude/
+
+# ─── Misc ────────────────────────────────────────────────
+*.log
+*.tmp
+*.pdf

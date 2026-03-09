@@ -1,5 +1,6 @@
 package ai.fixitbuddy.app.features.history
 
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -12,6 +13,7 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** A lightweight summary of a completed FixIt Buddy session. */
 @Serializable
 data class SessionRecord(
     val timestampMs: Long,
@@ -21,7 +23,10 @@ data class SessionRecord(
 )
 
 /**
- * Persists the last 10 session summaries in DataStore as JSON.
+ * Persists the last [MAX_SESSIONS] session summaries in DataStore as JSON.
+ *
+ * Sessions are stored most-recent-first and automatically pruned to stay
+ * within the limit.
  */
 @Singleton
 class SessionHistoryStore @Inject constructor(
@@ -33,7 +38,8 @@ class SessionHistoryStore @Inject constructor(
         val raw = prefs[HISTORY_KEY] ?: "[]"
         try {
             json.decodeFromString<List<SessionRecord>>(raw)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to decode session history", e)
             emptyList()
         }
     }
@@ -42,7 +48,8 @@ class SessionHistoryStore @Inject constructor(
         dataStore.edit { prefs ->
             val current = try {
                 json.decodeFromString<List<SessionRecord>>(prefs[HISTORY_KEY] ?: "[]")
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to decode existing history during addSession", e)
                 emptyList()
             }
             // Keep last 10 sessions, most recent first
@@ -52,6 +59,7 @@ class SessionHistoryStore @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "SessionHistoryStore"
         private val HISTORY_KEY = stringPreferencesKey("session_history")
         private const val MAX_SESSIONS = 10
     }

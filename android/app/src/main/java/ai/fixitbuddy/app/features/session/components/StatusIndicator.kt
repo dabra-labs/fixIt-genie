@@ -22,8 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ai.fixitbuddy.app.R
 import ai.fixitbuddy.app.design.theme.StatusError
 import ai.fixitbuddy.app.design.theme.StatusIdle
 import ai.fixitbuddy.app.design.theme.StatusListening
@@ -38,13 +40,13 @@ fun StatusIndicator(
     modifier: Modifier = Modifier
 ) {
     val (text, color) = when (sessionState) {
-        SessionState.Idle -> "Ready" to StatusIdle
-        SessionState.Connecting -> "Connecting…" to StatusThinking
-        SessionState.Error -> "Error" to StatusError
+        SessionState.Idle -> stringResource(R.string.status_idle) to StatusIdle
+        SessionState.Connecting -> stringResource(R.string.status_connecting) to StatusThinking
+        SessionState.Error -> stringResource(R.string.status_error) to StatusError
         SessionState.Active -> when (agentState) {
-            "listening" -> "Listening" to StatusListening
-            "thinking" -> "Thinking…" to StatusThinking
-            "speaking" -> "Speaking" to StatusSpeaking
+            "listening" -> stringResource(R.string.status_listening) to StatusListening
+            "thinking" -> stringResource(R.string.status_thinking) to StatusThinking
+            "speaking" -> stringResource(R.string.status_speaking) to StatusSpeaking
             else -> agentState.replaceFirstChar { it.uppercase() } to StatusListening
         }
     }

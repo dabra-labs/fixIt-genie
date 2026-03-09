@@ -268,7 +268,7 @@ fun SessionScreen(
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
-                            Icon(Icons.Default.Mic, contentDescription = null)
+                            Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.start_session))
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 stringResource(R.string.start_session),
@@ -334,7 +334,7 @@ fun SessionScreen(
                                     containerColor = MaterialTheme.colorScheme.error
                                 )
                             ) {
-                                Icon(Icons.Default.MicOff, contentDescription = null)
+                                Icon(Icons.Default.MicOff, contentDescription = stringResource(R.string.stop_session))
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     stringResource(R.string.stop_session),
@@ -385,7 +385,7 @@ private fun PermissionScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "FixIt Buddy",
+            text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.primary
         )
@@ -393,7 +393,7 @@ private fun PermissionScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "To help you diagnose and fix equipment, FixIt Buddy needs access to your camera and microphone.",
+            text = stringResource(R.string.permission_main_body),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
