@@ -22,7 +22,7 @@
 ┌─────────────────────────┐
 │  Cloud Run (ADK Agent)  │
 │  google-adk bidi-stream │
-│  gemini-2.0-flash-live  │
+│  gemini-2.5-flash-live  │
 │  Function calling tools │
 └──────────┬──────────────┘
            │
@@ -48,9 +48,10 @@ fixitbuddy/
 │   ├── gradle/           — Version catalog + wrapper
 │   └── build.gradle.kts  — Root + app build scripts
 ├── backend/          — ADK agent on Cloud Run
-│   ├── agent.py      — Agent definition + system prompt
-│   ├── tools.py      — Function calling tools + embedded knowledge base
-│   ├── config.py     — Environment config
+│   ├── fixitbuddy/   — ADK agent package (name matters for ADK discovery)
+│   │   ├── agent.py  — Agent definition + system prompt
+│   │   ├── tools.py  — Function calling tools + embedded knowledge base
+│   │   └── config.py — Environment config
 │   ├── seed_knowledge.py — Firestore seeder
 │   ├── Dockerfile    — Cloud Run container
 │   ├── deploy.sh     — IaC deployment script
@@ -71,14 +72,14 @@ fixitbuddy/
 - **Audio**: AudioRecord (16kHz PCM input) + AudioTrack (24kHz PCM output)
 - **Network**: OkHttp WebSocket (bidi-streaming)
 - **DI**: Hilt 2.59.2 (KSP)
-- **Build**: AGP 9.0.1, Gradle 8.11.1, compileSdk 36, minSdk 26
+- **Build**: AGP 9.0.1, Gradle 9.3.1, compileSdk 36, minSdk 26
 
 ### Backend
 - **Framework**: Google ADK (Agent Development Kit)
-- **Model**: gemini-2.0-flash-live-001 (bidi-streaming, multimodal)
-- **Database**: Cloud Firestore (knowledge base + session logs)
-- **Hosting**: Google Cloud Run
-- **Tools**: lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step, google_search
+- **Model**: gemini-2.5-flash-native-audio-preview-12-2025 (bidi-streaming, multimodal); gemini-2.5-flash for REST/text testing
+- **Database**: Cloud Firestore (session logs); knowledge base embedded in tools.py
+- **Hosting**: Google Cloud Run (project: rational-investor-cf3ff)
+- **Tools**: lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step
 
 ## Key Patterns
 
@@ -96,10 +97,13 @@ fixitbuddy/
 cd android && ./gradlew assembleDebug
 
 # Backend (local)
-cd backend && pip install -r requirements.txt && adk api_server --port 8080 agent
+cd backend && pip install -r requirements.txt
+GOOGLE_API_KEY=<your-key> GOOGLE_GENAI_USE_VERTEXAI=false AGENT_MODEL=gemini-2.5-flash adk api_server --port 8080 .
 
-# Deploy backend
-cd backend && chmod +x deploy.sh && ./deploy.sh
+# Deploy backend (uses rational-investor-cf3ff GCP project)
+GOOGLE_CLOUD_PROJECT=rational-investor-cf3ff cd backend && chmod +x deploy.sh && ./deploy.sh
+
+# (see above for deploy with correct project)
 
 # Seed Firestore
 cd backend && python seed_knowledge.py

@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # Configuration
-PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-fixitbuddy}"
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-rational-investor-cf3ff}"
 REGION="${GOOGLE_CLOUD_REGION:-us-central1}"
 SERVICE_NAME="fixitbuddy-agent"
 AR_REPO="fixitbuddy"
@@ -54,12 +54,12 @@ gcloud run deploy $SERVICE_NAME \
   --platform managed \
   --region $REGION \
   --allow-unauthenticated \
-  --memory 1Gi \
-  --cpu 1 \
+  --memory 2Gi \
+  --cpu 2 \
   --timeout 3600 \
   --max-instances 10 \
   --session-affinity \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_GENAI_USE_VERTEXAI=TRUE"
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_GENAI_USE_VERTEXAI=FALSE,GOOGLE_API_KEY=${GOOGLE_API_KEY},AGENT_MODEL=gemini-2.5-flash-native-audio-preview-12-2025"
 
 # Step 5: Get service URL
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
@@ -74,5 +74,5 @@ echo "╚═══════════════════════�
 echo ""
 echo "Service URL: $SERVICE_URL"
 echo ""
-echo "Update Android app AppConfig.kt with:"
-echo "  const val BACKEND_URL = \"$SERVICE_URL\""
+echo "Update gradle.properties BACKEND_URL with:"
+echo "  BACKEND_URL=$SERVICE_URL"

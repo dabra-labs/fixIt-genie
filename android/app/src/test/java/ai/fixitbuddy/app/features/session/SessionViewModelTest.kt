@@ -1,5 +1,7 @@
 package ai.fixitbuddy.app.features.session
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import ai.fixitbuddy.app.core.audio.AudioStreamManager
 import ai.fixitbuddy.app.core.camera.CameraManager
 import ai.fixitbuddy.app.core.websocket.AgentMessage
@@ -10,10 +12,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -26,6 +30,8 @@ class SessionViewModelTest {
     private lateinit var cameraManager: CameraManager
     private lateinit var audioManager: AudioStreamManager
     private lateinit var webSocket: AgentWebSocket
+    private lateinit var dataStore: DataStore<Preferences>
+    private lateinit var okHttpClient: OkHttpClient
 
     private val connectionStateFlow = MutableStateFlow(ConnectionState.DISCONNECTED)
     private val incomingMessagesFlow = MutableSharedFlow<AgentMessage>()
@@ -37,11 +43,14 @@ class SessionViewModelTest {
         cameraManager = mockk(relaxed = true)
         audioManager = mockk(relaxed = true)
         webSocket = mockk(relaxed = true)
+        dataStore = mockk(relaxed = true)
+        okHttpClient = mockk(relaxed = true)
 
         every { webSocket.connectionState } returns connectionStateFlow
         every { webSocket.incomingMessages } returns incomingMessagesFlow
         every { cameraManager.frames } returns MutableSharedFlow()
         every { audioManager.audioChunks } returns MutableSharedFlow()
+        every { dataStore.data } returns flowOf(mockk(relaxed = true))
     }
 
     @After
@@ -50,7 +59,7 @@ class SessionViewModelTest {
     }
 
     private fun createViewModel(): SessionViewModel {
-        return SessionViewModel(cameraManager, audioManager, webSocket)
+        return SessionViewModel(cameraManager, audioManager, webSocket, dataStore, okHttpClient)
     }
 
     @Test

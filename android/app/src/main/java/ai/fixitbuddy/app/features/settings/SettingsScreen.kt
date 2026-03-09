@@ -1,6 +1,5 @@
 package ai.fixitbuddy.app.features.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,15 +29,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ai.fixitbuddy.app.R
 import ai.fixitbuddy.app.core.config.AppConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    var backendUrl by remember { mutableStateOf(AppConfig.BACKEND_URL) }
+    val savedUrl by viewModel.backendUrl.collectAsStateWithLifecycle()
+    var backendUrl by remember(savedUrl) { mutableStateOf(savedUrl) }
 
     Scaffold(
         topBar = {
@@ -84,7 +87,10 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
                         value = backendUrl,
-                        onValueChange = { backendUrl = it },
+                        onValueChange = {
+                            backendUrl = it
+                            viewModel.saveBackendUrl(it)
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         placeholder = { Text("https://fixitbuddy-agent-xxx-uc.a.run.app") }
@@ -127,7 +133,7 @@ fun SettingsScreen(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     SettingsRow(
                         label = "Agent Model",
-                        value = "Gemini 2.0 Flash (Live)"
+                        value = "Gemini 2.5 Flash (Live)"
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     SettingsRow(
