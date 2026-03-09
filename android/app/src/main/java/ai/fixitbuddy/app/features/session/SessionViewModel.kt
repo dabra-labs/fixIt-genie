@@ -32,6 +32,7 @@ data class SessionUiState(
     val sessionState: SessionState = SessionState.Idle,
     val transcript: String = "",
     val agentState: String = "idle",
+    val lastToolCall: String? = null,
     val isTorchOn: Boolean = false,
     val hasTorch: Boolean = false,
     val errorMessage: String? = null
@@ -106,9 +107,12 @@ class SessionViewModel @Inject constructor(
                         _uiState.update { it.copy(agentState = message.state) }
                     }
                     is AgentMessage.ToolCall -> {
-                        // Tool calls are handled server-side; we just display them
+                        // Tool calls are handled server-side; we display them via chip + status
                         _uiState.update {
-                            it.copy(agentState = "using ${message.toolName}")
+                            it.copy(
+                                lastToolCall = message.toolName,
+                                agentState = "using ${message.toolName}"
+                            )
                         }
                     }
                 }
@@ -199,6 +203,7 @@ class SessionViewModel @Inject constructor(
                 sessionState = SessionState.Idle,
                 transcript = "",
                 agentState = "idle",
+                lastToolCall = null,
                 errorMessage = null
             )
         }
