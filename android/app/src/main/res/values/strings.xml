@@ -2,24 +2,83 @@
 <resources>
     <string name="app_name">FixIt Buddy</string>
     <string name="session_title">FixIt Buddy</string>
+
+    <!-- Session controls -->
     <string name="start_session">Start Session</string>
     <string name="stop_session">End Session</string>
+    <string name="flashlight_toggle">Toggle Flashlight</string>
+    <string name="session_idle_title">FixIt Buddy</string>
+    <string name="session_idle_subtitle">Point your camera at equipment\nand tap Start Session</string>
+
+    <!-- Status indicators -->
     <string name="status_idle">Ready</string>
     <string name="status_connecting">Connecting…</string>
     <string name="status_listening">Listening</string>
     <string name="status_thinking">Thinking…</string>
     <string name="status_speaking">Speaking</string>
     <string name="status_error">Error</string>
+
+    <!-- Tool call chip -->
+    <string name="tool_checking_safety">Checking safety warnings</string>
+    <string name="tool_searching_knowledge">Searching knowledge base</string>
+    <string name="tool_logging_diagnostic">Logging diagnostic step</string>
+
+    <!-- Permissions -->
     <string name="permission_camera_title">Camera Access</string>
     <string name="permission_camera_body">FixIt Buddy needs camera access to see your equipment and guide you through repairs.</string>
     <string name="permission_audio_title">Microphone Access</string>
     <string name="permission_audio_body">FixIt Buddy needs microphone access so you can describe problems and hear voice guidance.</string>
     <string name="permission_grant">Grant Permissions</string>
-    <string name="flashlight_toggle">Toggle Flashlight</string>
+
+    <!-- History -->
     <string name="history_title">Session History</string>
     <string name="history_empty">No sessions yet. Start your first repair!</string>
+
+    <!-- Settings -->
     <string name="settings_title">Settings</string>
+    <string name="settings_connection">Connection</string>
     <string name="settings_backend_url">Backend URL</string>
-    <string name="settings_version">Version</string>
+    <string name="settings_backend_hint">https://fixitbuddy-agent-xxx-uc.a.run.app</string>
+    <string name="settings_backend_helper">The Cloud Run URL where FixIt Buddy\'s ADK agent is deployed.</string>
+    <string name="settings_test_connection">Test Connection</string>
     <string name="settings_about">About FixIt Buddy</string>
+    <string name="settings_app_name_label">App Name</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_agent_model">Agent Model</string>
+    <string name="settings_agent_model_value">Gemini 2.5 Flash (Live)</string>
+    <string name="settings_audio_input">Audio Input</string>
+    <string name="settings_video">Video</string>
+    <string name="settings_built_for">Built for</string>
+    <string name="settings_built_for_value">Gemini Live Agent Challenge</string>
+    <string name="settings_powered_by">Powered by Google ADK + Gemini Live API on Cloud Run</string>
+    <string name="dismiss">Dismiss</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_cta_1">See How It Works</string>
+    <string name="onboarding_cta_2">What Can It Fix?</string>
+    <string name="onboarding_cta_3">Let\'s Fix Something</string>
+    <string name="onboarding_tagline">Your AI repair expert.\nAlways in your pocket.</string>
+    <string name="onboarding_description">Point your camera at anything broken.\nDescribe what\'s wrong. Get step-by-step voice guidance.</string>
+    <string name="onboarding_pill_voice">Voice Guided</string>
+    <string name="onboarding_pill_camera">Live Camera</string>
+    <string name="onboarding_pill_ai">Gemini AI</string>
+    <string name="onboarding_challenge">Built for the Gemini Live Agent Challenge</string>
+    <string name="onboarding_how_title">See It. Say It. Fix It.</string>
+    <string name="onboarding_how_subtitle">Three steps is all it takes.</string>
+    <string name="onboarding_step1_title">Point Your Camera</string>
+    <string name="onboarding_step1_desc">Show FixIt Buddy the equipment. It sees what you see — gauges, error codes, damage, all of it.</string>
+    <string name="onboarding_step2_title">Describe the Problem</string>
+    <string name="onboarding_step2_desc">Tell it what\'s happening. Weird noise? Won\'t start? Leaking? Just talk naturally.</string>
+    <string name="onboarding_step3_title">Follow the Guidance</string>
+    <string name="onboarding_step3_desc">Get step-by-step voice instructions. The AI confirms each step visually before moving on.</string>
+    <string name="onboarding_knows_title">Built for Real Repairs</string>
+    <string name="onboarding_knows_subtitle">A curated knowledge base for the equipment\nyou actually deal with.</string>
+    <string name="onboarding_cat_automotive">Automotive</string>
+    <string name="onboarding_cat_automotive_items">Oil system · Battery · Coolant &amp; overheating</string>
+    <string name="onboarding_cat_electrical">Electrical</string>
+    <string name="onboarding_cat_electrical_items">Breaker panels · GFCI outlets · Tripped circuits</string>
+    <string name="onboarding_cat_appliances">Appliances</string>
+    <string name="onboarding_cat_appliances_items">Washing machines · Dishwashers · Error codes</string>
+    <string name="onboarding_powered_by">Powered by Gemini 2.5 Flash Live API</string>
 </resources>
