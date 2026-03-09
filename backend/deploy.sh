@@ -1,0 +1,78 @@
+#!/bin/bash
+# FixIt Buddy — Deploy to Cloud Run
+# Infrastructure-as-Code deployment script
+set -euo pipefail
+
+# Configuration
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-fixitbuddy}"
+REGION="${GOOGLE_CLOUD_REGION:-us-central1}"
+SERVICE_NAME="fixitbuddy-agent"
+AR_REPO="fixitbuddy"
+
+echo "╔══════════════════════════════════════════════╗"
+echo "║   FixIt Buddy — Cloud Run Deployment         ║"
+echo "╚══════════════════════════════════════════════╝"
+echo ""
+echo "Project:  $PROJECT_ID"
+echo "Region:   $REGION"
+echo "Service:  $SERVICE_NAME"
+echo ""
+
+# Step 1: Enable required APIs
+echo "→ Enabling APIs..."
+gcloud services enable \
+  run.googleapis.com \
+  cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com \
+  firestore.googleapis.com \
+  aiplatform.googleapis.com \
+  --project=$PROJECT_ID
+
+# Step 2: Create Artifact Registry repo (if not exists)
+echo "→ Creating Artifact Registry repository..."
+gcloud artifacts repositories describe $AR_REPO \
+  --project=$PROJECT_ID \
+  --location=$REGION 2>/dev/null || \
+gcloud artifacts repositories create $AR_REPO \
+  --project=$PROJECT_ID \
+  --location=$REGION \
+  --repository-format=docker
+
+# Step 3: Build container
+IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${SERVICE_NAME}:latest"
+echo "→ Building container image..."
+gcloud builds submit \
+  --project=$PROJECT_ID \
+  --region=$REGION \
+  --tag $IMAGE
+
+# Step 4: Deploy to Cloud Run
+echo "→ Deploying to Cloud Run..."
+gcloud run deploy $SERVICE_NAME \
+  --project=$PROJECT_ID \
+  --image $IMAGE \
+  --platform managed \
+  --region $REGION \
+  --allow-unauthenticated \
+  --memory 1Gi \
+  --cpu 1 \
+  --timeout 3600 \
+  --max-instances 10 \
+  --session-affinity \
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_GENAI_USE_VERTEXAI=TRUE"
+
+# Step 5: Get service URL
+SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+  --project=$PROJECT_ID \
+  --region=$REGION \
+  --format='value(status.url)')
+
+echo ""
+echo "╔══════════════════════════════════════════════╗"
+echo "║   Deployment Complete!                        ║"
+echo "╚══════════════════════════════════════════════╝"
+echo ""
+echo "Service URL: $SERVICE_URL"
+echo ""
+echo "Update Android app AppConfig.kt with:"
+echo "  const val BACKEND_URL = \"$SERVICE_URL\""

@@ -1,0 +1,51 @@
+graph TB
+    subgraph "Android App (Kotlin)"
+        UI[SessionScreen<br/>Jetpack Compose]
+        VM[SessionViewModel]
+        CAM[CameraManager<br/>CameraX 1 FPS]
+        AUD[AudioStreamManager<br/>16kHz in / 24kHz out]
+        WS[AgentWebSocket<br/>OkHttp]
+    end
+
+    subgraph "Google Cloud"
+        CR[Cloud Run<br/>ADK Agent Server]
+
+        subgraph "Agent Tools"
+            KB[lookup_equipment_knowledge]
+            SW[get_safety_warnings]
+            LOG[log_diagnostic_step]
+            GS[google_search]
+        end
+
+        GEMINI[Gemini 2.0 Flash Live<br/>Vertex AI]
+        FS[(Cloud Firestore<br/>Knowledge Base)]
+    end
+
+    UI --> VM
+    VM --> CAM
+    VM --> AUD
+    VM --> WS
+
+    WS -- "Video: JSON base64 JPEG<br/>Audio: Binary PCM 16kHz" --> CR
+    CR -- "Audio: PCM 24kHz<br/>Transcript: JSON<br/>Status: JSON" --> WS
+
+    CR --> GEMINI
+    GEMINI --> CR
+
+    CR --> KB
+    CR --> SW
+    CR --> LOG
+    CR --> GS
+
+    KB --> FS
+    LOG --> FS
+
+    classDef android fill:#E65100,color:#fff,stroke:#BF360C
+    classDef gcloud fill:#1565C0,color:#fff,stroke:#0D47A1
+    classDef gemini fill:#7B1FA2,color:#fff,stroke:#4A148C
+    classDef firestore fill:#2E7D32,color:#fff,stroke:#1B5E20
+
+    class UI,VM,CAM,AUD,WS android
+    class CR,KB,SW,LOG,GS gcloud
+    class GEMINI gemini
+    class FS firestore

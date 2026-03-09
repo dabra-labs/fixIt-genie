@@ -1,0 +1,301 @@
+"""FixIt Buddy — Agent Tools (Function Calling)."""
+from google.cloud import firestore
+import os
+
+# Initialize Firestore client
+_db = None
+
+def _get_db():
+    global _db
+    if _db is None:
+        try:
+            _db = firestore.Client(project=os.environ.get("GOOGLE_CLOUD_PROJECT", "fixitbuddy"))
+        except Exception:
+            _db = None
+    return _db
+
+# ===== Embedded Knowledge Base (fallback when Firestore is unavailable) =====
+_KNOWLEDGE_BASE = {
+    "automotive_oil_system": {
+        "category": "automotive",
+        "name": "Engine Oil System",
+        "description": "Engine lubrication system including oil level, oil pressure, and related components",
+        "error_codes": ["P0520", "P0521", "P0522", "P0523", "P0524"],
+        "keywords": ["oil", "dipstick", "engine", "lubrication", "ticking", "low oil", "oil light", "oil pressure"],
+        "diagnostic_steps": [
+            {"step": 1, "instruction": "Locate the oil dipstick — usually has a yellow or orange handle", "visual_cue": "Look for a looped handle near the engine block"},
+            {"step": 2, "instruction": "Pull the dipstick out and wipe it clean with a rag", "visual_cue": "The dipstick has two marks — MIN and MAX"},
+            {"step": 3, "instruction": "Reinsert fully, then pull out again to read the level", "visual_cue": "Oil should be between MIN and MAX marks"},
+            {"step": 4, "instruction": "Check oil color — should be amber/brown, not black or milky", "visual_cue": "Milky oil suggests coolant leak (head gasket issue)"},
+            {"step": 5, "instruction": "If low, add oil through the oil filler cap (usually on top of engine)", "visual_cue": "Cap often has an oil can icon"}
+        ],
+        "common_issues": [
+            {"issue": "Ticking/tapping noise from engine", "cause": "Low oil level — insufficient lubrication", "fix": "Top up oil to MAX mark. If noise persists, check for oil leak underneath"},
+            {"issue": "Oil light on dashboard", "cause": "Low oil pressure — could be low level, worn pump, or sensor issue", "fix": "Check level first. If level OK, do not drive — have it towed to a mechanic"},
+            {"issue": "Oil looks milky/frothy", "cause": "Coolant mixing with oil — possible head gasket failure", "fix": "Do not drive. This needs professional diagnosis immediately"}
+        ],
+        "safety_notes": ["Engine may be hot — let it cool for 10+ minutes", "Keep hands away from belts and fans", "Oil is slippery — clean any spills immediately"]
+    },
+    "automotive_battery": {
+        "category": "automotive",
+        "name": "Car Battery and Electrical",
+        "description": "Battery, alternator, and starting system diagnostics",
+        "error_codes": ["P0562", "P0563", "P0620", "P0621"],
+        "keywords": ["battery", "won't start", "dead battery", "jump start", "alternator", "clicking", "electrical"],
+        "diagnostic_steps": [
+            {"step": 1, "instruction": "Locate the battery — usually in the engine bay, sometimes in the trunk", "visual_cue": "Rectangular box with two terminals (+ red, - black)"},
+            {"step": 2, "instruction": "Check for corrosion on terminals", "visual_cue": "White/blue-green crusty buildup on terminals"},
+            {"step": 3, "instruction": "Check if battery terminals are tight — they shouldn't wiggle", "visual_cue": "Loose connection can cause intermittent starting issues"},
+            {"step": 4, "instruction": "If corroded, clean with baking soda + water and a wire brush", "visual_cue": "Terminals should be shiny metal after cleaning"},
+            {"step": 5, "instruction": "If battery is more than 3-4 years old, it may need replacement", "visual_cue": "Check date sticker on battery top"}
+        ],
+        "common_issues": [
+            {"issue": "Car won't start — clicking sound", "cause": "Weak battery or poor connection", "fix": "Try cleaning terminals. If still clicking, battery likely needs jump or replacement"},
+            {"issue": "Car won't start — no sound at all", "cause": "Completely dead battery or blown fuse", "fix": "Check battery voltage if possible. Jump start or replace battery"},
+            {"issue": "Battery keeps dying", "cause": "Alternator not charging, parasitic drain, or old battery", "fix": "Check alternator belt, then have alternator tested at auto parts store (usually free)"}
+        ],
+        "safety_notes": ["Battery acid is corrosive — wear gloves and eye protection", "Never short the terminals together — risk of explosion", "Remove negative terminal first when disconnecting, connect last when reconnecting"]
+    },
+    "automotive_coolant": {
+        "category": "automotive",
+        "name": "Cooling System",
+        "description": "Coolant level, overheating, radiator, and thermostat diagnostics",
+        "error_codes": ["P0115", "P0116", "P0117", "P0125", "P0128"],
+        "keywords": ["coolant", "overheating", "temperature", "radiator", "thermostat", "steam", "hot", "antifreeze"],
+        "diagnostic_steps": [
+            {"step": 1, "instruction": "Locate the coolant reservoir — translucent plastic container with MIN/MAX marks", "visual_cue": "Usually labeled 'COOLANT' or has a temperature warning symbol"},
+            {"step": 2, "instruction": "Check coolant level against MIN/MAX marks (engine COLD only)", "visual_cue": "Coolant is typically green, orange, or pink"},
+            {"step": 3, "instruction": "Look under the car for puddles", "visual_cue": "Green/orange liquid = coolant leak"},
+            {"step": 4, "instruction": "Check radiator cap condition (engine COLD only)", "visual_cue": "Cracked or worn rubber seal means it can't hold pressure"}
+        ],
+        "common_issues": [
+            {"issue": "Temperature gauge in the red", "cause": "Low coolant, stuck thermostat, or failed water pump", "fix": "STOP driving immediately. Let engine cool 30+ min. Check coolant level when cold"},
+            {"issue": "Steam from under hood", "cause": "Coolant leak hitting hot engine", "fix": "STOP immediately. Do not open hood until steam stops. Then check coolant level when cold"},
+            {"issue": "Coolant level keeps dropping", "cause": "Leak in system — hoses, radiator, water pump, or head gasket", "fix": "Check hoses for cracks/wet spots. If not visible, needs pressure test at shop"}
+        ],
+        "safety_notes": ["NEVER open radiator cap when engine is hot — pressurized steam will cause severe burns", "Let engine cool at least 30 minutes before checking coolant", "Coolant is toxic to pets — clean up any spills"]
+    },
+    "electrical_breaker_panel": {
+        "category": "electrical",
+        "name": "Residential Breaker Panel",
+        "description": "Home electrical breaker panel — circuit breakers, tripped breakers, GFCI issues",
+        "error_codes": [],
+        "keywords": ["breaker", "circuit", "panel", "tripped", "power out", "electricity", "fuse", "outlet"],
+        "diagnostic_steps": [
+            {"step": 1, "instruction": "Open the breaker panel door", "visual_cue": "Metal door, usually in garage, basement, or utility closet"},
+            {"step": 2, "instruction": "Look for any breaker that's in the middle position (not fully ON or OFF)", "visual_cue": "A tripped breaker sits between ON and OFF — it won't be aligned with the others"},
+            {"step": 3, "instruction": "To reset: push the tripped breaker fully to OFF first, then flip to ON", "visual_cue": "You should hear/feel a click when it engages in ON position"},
+            {"step": 4, "instruction": "If it trips again immediately, there's a fault on that circuit — do NOT keep resetting", "visual_cue": "Repeated tripping = short circuit or overloaded circuit"},
+            {"step": 5, "instruction": "Check what's plugged in on that circuit — unplug everything, then reset", "visual_cue": "If it stays on with nothing plugged in, one of your devices has a short"}
+        ],
+        "common_issues": [
+            {"issue": "One room lost power", "cause": "Tripped breaker — often from overloaded circuit", "fix": "Find and reset the tripped breaker. If it trips again, reduce load on that circuit"},
+            {"issue": "Breaker keeps tripping", "cause": "Overloaded circuit, short circuit, or ground fault", "fix": "Unplug everything on circuit, reset. Add devices back one at a time to find the culprit"},
+            {"issue": "GFCI outlet won't reset", "cause": "Ground fault on circuit, or failed GFCI outlet", "fix": "Unplug everything from GFCI outlets on that circuit. Press RESET. If still won't reset, the GFCI may need replacement"},
+            {"issue": "Burning smell from panel", "cause": "Loose connection, overheated wire, or failing breaker", "fix": "DO NOT TOUCH. Turn off main breaker if safe to do so. Call an electrician immediately"}
+        ],
+        "safety_notes": ["Never touch anything inside the panel with wet hands", "Do not remove the panel cover — exposed bus bars carry lethal voltage", "If you see scorch marks, melted plastic, or smell burning — call an electrician immediately", "Keep the area around the panel clear — 3 feet clearance required by code"]
+    },
+    "electrical_gfci": {
+        "category": "electrical",
+        "name": "GFCI Outlets",
+        "description": "Ground Fault Circuit Interrupter outlets — bathroom, kitchen, outdoor outlets",
+        "error_codes": [],
+        "keywords": ["gfci", "outlet", "reset", "test", "bathroom", "kitchen", "outdoor", "no power"],
+        "diagnostic_steps": [
+            {"step": 1, "instruction": "Find the GFCI outlet — it has TEST and RESET buttons in the center", "visual_cue": "Usually in bathrooms, kitchens, garages, and outdoor locations"},
+            {"step": 2, "instruction": "Press the RESET button firmly", "visual_cue": "You should hear a click and power should restore"},
+            {"step": 3, "instruction": "If RESET won't click in, the GFCI detected a fault — unplug everything first", "visual_cue": "Try pressing TEST first, then RESET"},
+            {"step": 4, "instruction": "A single GFCI can protect multiple outlets downstream", "visual_cue": "Check other outlets in bathroom/kitchen — they may be on the same GFCI"}
+        ],
+        "common_issues": [
+            {"issue": "Bathroom outlets all dead", "cause": "GFCI tripped — could be in that bathroom or another bathroom", "fix": "Find and reset the GFCI outlet. Check ALL bathrooms — one GFCI often protects multiple rooms"},
+            {"issue": "GFCI trips when using hair dryer", "cause": "Hair dryer pulling too much current or has a ground fault", "fix": "Try a different hair dryer. If same issue, the circuit may be overloaded or the GFCI is sensitive"}
+        ],
+        "safety_notes": ["GFCI protects you from electrocution — never bypass it", "Test GFCI outlets monthly by pressing TEST, then RESET"]
+    },
+    "appliance_washing_machine": {
+        "category": "appliance",
+        "name": "Washing Machine",
+        "description": "Common washing machine error codes and troubleshooting across major brands",
+        "error_codes": ["E1", "E2", "E3", "E4", "F1", "F2", "F21", "UE", "OE", "LE", "dE", "IE"],
+        "keywords": ["washing machine", "washer", "laundry", "won't drain", "won't spin", "error code", "leak", "vibration"],
+        "diagnostic_steps": [
+            {"step": 1, "instruction": "Note the error code displayed", "visual_cue": "Error code appears on the display panel — may be letters + numbers"},
+            {"step": 2, "instruction": "Try power cycling: unplug for 60 seconds, then plug back in", "visual_cue": "This resets the control board and clears many temporary errors"},
+            {"step": 3, "instruction": "Check the door/lid — make sure it's fully closed and latched", "visual_cue": "Many errors are caused by the door not being detected as closed"},
+            {"step": 4, "instruction": "Check water supply valves behind the machine — both should be fully open", "visual_cue": "Hot and cold valves, handles should be parallel to the hose (open)"},
+            {"step": 5, "instruction": "Check the drain hose — shouldn't be kinked or inserted too far into the drain pipe", "visual_cue": "Drain hose should only go 6-8 inches into the standpipe"}
+        ],
+        "common_issues": [
+            {"issue": "Error E4 or IE (Water supply issue)", "cause": "Water not reaching the machine", "fix": "Check that supply valves are fully open. Check inlet hose for kinks. Clean inlet filter screens"},
+            {"issue": "Error UE (Unbalanced load)", "cause": "Clothes bunched to one side during spin", "fix": "Redistribute clothes evenly in the drum. Don't overload. Check that machine is level"},
+            {"issue": "Error OE or F21 (Drain issue)", "cause": "Water not draining properly", "fix": "Check drain hose for kinks. Clean the drain pump filter (small door at bottom front). Remove any debris"},
+            {"issue": "Error dE (Door issue)", "cause": "Door/lid not properly closed or latch malfunction", "fix": "Clean the door seal/gasket. Check for obstructions preventing door from closing"},
+            {"issue": "Error LE (Motor issue)", "cause": "Motor overloaded or rotor position sensor issue", "fix": "Reduce load size. Unplug for 30 min and retry. If persistent, motor may need professional service"}
+        ],
+        "safety_notes": ["Always unplug before inspecting internal components", "Water + electricity = danger — mop up any water before working near outlets", "The drain pump filter may release water when opened — have towels ready"]
+    },
+    "appliance_dishwasher": {
+        "category": "appliance",
+        "name": "Dishwasher",
+        "description": "Common dishwasher error codes and troubleshooting",
+        "error_codes": ["E1", "E2", "E3", "E4", "E15", "E22", "E24", "E25"],
+        "keywords": ["dishwasher", "dishes", "won't drain", "won't start", "error code", "leak", "not cleaning"],
+        "diagnostic_steps": [
+            {"step": 1, "instruction": "Note any error code or flashing lights on the display", "visual_cue": "Some models flash LED lights instead of showing alphanumeric codes"},
+            {"step": 2, "instruction": "Check if the door is fully latched — the dishwasher won't start unless it detects the door is closed", "visual_cue": "Push firmly until you hear the latch click"},
+            {"step": 3, "instruction": "Check for standing water in the bottom of the tub", "visual_cue": "A small amount is normal; several inches is a drain problem"},
+            {"step": 4, "instruction": "Check the drain filter at the bottom — remove and clean any debris", "visual_cue": "Usually a circular filter that twists out, located at the bottom center"}
+        ],
+        "common_issues": [
+            {"issue": "Error E15 (Bosch) — Water in base", "cause": "Leak detected in the base pan", "fix": "Tilt the dishwasher forward slightly to drain the base pan. Check for hose leaks. Reset by unplugging for 1 minute"},
+            {"issue": "Error E24/E25 — Drain issue", "cause": "Drain hose kinked or clogged", "fix": "Check drain hose under sink for kinks. Clean the drain filter. Run garbage disposal to clear shared drain line"},
+            {"issue": "Dishwasher won't start", "cause": "Door latch, child lock, or delayed start", "fix": "Ensure door is latched. Check if child lock is activated (hold button 3 sec). Check if delay start is set"}
+        ],
+        "safety_notes": ["Always turn off the dishwasher and disconnect power before accessing internal components", "Be careful of sharp items when cleaning the filter"]
+    }
+}
+
+def lookup_equipment_knowledge(query: str, category: str = "", error_code: str = "") -> dict:
+    """Look up equipment knowledge from the curated database.
+
+    Args:
+        query: Natural language description of what to look up
+        category: Equipment category - one of: automotive, electrical, appliance
+        error_code: Specific error code to look up (e.g., "E4", "P0301", "F21")
+
+    Returns:
+        Relevant equipment knowledge including diagnostic steps and solutions
+    """
+    results = []
+
+    # Try Firestore first
+    db = _get_db()
+    if db:
+        try:
+            if error_code:
+                docs = db.collection("equipment").where("error_codes", "array_contains", error_code.upper()).stream()
+                for doc in docs:
+                    results.append(doc.to_dict())
+
+            if category and not results:
+                docs = db.collection("equipment").where("category", "==", category.lower()).stream()
+                for doc in docs:
+                    data = doc.to_dict()
+                    if any(kw in query.lower() for kw in data.get("keywords", [])):
+                        results.append(data)
+
+            if not results and category:
+                doc = db.collection("equipment_overview").document(category.lower()).get()
+                if doc.exists:
+                    results.append(doc.to_dict())
+        except Exception:
+            pass  # Fall through to embedded knowledge base
+
+    # Fallback to embedded knowledge base
+    if not results:
+        query_lower = query.lower()
+        for doc_id, data in _KNOWLEDGE_BASE.items():
+            # Match by error code
+            if error_code and error_code.upper() in data.get("error_codes", []):
+                results.append(data)
+                continue
+            # Match by category + keywords
+            if category and data.get("category") == category.lower():
+                if any(kw in query_lower for kw in data.get("keywords", [])):
+                    results.append(data)
+            # Match by keywords alone
+            elif any(kw in query_lower for kw in data.get("keywords", [])):
+                results.append(data)
+
+    if results:
+        return {"found": True, "results": results[:3]}
+    return {
+        "found": False,
+        "message": "No specific knowledge found. Use general expertise and google_search for specific model information."
+    }
+
+
+def get_safety_warnings(action_type: str, equipment_category: str = "") -> dict:
+    """Get safety warnings before guiding a physical action. MUST be called before any hands-on instruction.
+
+    Args:
+        action_type: Type of action - one of: electrical, mechanical, fluid, pressure, heat, chemical
+        equipment_category: Equipment category for context-specific warnings
+
+    Returns:
+        Safety warnings and precautions that MUST be communicated to the user
+    """
+    warnings = {
+        "electrical": [
+            "Ensure power is completely disconnected before touching any wiring",
+            "Use a non-contact voltage tester to verify circuits are dead",
+            "Never work on live electrical panels — risk of electrocution",
+            "Keep one hand in your pocket when working near electrical panels",
+            "If you see scorch marks, melted plastic, or smell burning — STOP and call an electrician"
+        ],
+        "mechanical": [
+            "Ensure equipment is powered off and cannot start unexpectedly",
+            "Watch for pinch points — fingers can be caught in moving parts",
+            "Wear appropriate PPE: safety glasses, gloves",
+            "If something is stuck, don't force it — forcing can cause sudden release and injury"
+        ],
+        "fluid": [
+            "Beware of hot fluids — coolant, oil, and transmission fluid can cause burns",
+            "Have rags or absorbent material ready for spills",
+            "Some fluids are toxic — avoid skin contact and don't ingest",
+            "Properly dispose of used fluids — don't pour down drains"
+        ],
+        "pressure": [
+            "NEVER open pressurized systems without depressurizing first",
+            "Stand to the side when loosening fittings — fluid may spray",
+            "Check pressure gauges before starting any work",
+            "Compressed air can cause serious injury — never point at yourself or others"
+        ],
+        "heat": [
+            "Allow hot equipment to cool before touching",
+            "Use thermal gloves when handling hot components",
+            "Hot surfaces may not look hot — always test carefully",
+            "Keep flammable materials away from hot components"
+        ],
+        "chemical": [
+            "Work in a ventilated area",
+            "Wear chemical-resistant gloves and eye protection",
+            "Know the location of the nearest water source for rinsing",
+            "Read product labels before using any chemicals"
+        ]
+    }
+
+    result = warnings.get(action_type, [
+        "Proceed with caution",
+        "Wear appropriate personal protective equipment",
+        "If unsure, consult a professional"
+    ])
+
+    return {
+        "warnings": result,
+        "general": "Always prioritize safety. If at any point you feel unsafe, stop and call a professional.",
+        "action_type": action_type
+    }
+
+
+def log_diagnostic_step(step_number: int, description: str, observation: str = "", result: str = "") -> dict:
+    """Log a diagnostic step for the session transcript.
+
+    Args:
+        step_number: Sequential step number
+        description: What action was taken or recommended
+        observation: What was observed (visual or audio)
+        result: Outcome of the step
+
+    Returns:
+        Confirmation that the step was logged
+    """
+    step = {
+        "step": step_number,
+        "description": description,
+        "observation": observation,
+        "result": result,
+    }
+    return {"logged": True, "step": step}

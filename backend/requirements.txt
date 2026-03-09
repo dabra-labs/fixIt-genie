@@ -1,0 +1,4 @@
+google-adk>=1.0.0
+google-cloud-firestore>=2.16.0
+google-genai>=1.0.0
+pytest>=7.0.0
