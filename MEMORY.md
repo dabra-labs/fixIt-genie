@@ -8,7 +8,13 @@ See. Hear. Fix. — point your camera at equipment, describe the problem, get st
 - **Android-native** (not web) — Kotlin + Jetpack Compose + Material 3
 - **Backend**: Python ADK bidi-streaming agent on Google Cloud Run
 - **Database**: Firestore (knowledge base + session logs)
-- **AI Model**: gemini-2.5-flash (verified working with live API; google_search removed — cannot combine built-in + custom tools)
+- **AI Model**: `gemini-2.5-flash-native-audio-latest` (Gemini API key, GOOGLE_GENAI_USE_VERTEXAI=FALSE) — CONFIRMED WORKING (text+audio response)
+  - Available live models for this API key: query `/v1beta/models?key=...` for `bidiGenerateContent` support
+  - gemini-2.0-flash-live-001 FAILS: "not found for API version v1alpha" (ADK uses v1alpha)
+  - gemini-live-2.5-flash-native-audio = Vertex AI model name (NOT the Gemini API name)
+  - LiveRequest fields: content, blob, activity_start, activity_end (object {}), close
+  - activity_end/{} ONLY valid in manual VAD mode; default is automatic VAD — do NOT send activity signals
+  - To trigger agent: send content turn with {"content": {"role":"user","parts":[{"text":"..."}]}}
 - **100% Google Cloud** — Firebase Hosting not needed (native app)
 - **Package**: `ai.fixitbuddy.app`
 - **Monorepo**: `fixitbuddy/android/` + `fixitbuddy/backend/`
@@ -97,3 +103,10 @@ The development VM is aarch64 but Android SDK tools are x86_64. Solved by:
 | Android: SessionViewModelTest | 47 | PASS (2 bugs found and fixed) |
 | Android: RoutesTest | 18 | PASS (was 15, counted wrong earlier) |
 | **TOTAL** | **197+27** | **ALL PASS** |
+
+## Rules: Never Guess — Always Validate First
+- **Model names**: Query `GET /v1beta/models?key=...` for `bidiGenerateContent` support before trying any model
+- **API formats**: Use `.model_validate_json()` on LiveRequest before sending — wrong format causes silent errors
+- **LiveRequest schema**: Inspect `from google.adk.agents.live_request_queue import LiveRequest; LiveRequest.model_fields`
+- **Cloud Run logs**: Always check logs FIRST when debugging connection issues (`gcloud logging read ...`)
+- **Do not retry guesses**: If something fails, investigate root cause before trying a different value
