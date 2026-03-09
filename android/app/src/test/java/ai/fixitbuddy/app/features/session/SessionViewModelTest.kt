@@ -32,6 +32,7 @@ class SessionViewModelTest {
     private lateinit var webSocket: AgentWebSocket
     private lateinit var dataStore: DataStore<Preferences>
     private lateinit var okHttpClient: OkHttpClient
+    private lateinit var historyStore: ai.fixitbuddy.app.features.history.SessionHistoryStore
 
     private val connectionStateFlow = MutableStateFlow(ConnectionState.DISCONNECTED)
     private val incomingMessagesFlow = MutableSharedFlow<AgentMessage>()
@@ -45,11 +46,13 @@ class SessionViewModelTest {
         webSocket = mockk(relaxed = true)
         dataStore = mockk(relaxed = true)
         okHttpClient = mockk(relaxed = true)
+        historyStore = mockk(relaxed = true)
 
         every { webSocket.connectionState } returns connectionStateFlow
         every { webSocket.incomingMessages } returns incomingMessagesFlow
         every { cameraManager.frames } returns MutableSharedFlow()
         every { audioManager.audioChunks } returns MutableSharedFlow()
+        every { audioManager.audioLevel } returns MutableStateFlow(0f)
         every { dataStore.data } returns flowOf(mockk(relaxed = true))
     }
 
@@ -59,7 +62,7 @@ class SessionViewModelTest {
     }
 
     private fun createViewModel(): SessionViewModel {
-        return SessionViewModel(cameraManager, audioManager, webSocket, dataStore, okHttpClient)
+        return SessionViewModel(cameraManager, audioManager, webSocket, dataStore, okHttpClient, historyStore)
     }
 
     @Test
