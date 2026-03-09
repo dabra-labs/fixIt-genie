@@ -13,5 +13,5 @@ COPY . .
 ENV PORT=8080
 EXPOSE 8080
 
-# Use ADK's built-in server for bidi-streaming
-CMD ["adk", "api_server", "--port", "8080", "--host", "0.0.0.0", "."]
+# Use ADK web server — exposes /run_live WebSocket endpoint for bidi-streaming
+CMD ["adk", "web", "--port", "8080", "--host", "0.0.0.0", "."]
