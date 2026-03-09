@@ -115,7 +115,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 )
                 if (pagerState.currentPage == PageCount - 1) {
                     Spacer(Modifier.width(6.dp))
-                    Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -302,7 +302,7 @@ private fun Page2HowItWorks() {
             icon = Icons.Default.CheckCircle,
             title = "Follow the Guidance",
             description = "Get step-by-step voice instructions. The AI confirms each step visually before moving on.",
-            color = Color(0xFF2E7D32)
+            color = MaterialTheme.colorScheme.tertiary
         )
     }
 }
@@ -383,21 +383,21 @@ private fun Page3WhatItKnows() {
         // Category cards
         KnowledgeCard(
             icon = Icons.Default.DirectionsCar,
-            color = Color(0xFF1565C0),
+            color = MaterialTheme.colorScheme.secondary,
             category = "Automotive",
             items = "Oil system · Battery · Coolant & overheating"
         )
         Spacer(Modifier.height(12.dp))
         KnowledgeCard(
             icon = Icons.Default.ElectricalServices,
-            color = Color(0xFFE65100),
+            color = MaterialTheme.colorScheme.primary,
             category = "Electrical",
             items = "Breaker panels · GFCI outlets · Tripped circuits"
         )
         Spacer(Modifier.height(12.dp))
         KnowledgeCard(
             icon = Icons.Default.HomeRepairService,
-            color = Color(0xFF2E7D32),
+            color = MaterialTheme.colorScheme.tertiary,
             category = "Appliances",
             items = "Washing machines · Dishwashers · Error codes"
         )
