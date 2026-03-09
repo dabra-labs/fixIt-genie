@@ -156,6 +156,7 @@ fun SessionScreen(
         // Tool call chip — shows briefly when the agent invokes a tool
         ToolCallChip(
             toolName = uiState.lastToolCall,
+            toolCallCount = uiState.toolCallCount,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .systemBarsPadding()

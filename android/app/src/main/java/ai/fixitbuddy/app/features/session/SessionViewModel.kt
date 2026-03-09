@@ -33,6 +33,7 @@ data class SessionUiState(
     val transcript: String = "",
     val agentState: String = "idle",
     val lastToolCall: String? = null,
+    val toolCallCount: Int = 0,
     val isTorchOn: Boolean = false,
     val hasTorch: Boolean = false,
     val errorMessage: String? = null
@@ -108,9 +109,11 @@ class SessionViewModel @Inject constructor(
                     }
                     is AgentMessage.ToolCall -> {
                         // Tool calls are handled server-side; we display them via chip + status
+                        // Increment toolCallCount so the chip retriggers even for repeated tool names
                         _uiState.update {
                             it.copy(
                                 lastToolCall = message.toolName,
+                                toolCallCount = it.toolCallCount + 1,
                                 agentState = "using ${message.toolName}"
                             )
                         }
