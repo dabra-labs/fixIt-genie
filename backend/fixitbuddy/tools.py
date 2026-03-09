@@ -136,6 +136,37 @@ _KNOWLEDGE_BASE = {
         ],
         "safety_notes": ["Always unplug before inspecting internal components", "Water + electricity = danger — mop up any water before working near outlets", "The drain pump filter may release water when opened — have towels ready"]
     },
+    "appliance_refrigerator_lg": {
+        "category": "appliance",
+        "name": "LG Refrigerator",
+        "description": "LG refrigerator troubleshooting — cooling issues, error codes, ice maker, water dispenser",
+        "error_codes": ["Er IF", "Er FF", "Er CF", "Er dF", "Er rF", "Er CO", "Er FS", "Er IS", "Er SS", "Er 1F", "Er FF", "CL", "dH"],
+        "keywords": ["refrigerator", "fridge", "not cooling", "not cold", "lg", "freezer", "ice maker", "ice", "water dispenser", "compressor", "temperature", "warm", "er if", "er ff", "er cf"],
+        "diagnostic_steps": [
+            {"step": 1, "instruction": "Check the temperature display — fridge should be 37°F (3°C), freezer 0°F (-18°C)", "visual_cue": "Display panel is usually on the front of the door or inside at the top"},
+            {"step": 2, "instruction": "Check if the condenser coils on the back/bottom are dusty", "visual_cue": "Dusty coils look grey/brown and restrict airflow — clean with a vacuum brush attachment"},
+            {"step": 3, "instruction": "Check the door seals all around — they should be airtight", "visual_cue": "Close a piece of paper in the door — if it slides out easily, the seal is weak"},
+            {"step": 4, "instruction": "Check that the door vents inside aren't blocked by food containers", "visual_cue": "Cold air vents are usually on the back wall inside — leave a few inches of clearance"},
+            {"step": 5, "instruction": "Listen for the compressor — it should cycle on and off", "visual_cue": "Compressor is at the back bottom — a humming sound means it's running"}
+        ],
+        "common_issues": [
+            {"issue": "Fridge not cooling but freezer works", "cause": "Evaporator fan blocked or failed, or damper stuck closed", "fix": "Check if fan runs when door is open (hold door switch). Ice buildup on back wall means defrost issue — run manual defrost"},
+            {"issue": "Neither fridge nor freezer cooling", "cause": "Compressor not running, refrigerant leak, or start relay failure", "fix": "Listen for compressor — if silent, check start relay (small box on compressor side). Shake it — a rattle means it needs replacement (~$10 part)"},
+            {"issue": "Error Er IF (Ice maker fan)", "cause": "Ice maker fan is blocked or frozen", "fix": "Remove all ice from ice maker. Power cycle the fridge. If error persists, ice maker fan motor may need replacement"},
+            {"issue": "Error Er FF (Freezer fan)", "cause": "Freezer evaporator fan failure", "fix": "Power cycle the fridge. If error persists, evaporator fan needs replacement. Defrost first to check if ice is blocking it"},
+            {"issue": "Error Er CF (Condenser fan)", "cause": "Condenser fan at back/bottom is blocked or failed", "fix": "Clean debris from condenser area at back bottom. Check fan blade isn't blocked. Power cycle"},
+            {"issue": "Error Er dF (Defrost)", "cause": "Defrost heater or defrost sensor failure", "fix": "Run a manual defrost cycle: press and hold both temperature buttons for 3-5 seconds. If error returns, defrost heater needs replacement"},
+            {"issue": "Ice maker not making ice", "cause": "Freezer too warm, water supply issue, or ice maker turned off", "fix": "Check freezer is at 0°F. Check water line isn't kinked. Check ice maker arm is in DOWN position. Check water filter age"},
+            {"issue": "Fridge making loud noise", "cause": "Evaporator fan hitting ice buildup, or condenser fan debris", "fix": "Ice hitting fan = defrost needed. Check back of freezer for ice buildup. Clean condenser area at back bottom"},
+            {"issue": "Water dispenser not working", "cause": "Water filter clogged, frozen water line, or door switch", "fix": "Replace water filter if older than 6 months. Check filter is fully seated. Inspect dispenser actuator (small tab in door frame)"}
+        ],
+        "safety_notes": ["Unplug before cleaning condenser coils", "Do not use sharp objects to chip ice — can puncture refrigerant lines", "If you smell a chemical odor, refrigerant may be leaking — ventilate and call a technician"],
+        "model_specific": {
+            "lg_linear_compressor": "LG Linear Compressor fridges are very quiet — if you hear loud knocking, the compressor may be failing",
+            "smart_diagnosis": "LG Smart Diagnosis: place phone against the speaker on fridge and call LG support — the fridge transmits diagnostic tones",
+            "filter_reset": "After replacing water filter, press and hold FILTER button for 3 seconds to reset the filter indicator"
+        }
+    },
     "appliance_dishwasher": {
         "category": "appliance",
         "name": "Dishwasher",

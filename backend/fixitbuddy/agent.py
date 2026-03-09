@@ -10,7 +10,7 @@ except ImportError:
 # Default to the native audio model for live streaming (bidiGenerateContent).
 # For text-only testing via REST /run endpoint, override with:
 #   AGENT_MODEL=gemini-2.5-flash
-_DEFAULT_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
+_DEFAULT_MODEL = "gemini-2.5-flash-native-audio-latest"
 _MODEL = os.environ.get("AGENT_MODEL", _DEFAULT_MODEL)
 
 SYSTEM_INSTRUCTION = """You are FixIt Buddy, an expert equipment diagnosis and repair assistant.
