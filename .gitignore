@@ -34,3 +34,4 @@ android/captures/
 *.keystore
 *.jks
 google-services.json
+backend/fixitbuddy/.adk/

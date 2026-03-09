@@ -17,12 +17,12 @@ class TestAgentDefinition:
         assert agent.name == "fixitbuddy"
 
     def test_agent_model(self):
-        """Test agent model is 'gemini-2.0-flash-live-001'."""
-        assert agent.model == "gemini-2.0-flash-live-001"
+        """Test agent model is 'gemini-2.5-flash'."""
+        assert agent.model == "gemini-2.5-flash"
 
-    def test_agent_has_4_tools(self):
-        """Test agent has exactly 4 tools."""
-        assert len(agent.tools) == 4
+    def test_agent_has_3_tools(self):
+        """Test agent has exactly 3 tools (knowledge, safety, logging)."""
+        assert len(agent.tools) == 3
 
     def test_agent_instruction_non_empty(self):
         """Test agent has non-empty instruction/system prompt."""
@@ -53,9 +53,6 @@ class TestAgentDefinition:
     def test_tool_functions_callable(self):
         """Test all tool functions are callable."""
         # Tools list contains: lookup_equipment_knowledge, get_safety_warnings,
-        # log_diagnostic_step (functions), and google_search (object)
+        # log_diagnostic_step — all are plain functions
         for tool in agent.tools:
-            # google_search is a tool object, not a function
-            # The other three should be callable
-            if hasattr(tool, '__call__'):
-                assert callable(tool)
+            assert callable(tool)

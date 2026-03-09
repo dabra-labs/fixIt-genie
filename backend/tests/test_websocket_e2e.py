@@ -299,15 +299,18 @@ class TestKnowledgeBaseIntegration:
 class TestAgentConfiguration:
     """Validate the agent is properly configured for live streaming."""
 
-    def test_agent_model_is_live(self):
+    def test_agent_model_is_gemini(self):
         from fixitbuddy.agent import agent
-        assert "live" in agent.model
+        assert "gemini" in agent.model
 
     def test_agent_has_all_required_tools(self):
         from fixitbuddy.agent import agent
-        tool_names = [t.__name__ if hasattr(t, '__name__') else str(t) for t in agent.tools]
-        # Must have knowledge lookup, safety, logging, and search
-        assert len(agent.tools) == 4
+        tool_names = [t.__name__ for t in agent.tools]
+        # Must have knowledge lookup, safety, and logging
+        assert len(agent.tools) == 3
+        assert "lookup_equipment_knowledge" in tool_names
+        assert "get_safety_warnings" in tool_names
+        assert "log_diagnostic_step" in tool_names
 
     def test_system_instruction_covers_safety(self):
         from fixitbuddy.agent import SYSTEM_INSTRUCTION

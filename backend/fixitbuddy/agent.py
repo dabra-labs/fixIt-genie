@@ -50,7 +50,7 @@ VISUAL AWARENESS:
 """
 
 agent = Agent(
-    model="gemini-2.0-flash-live-001",
+    model="gemini-2.5-flash",
     name="fixitbuddy",
     description="A multimodal equipment diagnosis and repair assistant that sees through your camera and talks you through fixes step-by-step.",
     instruction=SYSTEM_INSTRUCTION,
@@ -58,7 +58,6 @@ agent = Agent(
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
-        google_search,
     ],
 )
 
