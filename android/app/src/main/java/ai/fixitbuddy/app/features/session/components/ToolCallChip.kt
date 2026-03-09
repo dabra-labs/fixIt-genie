@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,24 +30,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import ai.fixitbuddy.app.design.theme.StatusListening
 import kotlinx.coroutines.delay
 
 /**
  * Shows a brief animated chip when the agent calls a tool.
  * Auto-dismisses after 3 seconds.
  * Judges need to SEE function calling happening — this is the proof.
+ *
+ * @param toolCallCount monotonically increasing counter so the chip retriggers
+ *                      even when the same tool is called twice in a row.
  */
 @Composable
 fun ToolCallChip(
     toolName: String?,
+    toolCallCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     var visible by remember { mutableStateOf(false) }
     var displayName by remember { mutableStateOf("") }
     var icon by remember { mutableStateOf<ImageVector>(Icons.Default.Build) }
 
-    LaunchedEffect(toolName) {
+    // Key on toolCallCount so repeated calls to the same tool still retrigger
+    LaunchedEffect(toolCallCount) {
         if (toolName != null) {
             val (name, ic) = formatToolCall(toolName)
             displayName = name
@@ -65,7 +71,7 @@ fun ToolCallChip(
     ) {
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = Color(0xFF1B5E20).copy(alpha = 0.85f),
+            color = StatusListening.copy(alpha = 0.85f),
             shadowElevation = 4.dp
         ) {
             Row(
@@ -82,7 +88,7 @@ fun ToolCallChip(
                 Text(
                     text = displayName,
                     color = Color.White,
-                    fontSize = 12.sp
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
         }
