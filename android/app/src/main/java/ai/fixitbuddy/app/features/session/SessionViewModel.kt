@@ -12,6 +12,8 @@ import ai.fixitbuddy.app.core.config.AppConfig
 import ai.fixitbuddy.app.core.websocket.AgentMessage
 import ai.fixitbuddy.app.core.websocket.AgentWebSocket
 import ai.fixitbuddy.app.core.websocket.ConnectionState
+import ai.fixitbuddy.app.features.history.SessionHistoryStore
+import ai.fixitbuddy.app.features.history.SessionRecord
 import ai.fixitbuddy.app.features.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -49,7 +51,8 @@ class SessionViewModel @Inject constructor(
     private val audioManager: AudioStreamManager,
     private val webSocket: AgentWebSocket,
     private val dataStore: DataStore<Preferences>,
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val historyStore: SessionHistoryStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SessionUiState())
@@ -57,6 +60,9 @@ class SessionViewModel @Inject constructor(
 
     /** Normalised mic level 0f..1f — exposed separately to avoid recomposing entire UI. */
     val audioLevel: StateFlow<Float> = audioManager.audioLevel
+
+    /** Track session start time for duration calculation */
+    private var sessionStartMs: Long = 0L
 
     init {
         observeConnectionState()
@@ -128,6 +134,7 @@ class SessionViewModel @Inject constructor(
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun startSession() {
+        sessionStartMs = System.currentTimeMillis()
         viewModelScope.launch(Dispatchers.IO) {
             val baseUrl = dataStore.data.map { prefs ->
                 prefs[SettingsViewModel.BACKEND_URL_KEY] ?: AppConfig.BACKEND_URL
@@ -201,6 +208,24 @@ class SessionViewModel @Inject constructor(
         }
 
     fun stopSession() {
+        // Save session to history if it was active
+        val current = _uiState.value
+        if (current.sessionState == SessionState.Active && sessionStartMs > 0) {
+            val durationSec = ((System.currentTimeMillis() - sessionStartMs) / 1000).toInt()
+            val snippet = current.transcript.take(120).ifBlank { "Voice-only session" }
+            viewModelScope.launch {
+                historyStore.addSession(
+                    SessionRecord(
+                        timestampMs = sessionStartMs,
+                        durationSec = durationSec,
+                        transcriptSnippet = snippet,
+                        toolCallCount = current.toolCallCount
+                    )
+                )
+            }
+        }
+        sessionStartMs = 0L
+
         audioManager.stopRecording()
         audioManager.stopPlayback()
         webSocket.disconnect()
