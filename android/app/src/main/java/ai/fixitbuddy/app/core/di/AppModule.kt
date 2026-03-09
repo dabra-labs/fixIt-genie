@@ -14,7 +14,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "fixitbuddy_settings")
+internal val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "fixitbuddy_settings")
 
 @Module
 @InstallIn(SingletonComponent::class)
