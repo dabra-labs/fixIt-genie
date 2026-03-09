@@ -78,7 +78,7 @@ fun SettingsScreen(
         ) {
             // Connection section
             Text(
-                text = "Connection",
+                text = stringResource(R.string.settings_connection),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -104,11 +104,11 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        placeholder = { Text("https://fixitbuddy-agent-xxx-uc.a.run.app") }
+                        placeholder = { Text(stringResource(R.string.settings_backend_hint)) }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "The Cloud Run URL where FixIt Buddy's ADK agent is deployed.",
+                        text = stringResource(R.string.settings_backend_helper),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -131,7 +131,7 @@ fun SettingsScreen(
                                 )
                                 Spacer(Modifier.width(8.dp))
                             }
-                            Text("Test Connection")
+                            Text(stringResource(R.string.settings_test_connection))
                         }
                         if (testState != ConnectionTestState.Idle && testState != ConnectionTestState.Testing) {
                             Spacer(Modifier.width(12.dp))
@@ -173,8 +173,8 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     SettingsRow(
-                        label = "App Name",
-                        value = "FixIt Buddy"
+                        label = stringResource(R.string.settings_app_name_label),
+                        value = stringResource(R.string.app_name)
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     SettingsRow(
@@ -183,23 +183,23 @@ fun SettingsScreen(
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     SettingsRow(
-                        label = "Agent Model",
-                        value = "Gemini 2.5 Flash (Live)"
+                        label = stringResource(R.string.settings_agent_model),
+                        value = stringResource(R.string.settings_agent_model_value)
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     SettingsRow(
-                        label = "Audio Input",
+                        label = stringResource(R.string.settings_audio_input),
                         value = "${AppConfig.AUDIO_INPUT_SAMPLE_RATE / 1000}kHz PCM"
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     SettingsRow(
-                        label = "Video",
+                        label = stringResource(R.string.settings_video),
                         value = "${AppConfig.FRAME_SIZE}px @ 1 FPS"
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     SettingsRow(
-                        label = "Built for",
-                        value = "Gemini Live Agent Challenge"
+                        label = stringResource(R.string.settings_built_for),
+                        value = stringResource(R.string.settings_built_for_value)
                     )
                 }
             }
@@ -208,7 +208,7 @@ fun SettingsScreen(
 
             // Powered by section
             Text(
-                text = "Powered by Google ADK + Gemini Live API on Cloud Run",
+                text = stringResource(R.string.settings_powered_by),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.padding(horizontal = 16.dp)

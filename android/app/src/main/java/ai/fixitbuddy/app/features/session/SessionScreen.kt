@@ -179,14 +179,14 @@ fun SessionScreen(
                 modifier = Modifier.padding(horizontal = 48.dp)
             ) {
                 Text(
-                    text = "FixIt Buddy",
+                    text = stringResource(R.string.session_idle_title),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Point your camera at equipment\nand tap Start Session",
+                    text = stringResource(R.string.session_idle_subtitle),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.White.copy(alpha = 0.85f),
                     textAlign = TextAlign.Center,
@@ -363,7 +363,7 @@ fun SessionScreen(
                     .padding(horizontal = 16.dp),
                 action = {
                     TextButton(onClick = { viewModel.dismissError() }) {
-                        Text("Dismiss")
+                        Text(stringResource(R.string.dismiss))
                     }
                 }
             ) {

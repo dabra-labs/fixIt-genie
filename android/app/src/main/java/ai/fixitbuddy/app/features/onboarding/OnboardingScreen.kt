@@ -8,6 +8,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,12 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import ai.fixitbuddy.app.R
 
 private val PageCount = 3
 
@@ -31,7 +34,11 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     val pagerState = rememberPagerState(pageCount = { PageCount })
     val scope = rememberCoroutineScope()
 
-    val ctaLabels = listOf("See How It Works", "What Can It Fix?", "Let's Fix Something")
+    val ctaLabels = listOf(
+        stringResource(R.string.onboarding_cta_1),
+        stringResource(R.string.onboarding_cta_2),
+        stringResource(R.string.onboarding_cta_3)
+    )
 
     Box(
         modifier = Modifier
@@ -49,7 +56,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onComplete) {
-                    Text("Skip", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.onboarding_skip), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -152,7 +159,7 @@ private fun Page1Welcome() {
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "FixIt Buddy",
+            stringResource(R.string.app_name),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
@@ -161,7 +168,7 @@ private fun Page1Welcome() {
         Spacer(Modifier.height(12.dp))
 
         Text(
-            "Your AI repair expert.\nAlways in your pocket.",
+            stringResource(R.string.onboarding_tagline),
             fontSize = 20.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onBackground,
@@ -172,7 +179,7 @@ private fun Page1Welcome() {
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "Point your camera at anything broken.\nDescribe what's wrong. Get step-by-step voice guidance.",
+            stringResource(R.string.onboarding_description),
             fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -183,9 +190,9 @@ private fun Page1Welcome() {
 
         // Feature pills
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FeaturePill(Icons.Default.Mic, "Voice Guided")
-            FeaturePill(Icons.Default.Videocam, "Live Camera")
-            FeaturePill(Icons.Default.Psychology, "Gemini AI")
+            FeaturePill(Icons.Default.Mic, stringResource(R.string.onboarding_pill_voice))
+            FeaturePill(Icons.Default.Videocam, stringResource(R.string.onboarding_pill_camera))
+            FeaturePill(Icons.Default.Psychology, stringResource(R.string.onboarding_pill_ai))
         }
 
         Spacer(Modifier.height(24.dp))
@@ -208,7 +215,7 @@ private fun Page1Welcome() {
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    "Built for the Gemini Live Agent Challenge",
+                    stringResource(R.string.onboarding_challenge),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -265,7 +272,7 @@ private fun Page2HowItWorks() {
         Spacer(Modifier.height(16.dp))
 
         Text(
-            "See It. Say It. Fix It.",
+            stringResource(R.string.onboarding_how_title),
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -273,7 +280,7 @@ private fun Page2HowItWorks() {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Three steps is all it takes.",
+            stringResource(R.string.onboarding_how_subtitle),
             fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -284,24 +291,24 @@ private fun Page2HowItWorks() {
         HowItWorksStep(
             number = "1",
             icon = Icons.Default.PhotoCamera,
-            title = "Point Your Camera",
-            description = "Show FixIt Buddy the equipment. It sees what you see — gauges, error codes, damage, all of it.",
+            title = stringResource(R.string.onboarding_step1_title),
+            description = stringResource(R.string.onboarding_step1_desc),
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(Modifier.height(16.dp))
         HowItWorksStep(
             number = "2",
             icon = Icons.Default.RecordVoiceOver,
-            title = "Describe the Problem",
-            description = "Tell it what's happening. Weird noise? Won't start? Leaking? Just talk naturally.",
+            title = stringResource(R.string.onboarding_step2_title),
+            description = stringResource(R.string.onboarding_step2_desc),
             color = MaterialTheme.colorScheme.secondary
         )
         Spacer(Modifier.height(16.dp))
         HowItWorksStep(
             number = "3",
             icon = Icons.Default.CheckCircle,
-            title = "Follow the Guidance",
-            description = "Get step-by-step voice instructions. The AI confirms each step visually before moving on.",
+            title = stringResource(R.string.onboarding_step3_title),
+            description = stringResource(R.string.onboarding_step3_desc),
             color = MaterialTheme.colorScheme.tertiary
         )
     }
@@ -363,7 +370,7 @@ private fun Page3WhatItKnows() {
         Spacer(Modifier.height(16.dp))
 
         Text(
-            "Built for Real Repairs",
+            stringResource(R.string.onboarding_knows_title),
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -371,7 +378,7 @@ private fun Page3WhatItKnows() {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "A curated knowledge base for the equipment\nyou actually deal with.",
+            stringResource(R.string.onboarding_knows_subtitle),
             fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -384,22 +391,22 @@ private fun Page3WhatItKnows() {
         KnowledgeCard(
             icon = Icons.Default.DirectionsCar,
             color = MaterialTheme.colorScheme.secondary,
-            category = "Automotive",
-            items = "Oil system · Battery · Coolant & overheating"
+            category = stringResource(R.string.onboarding_cat_automotive),
+            items = stringResource(R.string.onboarding_cat_automotive_items)
         )
         Spacer(Modifier.height(12.dp))
         KnowledgeCard(
             icon = Icons.Default.ElectricalServices,
             color = MaterialTheme.colorScheme.primary,
-            category = "Electrical",
-            items = "Breaker panels · GFCI outlets · Tripped circuits"
+            category = stringResource(R.string.onboarding_cat_electrical),
+            items = stringResource(R.string.onboarding_cat_electrical_items)
         )
         Spacer(Modifier.height(12.dp))
         KnowledgeCard(
             icon = Icons.Default.HomeRepairService,
             color = MaterialTheme.colorScheme.tertiary,
-            category = "Appliances",
-            items = "Washing machines · Dishwashers · Error codes"
+            category = stringResource(R.string.onboarding_cat_appliances),
+            items = stringResource(R.string.onboarding_cat_appliances_items)
         )
 
         Spacer(Modifier.height(24.dp))
@@ -428,7 +435,7 @@ private fun Page3WhatItKnows() {
                 modifier = Modifier.size(16.dp)
             )
             Text(
-                "Powered by Gemini 2.5 Flash Live API",
+                stringResource(R.string.onboarding_powered_by),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
