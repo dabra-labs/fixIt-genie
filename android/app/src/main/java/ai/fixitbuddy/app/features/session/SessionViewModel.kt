@@ -85,9 +85,9 @@ class SessionViewModel @Inject constructor(
     @Volatile private var agentSpeaking = false
 
     /**
-     * Timer-based turn-end detection: if no audio chunk arrives within 1200ms,
-     * the agent turn is considered complete and the mic gate is opened.
-     * This is a fallback for when the server sends no non-audio "listening" frame.
+     * Fallback timer: if no audio chunk arrives for 1200ms, assume turn is complete
+     * and open the mic gate. Under normal operation the server always sends turnComplete,
+     * which triggers Status("listening") and cancels this timer before it fires.
      */
     private var turnEndJob: Job? = null
 
@@ -155,7 +155,9 @@ class SessionViewModel @Inject constructor(
                     is AgentMessage.Status -> {
                         _uiState.update { it.copy(agentState = message.state) }
                         if (message.state == "listening") {
-                            // Hold mic mute for 400ms after agent finishes so AEC tail settles
+                            // Cancel the 1200ms fallback timer — we got the real turn-end signal.
+                            // Hold mic mute for 400ms so AEC tail settles before unmuting.
+                            turnEndJob?.cancel()
                             launch {
                                 delay(400)
                                 agentSpeaking = false
@@ -248,10 +250,15 @@ class SessionViewModel @Inject constructor(
             // Step 3: Connect WebSocket
             webSocket.connect(wsUrl)
 
-            // Step 4: Forward camera frames — restartable via switchCameraSource()
+            // Step 4: Init audio — done here (inside coroutine, after session is confirmed)
+            // so the mic is never left running if createAdkSession() failed above.
+            withContext(Dispatchers.Main) { audioManager.initPlayback() }
+            audioManager.startRecording()
+
+            // Step 5: Forward camera frames — restartable via switchCameraSource()
             startFrameForwarding(_uiState.value.cameraSource)
 
-            // Step 5: Forward audio chunks — gated while agent is speaking to prevent
+            // Step 6: Forward audio chunks — gated while agent is speaking to prevent
             // AEC tail-end echo from triggering a second agent response
             launch {
                 audioManager.audioChunks.collect { chunk ->
@@ -259,8 +266,6 @@ class SessionViewModel @Inject constructor(
                 }
             }
         }
-        audioManager.initPlayback()
-        audioManager.startRecording()
     }
 
     /**

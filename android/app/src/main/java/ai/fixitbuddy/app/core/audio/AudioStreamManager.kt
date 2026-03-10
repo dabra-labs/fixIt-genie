@@ -39,8 +39,11 @@ import kotlin.math.sqrt
  *
  * Playback: accepts PCM audio from the backend and writes it to an [AudioTrack]
  * using USAGE_MEDIA (routes to STREAM_MUSIC — 15 volume steps vs STREAM_VOICE_CALL's
- * 5 steps, 3× louder on loudspeaker). AcousticEchoCanceler is attached to the
- * AudioRecord session and works independently of AudioTrack usage type.
+ * 5 steps, 3× louder on loudspeaker).
+ * Trade-off: hardware AEC reference may be mismatched because the far-end audio is not
+ * on the voice call stream. Software AEC (via VOICE_COMMUNICATION AudioRecord source)
+ * is still active. If echo issues surface, switch back to USAGE_VOICE_COMMUNICATION
+ * + MODE_IN_COMMUNICATION to restore the hardware AEC reference signal.
  */
 @Singleton
 class AudioStreamManager @Inject constructor(
@@ -147,8 +150,9 @@ class AudioStreamManager @Inject constructor(
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    // USAGE_MEDIA → STREAM_MUSIC (15 volume steps, full loudspeaker)
-                    // AEC still works — it's attached to AudioRecord session, not AudioTrack
+                    // USAGE_MEDIA → STREAM_MUSIC (15 volume steps, full loudspeaker).
+                    // Software AEC active via VOICE_COMMUNICATION source; hardware AEC
+                    // reference may be mismatched (far-end not on voice call stream).
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
@@ -192,6 +196,10 @@ class AudioStreamManager @Inject constructor(
         playbackChannel = ch
         oldChannel?.cancel()  // drops all buffered chunks
         playbackJob?.cancel()
+        // flush() discards data already submitted to AudioTrack's hardware buffer and
+        // unblocks any in-progress write() call in the old coroutine, preventing a race
+        // where the old and new coroutines both write to the same AudioTrack concurrently.
+        audioTrack?.flush()
         playbackJob = playbackScope.launch {
             for (chunk in ch) {
                 val result = audioTrack?.write(chunk, 0, chunk.size) ?: -99
@@ -202,7 +210,7 @@ class AudioStreamManager @Inject constructor(
     }
 
     fun stopPlayback() {
-        playbackChannel?.close()  // no more sends; coroutine drains and exits naturally
+        playbackChannel?.close()  // signals no more sends
         playbackChannel = null
         playbackJob?.cancel()
         playbackJob = null

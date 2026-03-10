@@ -101,7 +101,8 @@ class AgentWebSocket @Inject constructor(
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                // ADK sends JSON text frames only
+                // ADK /run_live sends text (JSON) frames only; log unexpected binary frames.
+                Log.d(TAG, "Unexpected binary frame (${bytes.size}B) — ignored")
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -123,21 +124,17 @@ class AgentWebSocket @Inject constructor(
     }
 
     /**
-     * Parses incoming ADK Event JSON (camelCase fields, ser_json_bytes='base64').
+     * Parses incoming ADK LiveEvent JSON (camelCase, URL-safe base64 audio data).
      *
-     * Structure:
-     * {
-     *   "content": {
-     *     "role": "model",
-     *     "parts": [
-     *       {"text": "..."},
-     *       {"inlineData": {"mimeType": "audio/pcm", "data": "<base64>"}},
-     *       {"functionCall": {"name": "...", "args": {}}}
-     *     ]
-     *   },
-     *   "partial": true,
-     *   "author": "fixitbuddy"
-     * }
+     * Key event types (all fields Optional — excluded from JSON when null):
+     *
+     * Audio chunk:    {"author":"fixitbuddy","content":{"parts":[{"inlineData":{"mimeType":"audio/pcm;rate=24000","data":"<base64url>"}}]},"turnComplete":false}
+     * Turn complete:  {"author":"fixitbuddy","turnComplete":true}
+     * Interrupted:    {"author":"fixitbuddy","interrupted":true}
+     * Text partial:   {"author":"fixitbuddy","content":{"parts":[{"text":"..."}]},"partial":true}
+     *
+     * interrupted/turnComplete are JSON booleans; .jsonPrimitive.content == "true" handles both
+     * boolean true and string "true" wire representations.
      */
     private fun parseAdkEvent(text: String) {
         try {
@@ -199,14 +196,15 @@ class AgentWebSocket @Inject constructor(
                 }
             }
 
-            // Audio frames arrive with partial:false and turnComplete:false — emitting
-            // Status("listening") on them would open the mic gate mid-response.
-            // Only emit speaking status on partial text/tool frames (never on audio frames).
+            // Emit "speaking" status only for partial text/tool frames, never when audio
+            // data is present. The !hasAudio guard is load-bearing: emitting on audio frames
+            // would open the mic gate mid-response. isPartial is an additional heuristic to
+            // avoid emitting on final non-audio echo frames at the end of a turn.
             if (author == "fixitbuddy" && isPartial && !hasAudio) {
                 _incomingMessages.tryEmit(AgentMessage.Status("speaking"))
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse ADK event", e)
+            Log.e(TAG, "Failed to parse ADK event: ${text.take(200)}", e)
         }
     }
 

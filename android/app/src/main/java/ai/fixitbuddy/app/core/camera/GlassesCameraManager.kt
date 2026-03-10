@@ -69,9 +69,14 @@ class GlassesCameraManager @Inject constructor(
     @Synchronized
     fun initialize() {
         if (initialized) return
-        Wearables.initialize(context)
-        initialized = true
-        Log.d(TAG, "Wearables SDK initialized")
+        try {
+            Wearables.initialize(context)
+            initialized = true
+            Log.d(TAG, "Wearables SDK initialized")
+        } catch (e: Exception) {
+            Log.e(TAG, "Wearables SDK failed to initialize — glasses unavailable", e)
+            // initialized stays false; startStream() will log and return early
+        }
     }
 
     /**
@@ -137,23 +142,33 @@ class GlassesCameraManager @Inject constructor(
 
         // Collect video frames
         videoJob = scope.launch {
-            session.videoStream.collect { frame ->
-                val jpeg = convertI420toJpeg(frame)
-                if (jpeg != null) {
-                    _frames.tryEmit(jpeg)
+            try {
+                session.videoStream.collect { frame ->
+                    val jpeg = convertI420toJpeg(frame)
+                    if (jpeg != null) {
+                        _frames.tryEmit(jpeg)
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Video stream terminated unexpectedly", e)
+                _connectionState.value = GlassesState.DISCONNECTED
             }
         }
 
         // Monitor stream state
         stateJob = scope.launch {
-            session.state.collect { state ->
-                Log.d(TAG, "Stream state: $state")
-                _connectionState.value = when (state.name) {
-                    "STREAMING" -> GlassesState.STREAMING
-                    "STARTING"  -> GlassesState.CONNECTING
-                    else        -> GlassesState.DISCONNECTED
+            try {
+                session.state.collect { state ->
+                    Log.d(TAG, "Stream state: $state")
+                    _connectionState.value = when (state.name) {
+                        "STREAMING" -> GlassesState.STREAMING
+                        "STARTING"  -> GlassesState.CONNECTING
+                        else        -> GlassesState.DISCONNECTED
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "State stream terminated unexpectedly", e)
+                _connectionState.value = GlassesState.DISCONNECTED
             }
         }
     }
@@ -166,8 +181,13 @@ class GlassesCameraManager @Inject constructor(
         videoJob = null
         stateJob?.cancel()
         stateJob = null
-        streamSession?.close()
-        streamSession = null
+        try {
+            streamSession?.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error closing glasses stream session", e)
+        } finally {
+            streamSession = null
+        }
         _connectionState.value = GlassesState.DISCONNECTED
         Log.d(TAG, "Glasses stream stopped")
     }
