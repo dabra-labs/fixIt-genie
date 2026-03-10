@@ -211,7 +211,7 @@ class GlassesCameraManager @Inject constructor(
         }
     }
 
-    private fun convertI420toNV21(input: ByteArray, width: Int, height: Int): ByteArray {
+    internal fun convertI420toNV21(input: ByteArray, width: Int, height: Int): ByteArray {
         val output = ByteArray(input.size)
         val size = width * height
         val quarter = size / 4

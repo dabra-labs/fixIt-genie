@@ -17,6 +17,8 @@ junit = "4.13.2"
 mockk = "1.13.14"
 coroutinesTest = "1.9.0"
 mwdat = "0.4.0"
+androidxTestJunit = "1.2.1"
+androidxTestRunner = "1.6.2"
 
 [libraries]
 # Compose BOM
@@ -68,6 +70,8 @@ mwdat-mockdevice = { group = "com.meta.wearable", name = "mwdat-mockdevice", ver
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
+androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

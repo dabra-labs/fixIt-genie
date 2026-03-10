@@ -115,4 +115,8 @@ dependencies {
     testImplementation("app.cash.turbine:turbine:1.1.0")
     androidTestImplementation(composeBom)
     androidTestImplementation(libs.compose.ui.test)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.coroutines.test)
+    // mwdat-mockdevice available in androidTest via debugImplementation above
 }
