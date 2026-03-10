@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -66,6 +68,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import ai.fixitbuddy.app.R
+import ai.fixitbuddy.app.core.camera.GlassesState
 import ai.fixitbuddy.app.features.session.components.CameraViewfinder
 import ai.fixitbuddy.app.features.session.components.StatusIndicator
 import ai.fixitbuddy.app.features.session.components.ToolCallChip
@@ -345,8 +348,37 @@ fun SessionScreen(
                     }
                 }
 
-                // Placeholder for symmetry
-                Spacer(modifier = Modifier.size(48.dp))
+                // Glasses / Phone camera source toggle
+                val isGlasses = uiState.cameraSource == CameraSource.GLASSES
+                val glassesIconTint = when {
+                    isGlasses && uiState.glassesState == GlassesState.STREAMING ->
+                        MaterialTheme.colorScheme.primary
+                    isGlasses -> MaterialTheme.colorScheme.secondary
+                    else -> Color.White
+                }
+                IconButton(
+                    onClick = {
+                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                        viewModel.switchCameraSource(
+                            if (isGlasses) CameraSource.PHONE else CameraSource.GLASSES
+                        )
+                    },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            if (isGlasses) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            else Color.White.copy(alpha = 0.2f),
+                            CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isGlasses) Icons.Default.Visibility else Icons.Default.Smartphone,
+                        contentDescription = stringResource(
+                            if (isGlasses) R.string.camera_source_glasses else R.string.camera_source_phone
+                        ),
+                        tint = glassesIconTint
+                    )
+                }
             }
         }
 

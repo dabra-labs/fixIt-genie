@@ -147,11 +147,18 @@ class AgentWebSocketTest {
             AgentMessage.Transcript("test", false),
             AgentMessage.Audio(byteArrayOf()),
             AgentMessage.Status("idle"),
-            AgentMessage.ToolCall("test", "")
+            AgentMessage.ToolCall("test", ""),
+            AgentMessage.Interrupted
         )
-        assertEquals(4, messages.size)
+        assertEquals(5, messages.size)
         // Verify they're all AgentMessage instances
         messages.forEach { assertTrue(it is AgentMessage) }
+    }
+
+    @Test
+    fun `AgentMessage Interrupted is a data object`() {
+        assertTrue(AgentMessage.Interrupted is AgentMessage)
+        assertEquals(AgentMessage.Interrupted, AgentMessage.Interrupted)
     }
 
     @Test

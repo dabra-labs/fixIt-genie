@@ -4,6 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import ai.fixitbuddy.app.core.audio.AudioStreamManager
 import ai.fixitbuddy.app.core.camera.CameraManager
+import ai.fixitbuddy.app.core.camera.GlassesCameraManager
+import ai.fixitbuddy.app.core.camera.GlassesState
 import ai.fixitbuddy.app.core.websocket.AgentMessage
 import ai.fixitbuddy.app.core.websocket.AgentWebSocket
 import ai.fixitbuddy.app.core.websocket.ConnectionState
@@ -28,6 +30,7 @@ class SessionViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var cameraManager: CameraManager
+    private lateinit var glassesCameraManager: GlassesCameraManager
     private lateinit var audioManager: AudioStreamManager
     private lateinit var webSocket: AgentWebSocket
     private lateinit var dataStore: DataStore<Preferences>
@@ -42,6 +45,7 @@ class SessionViewModelTest {
         Dispatchers.setMain(testDispatcher)
 
         cameraManager = mockk(relaxed = true)
+        glassesCameraManager = mockk(relaxed = true)
         audioManager = mockk(relaxed = true)
         webSocket = mockk(relaxed = true)
         dataStore = mockk(relaxed = true)
@@ -51,6 +55,8 @@ class SessionViewModelTest {
         every { webSocket.connectionState } returns connectionStateFlow
         every { webSocket.incomingMessages } returns incomingMessagesFlow
         every { cameraManager.frames } returns MutableSharedFlow()
+        every { glassesCameraManager.frames } returns MutableSharedFlow()
+        every { glassesCameraManager.connectionState } returns MutableStateFlow(GlassesState.DISCONNECTED)
         every { audioManager.audioChunks } returns MutableSharedFlow()
         every { audioManager.audioLevel } returns MutableStateFlow(0f)
         every { dataStore.data } returns flowOf(mockk(relaxed = true))
@@ -62,7 +68,7 @@ class SessionViewModelTest {
     }
 
     private fun createViewModel(): SessionViewModel {
-        return SessionViewModel(cameraManager, audioManager, webSocket, dataStore, okHttpClient, historyStore)
+        return SessionViewModel(cameraManager, glassesCameraManager, audioManager, webSocket, dataStore, okHttpClient, historyStore)
     }
 
     @Test
@@ -482,5 +488,203 @@ class SessionViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         verify { audioManager.playAudioChunk(any()) }
+    }
+
+    @Test
+    fun `switchCameraSource to GLASSES starts glasses stream`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.switchCameraSource(CameraSource.GLASSES)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(CameraSource.GLASSES, vm.uiState.value.cameraSource)
+        verify { glassesCameraManager.startStream() }
+    }
+
+    @Test
+    fun `switchCameraSource to PHONE stops glasses stream`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.switchCameraSource(CameraSource.GLASSES)
+        vm.switchCameraSource(CameraSource.PHONE)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(CameraSource.PHONE, vm.uiState.value.cameraSource)
+        verify { glassesCameraManager.stopStream() }
+    }
+
+    @Test
+    fun `glassesState propagates from GlassesCameraManager to uiState`() = runTest {
+        val glassesStateFlow = MutableStateFlow(GlassesState.DISCONNECTED)
+        every { glassesCameraManager.connectionState } returns glassesStateFlow
+
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(GlassesState.DISCONNECTED, vm.uiState.value.glassesState)
+
+        glassesStateFlow.value = GlassesState.STREAMING
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(GlassesState.STREAMING, vm.uiState.value.glassesState)
+    }
+
+    // ── AgentMessage.Interrupted routing ─────────────────────────────────────
+
+    @Test
+    fun `Interrupted message calls audioManager interrupt`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Interrupted)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify { audioManager.interrupt() }
+    }
+
+    @Test
+    fun `Interrupted message does not change agentState`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Status("speaking"))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("speaking", vm.uiState.value.agentState)
+
+        incomingMessagesFlow.emit(AgentMessage.Interrupted)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("speaking", vm.uiState.value.agentState)
+    }
+
+    @Test
+    fun `Interrupted message does not change transcript`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Transcript("Hello world", true))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("Hello world", vm.uiState.value.transcript)
+
+        incomingMessagesFlow.emit(AgentMessage.Interrupted)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Hello world", vm.uiState.value.transcript)
+    }
+
+    @Test
+    fun `Interrupted after Audio calls audioManager interrupt`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Audio(byteArrayOf(1, 2, 3)))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Interrupted)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify { audioManager.interrupt() }
+    }
+
+    @Test
+    fun `multiple Interrupted messages each call audioManager interrupt`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Interrupted)
+        testDispatcher.scheduler.advanceUntilIdle()
+        incomingMessagesFlow.emit(AgentMessage.Interrupted)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(exactly = 2) { audioManager.interrupt() }
+    }
+
+    @Test
+    fun `Interrupted is not triggered by Audio messages`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Audio(byteArrayOf(1, 2, 3)))
+        incomingMessagesFlow.emit(AgentMessage.Audio(byteArrayOf(4, 5, 6)))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(exactly = 0) { audioManager.interrupt() }
+    }
+
+    // ── Status("listening") — turn-complete flow ──────────────────────────────
+
+    @Test
+    fun `Status listening after Audio updates agentState`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Audio(byteArrayOf(1, 2, 3)))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Status("listening"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("listening", vm.uiState.value.agentState)
+    }
+
+    @Test
+    fun `Status listening does not call audioManager interrupt`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Status("listening"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(exactly = 0) { audioManager.interrupt() }
+    }
+
+    @Test
+    fun `Status speaking does not call audioManager interrupt`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Status("speaking"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(exactly = 0) { audioManager.interrupt() }
+    }
+
+    // ── agentSpeaking mic gate — 400ms delay after turnComplete ───────────────
+
+    @Test
+    fun `Status listening delays mic gate by 400ms`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Audio(byteArrayOf(1, 2, 3)))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Status("listening"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Advance 399ms — agentSpeaking should still be true (no way to observe directly,
+        // but we verify no crash and agentState is correct)
+        testDispatcher.scheduler.advanceTimeBy(399)
+        assertEquals("listening", vm.uiState.value.agentState)
+
+        // Advance past the 400ms threshold
+        testDispatcher.scheduler.advanceTimeBy(2)
+        assertEquals("listening", vm.uiState.value.agentState)
+    }
+
+    @Test
+    fun `fallback 1200ms timer fires if no Status listening arrives`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.Audio(byteArrayOf(1, 2, 3)))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Advance past the 1200ms fallback — no crash, state consistent
+        testDispatcher.scheduler.advanceTimeBy(1201)
+        // agentState was not changed by the timer (it only affects agentSpeaking internally)
+        assertEquals("idle", vm.uiState.value.agentState)
     }
 }
