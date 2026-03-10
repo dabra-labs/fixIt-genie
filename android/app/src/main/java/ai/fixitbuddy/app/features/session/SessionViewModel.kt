@@ -78,6 +78,7 @@ class SessionViewModel @Inject constructor(
 
     /** Jobs for streaming forwarding — cancelled on stopSession() */
     private var sessionJob: Job? = null
+    private var frameForwardingJob: Job? = null
 
     init {
         observeConnectionState()
@@ -163,6 +164,21 @@ class SessionViewModel @Inject constructor(
         } else {
             glassesCameraManager.stopStream()
         }
+        // If a session is running, redirect the frame collection coroutine immediately
+        if (sessionJob != null) {
+            startFrameForwarding(source)
+        }
+    }
+
+    private fun startFrameForwarding(source: CameraSource) {
+        frameForwardingJob?.cancel()
+        frameForwardingJob = viewModelScope.launch(Dispatchers.IO) {
+            val frameFlow = if (source == CameraSource.GLASSES)
+                glassesCameraManager.frames
+            else
+                cameraManager.frames
+            frameFlow.collect { frame -> webSocket.sendVideoFrame(frame) }
+        }
     }
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
@@ -198,14 +214,8 @@ class SessionViewModel @Inject constructor(
             // Step 3: Connect WebSocket
             webSocket.connect(wsUrl)
 
-            // Step 4: Forward camera frames (child coroutine — cancelled with parent)
-            launch {
-                val frameSource = if (_uiState.value.cameraSource == CameraSource.GLASSES)
-                    glassesCameraManager.frames
-                else
-                    cameraManager.frames
-                frameSource.collect { frame -> webSocket.sendVideoFrame(frame) }
-            }
+            // Step 4: Forward camera frames — restartable via switchCameraSource()
+            startFrameForwarding(_uiState.value.cameraSource)
 
             // Step 5: Forward audio chunks (child coroutine — cancelled with parent)
             launch {
@@ -246,8 +256,11 @@ class SessionViewModel @Inject constructor(
 
     fun stopSession() {
         // Cancel streaming forwarding jobs
+        frameForwardingJob?.cancel()
+        frameForwardingJob = null
         sessionJob?.cancel()
         sessionJob = null
+        glassesCameraManager.stopStream()
 
         // Save session to history if it was active
         val current = _uiState.value
@@ -298,7 +311,6 @@ class SessionViewModel @Inject constructor(
     override fun onCleared() {
         stopSession()
         cameraManager.stopCamera()
-        glassesCameraManager.stopStream()
         super.onCleared()
     }
 

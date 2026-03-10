@@ -489,4 +489,45 @@ class SessionViewModelTest {
 
         verify { audioManager.playAudioChunk(any()) }
     }
+
+    @Test
+    fun `switchCameraSource to GLASSES starts glasses stream`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.switchCameraSource(CameraSource.GLASSES)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(CameraSource.GLASSES, vm.uiState.value.cameraSource)
+        verify { glassesCameraManager.startStream() }
+    }
+
+    @Test
+    fun `switchCameraSource to PHONE stops glasses stream`() = runTest {
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.switchCameraSource(CameraSource.GLASSES)
+        vm.switchCameraSource(CameraSource.PHONE)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(CameraSource.PHONE, vm.uiState.value.cameraSource)
+        verify { glassesCameraManager.stopStream() }
+    }
+
+    @Test
+    fun `glassesState propagates from GlassesCameraManager to uiState`() = runTest {
+        val glassesStateFlow = MutableStateFlow(GlassesState.DISCONNECTED)
+        every { glassesCameraManager.connectionState } returns glassesStateFlow
+
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(GlassesState.DISCONNECTED, vm.uiState.value.glassesState)
+
+        glassesStateFlow.value = GlassesState.STREAMING
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(GlassesState.STREAMING, vm.uiState.value.glassesState)
+    }
 }

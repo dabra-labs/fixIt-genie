@@ -58,7 +58,7 @@ class GlassesCameraManager @Inject constructor(
     private var videoJob: Job? = null
     private var stateJob: Job? = null
 
-    @Volatile private var initialized = false
+    private var initialized = false
 
     // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -66,6 +66,7 @@ class GlassesCameraManager @Inject constructor(
      * Must be called once from [Activity.onCreate] after Android permissions are granted.
      * Safe to call multiple times — initializes only once.
      */
+    @Synchronized
     fun initialize() {
         if (initialized) return
         Wearables.initialize(context)
@@ -93,13 +94,12 @@ class GlassesCameraManager @Inject constructor(
     }
 
     /**
-     * Call this in your Activity to build the permission launcher.
-     * Pass [onResult] to handle grant/deny.
-     *
-     * Usage in Activity:
+     * Launches the Meta camera permission request via the provided [launcher].
+     * Build the launcher in your Activity using [Wearables.RequestPermissionContract]:
      * ```kotlin
-     * val launcher = glassesCameraManager.buildPermissionLauncher(this) { granted ->
-     *     if (granted) startGlassesStream()
+     * val launcher = registerForActivityResult(Wearables.RequestPermissionContract()) { result ->
+     *     val granted = result.getOrDefault(PermissionStatus.Denied) == PermissionStatus.Granted
+     *     if (granted) glassesCameraManager.startStream()
      * }
      * glassesCameraManager.requestCameraPermission(launcher)
      * ```
@@ -131,7 +131,7 @@ class GlassesCameraManager @Inject constructor(
             AutoDeviceSelector(),
             StreamConfiguration(
                 videoQuality = VideoQuality.MEDIUM,
-                frameRate = 2  // minimum supported by SDK; we throttle further in SessionViewModel
+                frameRate = 2  // minimum supported by SDK (valid values: 2, 7, 15, 24, 30)
             )
         ).also { streamSession = it }
 
