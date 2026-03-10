@@ -54,6 +54,12 @@
     <string name="settings_powered_by">Powered by Google ADK + Gemini Live API on Cloud Run</string>
     <string name="dismiss">Dismiss</string>
 
+    <!-- Glasses camera source -->
+    <string name="camera_source_phone">Phone Camera</string>
+    <string name="camera_source_glasses">Glasses Camera</string>
+    <string name="glasses_connecting">Connecting glasses…</string>
+    <string name="glasses_streaming">Glasses streaming</string>
+
     <!-- Onboarding -->
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_cta_1">See How It Works</string>

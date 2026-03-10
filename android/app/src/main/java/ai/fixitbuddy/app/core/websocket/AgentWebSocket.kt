@@ -1,7 +1,7 @@
 package ai.fixitbuddy.app.core.websocket
 
-import android.util.Base64
 import android.util.Log
+import java.util.Base64 as JvmBase64
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -36,6 +36,8 @@ sealed class AgentMessage {
     }
     data class Status(val state: String) : AgentMessage()
     data class ToolCall(val toolName: String, val args: String) : AgentMessage()
+    /** Server interrupted the current response (VAD detected user speaking mid-playback). */
+    data object Interrupted : AgentMessage()
 }
 
 // ADK LiveRequest format — sent from client to server
@@ -94,11 +96,13 @@ class AgentWebSocket @Inject constructor(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                Log.d(TAG, "onMessage: ${text.take(200)}")
                 parseAdkEvent(text)
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                // ADK sends JSON text frames only
+                // ADK /run_live sends text (JSON) frames only; log unexpected binary frames.
+                Log.d(TAG, "Unexpected binary frame (${bytes.size}B) — ignored")
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -119,39 +123,59 @@ class AgentWebSocket @Inject constructor(
         })
     }
 
+    /** Emits a message; logs a warning if the buffer is full and the message is dropped. */
+    private fun emit(message: AgentMessage) {
+        if (!_incomingMessages.tryEmit(message)) {
+            Log.w(TAG, "Incoming message buffer full — dropped: $message")
+        }
+    }
+
     /**
-     * Parses incoming ADK Event JSON (camelCase fields, ser_json_bytes='base64').
+     * Parses incoming ADK LiveEvent JSON (camelCase, URL-safe base64 audio data).
      *
-     * Structure:
-     * {
-     *   "content": {
-     *     "role": "model",
-     *     "parts": [
-     *       {"text": "..."},
-     *       {"inlineData": {"mimeType": "audio/pcm", "data": "<base64>"}},
-     *       {"functionCall": {"name": "...", "args": {}}}
-     *     ]
-     *   },
-     *   "partial": true,
-     *   "author": "fixitbuddy"
-     * }
+     * Key event types (all fields Optional — excluded from JSON when null):
+     *
+     * Audio chunk:    {"author":"fixitbuddy","content":{"parts":[{"inlineData":{"mimeType":"audio/pcm;rate=24000","data":"<base64url>"}}]},"turnComplete":false}
+     * Turn complete:  {"author":"fixitbuddy","turnComplete":true}
+     * Interrupted:    {"author":"fixitbuddy","interrupted":true}
+     * Text partial:   {"author":"fixitbuddy","content":{"parts":[{"text":"..."}]},"partial":true}
+     *
+     * interrupted/turnComplete are JSON booleans; .jsonPrimitive.content == "true" handles both
+     * boolean true and string "true" wire representations.
      */
     private fun parseAdkEvent(text: String) {
         try {
             val obj = json.parseToJsonElement(text).jsonObject
+
+            // Interrupt: server cut off current response (VAD detected user speaking)
+            if (obj["interrupted"]?.jsonPrimitive?.content == "true") {
+                Log.d(TAG, "Server interrupted response — clearing audio queue")
+                emit(AgentMessage.Interrupted)
+                return
+            }
+
+            val author = obj["author"]?.jsonPrimitive?.content ?: ""
+
+            // ADK turn-complete event: {"turnComplete": true} — no content field.
+            // This is the definitive end-of-turn signal from the server; open mic gate.
+            if (obj["turnComplete"]?.jsonPrimitive?.content == "true") {
+                Log.d(TAG, "Turn complete")
+                emit(AgentMessage.Status("listening"))
+                return
+            }
+
             val content = obj["content"]?.jsonObject ?: return
             val parts = content["parts"]?.jsonArray ?: return
             val isPartial = obj["partial"]?.jsonPrimitive?.content == "true"
 
+            var hasAudio = false
             for (part in parts) {
                 val partObj = part.jsonObject
 
                 // Text response
                 partObj["text"]?.jsonPrimitive?.content?.let { txt ->
                     if (txt.isNotBlank()) {
-                        _incomingMessages.tryEmit(
-                            AgentMessage.Transcript(txt, isFinal = !isPartial)
-                        )
+                        emit(AgentMessage.Transcript(txt, isFinal = !isPartial))
                     }
                 }
 
@@ -160,8 +184,10 @@ class AgentWebSocket @Inject constructor(
                     val mimeType = inlineData["mimeType"]?.jsonPrimitive?.content ?: ""
                     val data = inlineData["data"]?.jsonPrimitive?.content ?: ""
                     if (mimeType.startsWith("audio/") && data.isNotEmpty()) {
-                        val audioBytes = Base64.decode(data, Base64.NO_WRAP)
-                        _incomingMessages.tryEmit(AgentMessage.Audio(audioBytes))
+                        val audioBytes = JvmBase64.getUrlDecoder().decode(data)
+                        Log.d(TAG, "Audio chunk: mimeType=$mimeType bytes=${audioBytes.size}")
+                        emit(AgentMessage.Audio(audioBytes))
+                        hasAudio = true
                     }
                 }
 
@@ -170,20 +196,20 @@ class AgentWebSocket @Inject constructor(
                     val name = fnCall["name"]?.jsonPrimitive?.content ?: ""
                     val args = fnCall["args"]?.toString() ?: "{}"
                     if (name.isNotEmpty()) {
-                        _incomingMessages.tryEmit(AgentMessage.ToolCall(name, args))
+                        emit(AgentMessage.ToolCall(name, args))
                     }
                 }
             }
 
-            // Emit speaking/listening status based on partial flag
-            val author = obj["author"]?.jsonPrimitive?.content ?: ""
-            if (author == "fixitbuddy") {
-                _incomingMessages.tryEmit(
-                    AgentMessage.Status(if (isPartial) "speaking" else "listening")
-                )
+            // Emit "speaking" status only for partial text/tool frames, never when audio
+            // data is present. The !hasAudio guard is load-bearing: emitting on audio frames
+            // would open the mic gate mid-response. isPartial is an additional heuristic to
+            // avoid emitting on final non-audio echo frames at the end of a turn.
+            if (author == "fixitbuddy" && isPartial && !hasAudio) {
+                emit(AgentMessage.Status("speaking"))
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse ADK event", e)
+            Log.e(TAG, "Failed to parse ADK event: ${text.take(200)}", e)
         }
     }
 
@@ -198,7 +224,7 @@ class AgentWebSocket @Inject constructor(
             return
         }
         try {
-            val b64 = Base64.encodeToString(frameData, Base64.NO_WRAP)
+            val b64 = JvmBase64.getEncoder().encodeToString(frameData)
             val request = LiveRequest(blob = LiveBlob(mimeType = "image/jpeg", data = b64))
             ws.send(json.encodeToString(LiveRequest.serializer(), request))
         } catch (e: Exception) {
@@ -217,7 +243,7 @@ class AgentWebSocket @Inject constructor(
             return
         }
         try {
-            val b64 = Base64.encodeToString(audioData, Base64.NO_WRAP)
+            val b64 = JvmBase64.getEncoder().encodeToString(audioData)
             val request = LiveRequest(blob = LiveBlob(mimeType = "audio/pcm;rate=16000", data = b64))
             ws.send(json.encodeToString(LiveRequest.serializer(), request))
         } catch (e: Exception) {

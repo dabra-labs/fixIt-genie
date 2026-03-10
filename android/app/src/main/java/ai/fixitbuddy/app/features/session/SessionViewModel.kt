@@ -9,6 +9,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ai.fixitbuddy.app.core.audio.AudioStreamManager
 import ai.fixitbuddy.app.core.camera.CameraManager
+import ai.fixitbuddy.app.core.camera.GlassesCameraManager
+import ai.fixitbuddy.app.core.camera.GlassesState
 import ai.fixitbuddy.app.core.config.AppConfig
 import ai.fixitbuddy.app.core.websocket.AgentMessage
 import ai.fixitbuddy.app.core.websocket.AgentWebSocket
@@ -19,6 +21,7 @@ import ai.fixitbuddy.app.features.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -41,7 +44,9 @@ data class SessionUiState(
     val toolCallCount: Int = 0,
     val isTorchOn: Boolean = false,
     val hasTorch: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val cameraSource: CameraSource = CameraSource.PHONE,
+    val glassesState: GlassesState = GlassesState.DISCONNECTED
 )
 
 /** High-level session lifecycle states. */
@@ -49,9 +54,13 @@ enum class SessionState {
     Idle, Connecting, Active, Error
 }
 
+/** Which camera feed is sent to the agent. */
+enum class CameraSource { PHONE, GLASSES }
+
 @HiltViewModel
 class SessionViewModel @Inject constructor(
     val cameraManager: CameraManager,
+    val glassesCameraManager: GlassesCameraManager,
     private val audioManager: AudioStreamManager,
     private val webSocket: AgentWebSocket,
     private val dataStore: DataStore<Preferences>,
@@ -68,12 +77,28 @@ class SessionViewModel @Inject constructor(
     /** Track session start time for duration calculation */
     private var sessionStartMs: Long = 0L
 
+    /**
+     * True while the agent is speaking (playing audio chunks).
+     * Mic audio is suppressed during this window + 400ms after the last chunk
+     * to prevent AEC tail-end leakage from triggering a second agent response.
+     */
+    @Volatile private var agentSpeaking = false
+
+    /**
+     * Fallback timer: if no audio chunk arrives for 1200ms, assume turn is complete
+     * and open the mic gate. Under normal operation the server always sends turnComplete,
+     * which triggers Status("listening") and cancels this timer before it fires.
+     */
+    private var turnEndJob: Job? = null
+
     /** Jobs for streaming forwarding — cancelled on stopSession() */
     private var sessionJob: Job? = null
+    private var frameForwardingJob: Job? = null
 
     init {
         observeConnectionState()
         observeIncomingMessages()
+        observeGlassesState()
     }
 
     private fun observeConnectionState() {
@@ -115,13 +140,34 @@ class SessionViewModel @Inject constructor(
             webSocket.incomingMessages.collect { message ->
                 when (message) {
                     is AgentMessage.Audio -> {
+                        agentSpeaking = true
                         audioManager.playAudioChunk(message.data)
+                        // Reset turn-end timer: open mic 1200ms after the last audio chunk
+                        turnEndJob?.cancel()
+                        turnEndJob = launch {
+                            delay(1200)
+                            agentSpeaking = false
+                        }
                     }
                     is AgentMessage.Transcript -> {
                         _uiState.update { it.copy(transcript = message.text) }
                     }
                     is AgentMessage.Status -> {
                         _uiState.update { it.copy(agentState = message.state) }
+                        if (message.state == "listening") {
+                            // Cancel the 1200ms fallback timer — we got the real turn-end signal.
+                            // Hold mic mute for 400ms so AEC tail settles before unmuting.
+                            turnEndJob?.cancel()
+                            launch {
+                                delay(400)
+                                agentSpeaking = false
+                            }
+                        }
+                    }
+                    is AgentMessage.Interrupted -> {
+                        turnEndJob?.cancel()
+                        audioManager.interrupt()
+                        agentSpeaking = false
                     }
                     is AgentMessage.ToolCall -> {
                         // Tool calls are handled server-side; we display them via chip + status
@@ -136,6 +182,38 @@ class SessionViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    private fun observeGlassesState() {
+        viewModelScope.launch {
+            glassesCameraManager.connectionState.collect { state ->
+                _uiState.update { it.copy(glassesState = state) }
+            }
+        }
+    }
+
+    fun switchCameraSource(source: CameraSource) {
+        _uiState.update { it.copy(cameraSource = source) }
+        if (source == CameraSource.GLASSES) {
+            glassesCameraManager.startStream()
+        } else {
+            glassesCameraManager.stopStream()
+        }
+        // If a session is running, redirect the frame collection coroutine immediately
+        if (sessionJob != null) {
+            startFrameForwarding(source)
+        }
+    }
+
+    private fun startFrameForwarding(source: CameraSource) {
+        frameForwardingJob?.cancel()
+        frameForwardingJob = viewModelScope.launch(Dispatchers.IO) {
+            val frameFlow = if (source == CameraSource.GLASSES)
+                glassesCameraManager.frames
+            else
+                cameraManager.frames
+            frameFlow.collect { frame -> webSocket.sendVideoFrame(frame) }
         }
     }
 
@@ -172,22 +250,22 @@ class SessionViewModel @Inject constructor(
             // Step 3: Connect WebSocket
             webSocket.connect(wsUrl)
 
-            // Step 4: Forward camera frames (child coroutine — cancelled with parent)
-            launch {
-                cameraManager.frames.collect { frame ->
-                    webSocket.sendVideoFrame(frame)
-                }
-            }
+            // Step 4: Init audio — done here (inside coroutine, after session is confirmed)
+            // so the mic is never left running if createAdkSession() failed above.
+            withContext(Dispatchers.Main) { audioManager.initPlayback() }
+            audioManager.startRecording()
 
-            // Step 5: Forward audio chunks (child coroutine — cancelled with parent)
+            // Step 5: Forward camera frames — restartable via switchCameraSource()
+            startFrameForwarding(_uiState.value.cameraSource)
+
+            // Step 6: Forward audio chunks — gated while agent is speaking to prevent
+            // AEC tail-end echo from triggering a second agent response
             launch {
                 audioManager.audioChunks.collect { chunk ->
-                    webSocket.sendAudioChunk(chunk)
+                    if (!agentSpeaking) webSocket.sendAudioChunk(chunk)
                 }
             }
         }
-        audioManager.initPlayback()
-        audioManager.startRecording()
     }
 
     /**
@@ -204,8 +282,14 @@ class SessionViewModel @Inject constructor(
                     .post("{}".toRequestBody("application/json".toMediaType()))
                     .build()
                 okHttpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@withContext null
-                    val body = response.body?.string() ?: return@withContext null
+                    if (!response.isSuccessful) {
+                        Log.w(TAG, "ADK session creation failed: HTTP ${response.code}")
+                        return@withContext null
+                    }
+                    val body = response.body?.string() ?: run {
+                        Log.w(TAG, "ADK session creation failed: empty response body")
+                        return@withContext null
+                    }
                     // Parse {"id":"..."} from response
                     val match = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(body)
                     match?.groupValues?.get(1)
@@ -218,8 +302,11 @@ class SessionViewModel @Inject constructor(
 
     fun stopSession() {
         // Cancel streaming forwarding jobs
+        frameForwardingJob?.cancel()
+        frameForwardingJob = null
         sessionJob?.cancel()
         sessionJob = null
+        glassesCameraManager.stopStream()
 
         // Save session to history if it was active
         val current = _uiState.value
@@ -238,6 +325,7 @@ class SessionViewModel @Inject constructor(
             }
         }
         sessionStartMs = 0L
+        agentSpeaking = false
 
         audioManager.stopRecording()
         audioManager.stopPlayback()

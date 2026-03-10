@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "ai.fixitbuddy.app"
-        minSdk = 26
+        minSdk = 31  // Meta DAT SDK requires Android 12+
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
@@ -60,6 +60,12 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -96,6 +102,11 @@ dependencies {
     // Coroutines
     implementation(libs.coroutines.android)
 
+    // Meta Wearables DAT SDK (Ray-Ban glasses integration)
+    implementation(libs.mwdat.core)
+    implementation(libs.mwdat.camera)
+    debugImplementation(libs.mwdat.mockdevice)
+
     // CameraX
     implementation(libs.camerax.core)
     implementation(libs.camerax.camera2)
@@ -110,4 +121,8 @@ dependencies {
     testImplementation("app.cash.turbine:turbine:1.1.0")
     androidTestImplementation(composeBom)
     androidTestImplementation(libs.compose.ui.test)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.coroutines.test)
+    // mwdat-mockdevice available in androidTest via debugImplementation above
 }
