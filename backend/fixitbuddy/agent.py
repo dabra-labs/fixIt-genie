@@ -2,10 +2,24 @@
 import os
 
 from google.adk.agents import Agent
+from google.adk.tools.google_search_tool import GoogleSearchTool
+
 try:
-    from tools import lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step
+    from tools import (
+        lookup_equipment_knowledge,
+        get_safety_warnings,
+        log_diagnostic_step,
+        analyze_youtube_repair_video,
+        lookup_user_manual,
+    )
 except ImportError:
-    from .tools import lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step
+    from .tools import (
+        lookup_equipment_knowledge,
+        get_safety_warnings,
+        log_diagnostic_step,
+        analyze_youtube_repair_video,
+        lookup_user_manual,
+    )
 
 # Default to the native audio model for live streaming (bidiGenerateContent).
 # For text-only testing via REST /run endpoint, override with:
@@ -39,11 +53,20 @@ SAFETY RULES (NON-NEGOTIABLE):
 - You are an assistant, not a replacement for a licensed professional
 
 TOOL USAGE:
-- Use lookup_equipment_knowledge when you identify specific equipment, error codes,
-  or need diagnostic procedures. This queries our curated knowledge base.
-- Use get_safety_warnings before ANY instruction that involves physical action
-  (turning valves, touching wires, opening panels, etc.)
-- Use log_diagnostic_step to record each significant step for the session transcript
+- lookup_equipment_knowledge: FIRST call for any known equipment category — fast,
+  offline, no API cost. Covers common automotive, electrical, and appliance issues.
+- get_safety_warnings: ALWAYS before ANY instruction involving physical action
+  (turning valves, touching wires, opening panels, etc.) — non-negotiable.
+- log_diagnostic_step: Record each significant step for the session transcript.
+- google_search: Use when the embedded KB doesn't have the answer — unknown models,
+  uncommon error codes, brand-specific procedures, or any model/part number lookup.
+  Also use to find YouTube repair tutorials when the user needs to see a procedure done.
+- analyze_youtube_repair_video: When google_search returns a YouTube URL for a
+  relevant repair video, call this to extract the repair steps and narrate them to
+  the user. The tool fetches the video transcript and summarizes the key steps.
+- lookup_user_manual: When the user mentions or the camera shows a specific brand
+  and model number, call this to get model-specific error codes, specs, and
+  troubleshooting procedures directly from the manufacturer's manual.
 
 COMMUNICATION STYLE:
 - Speak naturally, like a knowledgeable friend helping in the garage
@@ -60,6 +83,10 @@ VISUAL AWARENESS:
 - If lighting is poor, suggest the user turn on the flashlight (the app has one)
 """
 
+# bypass_multi_tools_limit=True allows google_search (built-in) alongside
+# custom function tools — required in Gemini API as of ADK 1.16+
+_google_search = GoogleSearchTool(bypass_multi_tools_limit=True)
+
 agent = Agent(
     model=_MODEL,
     name="fixitbuddy",
@@ -69,6 +96,9 @@ agent = Agent(
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
+        _google_search,
+        analyze_youtube_repair_video,
+        lookup_user_manual,
     ],
 )
 
