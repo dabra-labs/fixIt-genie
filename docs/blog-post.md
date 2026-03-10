@@ -1,4 +1,4 @@
-# Building FixIt Buddy: A Multimodal AI Repair Agent with Gemini Live API and Google ADK
+# Building FixIt Genie: A Multimodal AI Repair Agent with Gemini Live API and Google ADK
 
 *How I built an Android app that sees through your camera, hears you describe the problem, and talks you through fixing equipment — in real time.*
 
@@ -12,13 +12,15 @@ The problem with video tutorials is they're one-size-fits-all. They can't see wh
 
 What if you had a knowledgeable friend standing right there with you, looking at the same thing, guiding you step by step?
 
-That's FixIt Buddy.
+That's FixIt Genie.
 
-## What FixIt Buddy Does
+## What FixIt Genie Does
 
-FixIt Buddy is a native Android app powered by Google's Gemini 2.5 Flash Native Audio model through the Agent Development Kit (ADK). You point your phone camera at whatever's broken, describe the problem out loud, and the AI agent sees what you see, understands what you're describing, and walks you through the diagnosis and fix with natural voice conversation.
+FixIt Genie is a native Android app powered by Google's Gemini 2.5 Flash Native Audio model through the Agent Development Kit (ADK). You point your phone camera at whatever's broken, describe the problem out loud, and the AI agent sees what you see, understands what you're describing, and walks you through the diagnosis and fix with natural voice conversation.
 
-It's like having a mechanic, electrician, and appliance repair expert in your pocket — one who can actually see what you're looking at.
+It's like having a mechanic, electrician, and appliance repair expert in your pocket — one who can actually see what you're looking at. The genie persona has an animated canvas avatar with ripple rings driven by audio level, and a chat bubble transcript layout (user messages right-aligned, genie responses left-aligned) so you can review the conversation at a glance.
+
+For situations where holding a phone gets in the way — under a car, inside an appliance panel, deep in an engine bay — FixIt Genie also supports **Ray-Ban Meta glasses** as an optional camera source. Switch to glasses mode with a single tap and the same AI agent that was watching your phone camera is now watching through your eyewear, hands-free.
 
 **Three core capabilities:**
 
@@ -59,7 +61,7 @@ The agent has three custom tools:
 ```python
 agent = Agent(
     model="gemini-2.5-flash-native-audio-preview-12-2025",
-    name="fixitbuddy",
+    name="fixitgenie",
     instruction=SYSTEM_INSTRUCTION,
     tools=[
         lookup_equipment_knowledge,
@@ -107,6 +109,18 @@ Seven curated documents covering real-world repair scenarios:
 
 Each document includes diagnostic steps with visual cues (what the agent should look for through the camera), common issues with root causes and fixes, error code mappings, and safety notes. The visual cues are especially important — they tell the agent what to describe when confirming it sees the right thing through the camera.
 
+## Expanding Beyond the Embedded KB
+
+A curated knowledge base of 7 documents covers the demo scenarios well, but equipment repair is a long tail. Someone with a 2009 Mitsubishi Outlander asking about a P2101 throttle actuator code, or a 1970s lathe throwing an unfamiliar alarm, will exhaust the embedded KB quickly. To handle the long tail, three new knowledge tools were added that reach out to the web at query time.
+
+**Why a fixed knowledge base is limiting**: Unknown model numbers, niche error codes, regional equipment variants, firmware-specific behavior — no static KB can anticipate all of these. The real world of repair is too fragmented.
+
+**`google_search`** (backed by ADK's `GoogleSearchTool`) performs real-time web search for error codes, repair guides, and model-specific procedures. One non-obvious implementation detail: using `GoogleSearchTool` alongside custom function tools requires setting `bypass_multi_tools_limit=True` on the search tool. Without this flag, ADK enforces a constraint that prevents mixing built-in tools with custom function tools in the same agent — a limit that isn't prominently documented and took direct ADK source inspection to discover.
+
+**`analyze_youtube_repair_video`** bridges the gap between the vast library of YouTube repair tutorials and the agent's voice-first interface. The strategy: fetch the video transcript with `youtube-transcript-api` (reliable, works for any video with captions), pass the relevant portion to Gemini for summarization focused on the user's specific problem, and have the agent narrate the steps verbally. The initial approach of passing the YouTube URL directly to Gemini works for well-indexed videos but silently fails for others — the transcript API approach is deterministic regardless of whether Gemini has seen the video.
+
+**`lookup_user_manual`** handles the common case where an error code is only documented in the official manufacturer service manual. A grounded search finds the most relevant PDF, `pypdf` extracts and structures the text, and Gemini summarizes the error code table and troubleshooting procedure relevant to the user's question. The three tools work together: search surfaces the right source, the PDF tool extracts structured content, and the agent synthesizes it into a step-by-step verbal guide.
+
 ## Lessons Learned
 
 **Bidi-streaming is the key differentiator.** Most entries will use request-response patterns. Real-time bidi-streaming with audio feels genuinely different — it's a conversation, not a chatbot. The Gemini native audio model handles voice activity detection automatically, which makes the interaction natural.
@@ -121,12 +135,26 @@ Each document includes diagnostic steps with visual cues (what the agent should 
 
 ## What's Next
 
-FixIt Buddy is designed as more than a hackathon entry. The same architecture handles any equipment category — industrial machinery, HVAC systems, plumbing, vehicle maintenance. The knowledge base is extensible (add documents and the agent can reference them immediately), and the Android app's MVVM architecture makes it straightforward to add features like session history, saved equipment profiles, and pro-level diagnostic workflows.
+FixIt Genie is designed as more than a hackathon entry. The real opportunity is that the same architecture adapts to radically different verticals with minimal changes. The camera and audio pipeline, WebSocket protocol, safety-first design, and Ray-Ban glasses support are all reusable infrastructure. A new vertical means new tools and a new system prompt — the streaming core stays the same.
 
-The core insight is simple: people don't need more repair manuals. They need someone who can see what they're looking at and talk them through it. Gemini Live makes that possible.
+Here's what that looks like in practice:
+
+- **Industrial/manufacturing**: A technician on a factory floor wears Ray-Ban glasses — hands occupied, no phone to hold. The agent sees the machine through the glasses camera, has access to OEM maintenance manuals and the facility's error database, and guides the tech through the lockout/tagout procedure before any panel is opened. Ray-Ban glasses are a key enabler here: you cannot hold a phone while your hands are inside running machinery.
+
+- **Insurance claims**: A field adjuster points their phone at storm damage. The agent reads repair guides, cost databases, and local building codes in real time, then generates a structured damage report — itemized, compliant, ready for the claim system. What takes hours of manual lookup becomes a guided walkthrough.
+
+- **Healthcare equipment**: A biomedical technician servicing hospital imaging equipment gets an agent that cross-references FDA device databases, manufacturer service manuals, and the facility's service history. The same safety-first design that warns about live electrical panels warns about radiation interlocks and high-voltage components.
+
+- **Fleet maintenance**: A truck driver broken down on the road describes the symptom. The agent knows the vehicle VIN, pulls active service bulletins for that chassis, and guides a roadside repair — escalating to "call roadside assistance" when the fix is outside safe scope.
+
+- **Property inspection**: A home inspector walks through a property. The agent reads appliance model numbers through the camera, cross-references recall databases and warranty records, flags code violations, and builds the inspection report section by section.
+
+The pattern is consistent: swap the knowledge tools (embed the domain's documentation, connect the relevant databases), update the system prompt for the domain's safety culture and vocabulary, and the live streaming core delivers the same conversational, visually-grounded experience.
+
+The core insight is simple: people in skilled trades don't need more manuals. They need someone who can see what they're looking at and talk them through it. Gemini Live makes that possible — and Ray-Ban glasses make it hands-free.
 
 ---
 
-*FixIt Buddy was built for the Gemini Live Agent Challenge using Google ADK, Gemini 2.5 Flash Native Audio, Cloud Run, and a native Android app with CameraX and Jetpack Compose.*
+*FixIt Genie was built for the Gemini Live Agent Challenge using Google ADK, Gemini 2.5 Flash Native Audio, Cloud Run, and a native Android app with CameraX and Jetpack Compose.*
 
 *[GitHub Repository](https://github.com/dabra-labs/fixbuddy) | [Demo Video](https://youtube.com/watch?v=REPLACE_WITH_ACTUAL_LINK)*
