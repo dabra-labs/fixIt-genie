@@ -1,18 +1,25 @@
 package ai.fixitbuddy.app.core.audio
 
 import android.Manifest
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaRecorder
+import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.NoiseSuppressor
 import android.util.Log
 import androidx.annotation.RequiresPermission
+import dagger.hilt.android.qualifiers.ApplicationContext
 import ai.fixitbuddy.app.core.config.AppConfig
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -30,19 +37,27 @@ import kotlin.math.sqrt
  * Recording: captures 16 kHz mono PCM from the device microphone and emits
  * chunks via [audioChunks] for forwarding to the ADK backend.
  *
- * Playback: accepts PCM audio from the backend and writes it to an
- * [AudioTrack] configured at the output sample rate.
+ * Playback: accepts PCM audio from the backend and writes it to an [AudioTrack]
+ * using USAGE_MEDIA (routes to STREAM_MUSIC — 15 volume steps vs STREAM_VOICE_CALL's
+ * 5 steps, 3× louder on loudspeaker). AcousticEchoCanceler is attached to the
+ * AudioRecord session and works independently of AudioTrack usage type.
  */
 @Singleton
-class AudioStreamManager @Inject constructor() {
+class AudioStreamManager @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     // ── Recording (mic → backend) ──────────────────────────
 
     private var audioRecord: AudioRecord? = null
+    private var echoCanceler: AcousticEchoCanceler? = null
+    private var noiseSuppressor: NoiseSuppressor? = null
     @Volatile private var isRecording = false
 
     /** Managed scope for the recording coroutine; cancelled in [stopRecording]. */
-    private val recordingScope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val recordingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var recordingJob: Job? = null
 
     private val _audioChunks = MutableSharedFlow<ByteArray>(extraBufferCapacity = 5)
@@ -61,12 +76,23 @@ class AudioStreamManager @Inject constructor() {
         )
 
         audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
+            MediaRecorder.AudioSource.VOICE_COMMUNICATION,  // enables software AEC + AGC + NS
             AppConfig.AUDIO_INPUT_SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT,
             bufferSize * 2
         )
+
+        // Attach hardware AEC to cancel speaker output from mic input
+        val sessionId = audioRecord!!.audioSessionId
+        if (AcousticEchoCanceler.isAvailable()) {
+            echoCanceler = AcousticEchoCanceler.create(sessionId)?.also { it.enabled = true }
+            Log.d(TAG, "AcousticEchoCanceler enabled: ${echoCanceler?.enabled}")
+        }
+        if (NoiseSuppressor.isAvailable()) {
+            noiseSuppressor = NoiseSuppressor.create(sessionId)?.also { it.enabled = true }
+            Log.d(TAG, "NoiseSuppressor enabled: ${noiseSuppressor?.enabled}")
+        }
 
         isRecording = true
         audioRecord?.startRecording()
@@ -88,6 +114,10 @@ class AudioStreamManager @Inject constructor() {
         isRecording = false
         recordingScope.coroutineContext.cancelChildren()
         recordingJob = null
+        echoCanceler?.release()
+        echoCanceler = null
+        noiseSuppressor?.release()
+        noiseSuppressor = null
         try {
             audioRecord?.stop()
             audioRecord?.release()
@@ -101,9 +131,11 @@ class AudioStreamManager @Inject constructor() {
     // ── Playback (backend → speaker) ──────────────────────
 
     private var audioTrack: AudioTrack? = null
+    private val playbackScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var playbackJob: Job? = null
+    private var playbackChannel: Channel<ByteArray>? = null
 
     fun initPlayback() {
-        // Release any existing AudioTrack to prevent leaks
         stopPlayback()
 
         val bufferSize = AudioTrack.getMinBufferSize(
@@ -115,6 +147,8 @@ class AudioStreamManager @Inject constructor() {
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
+                    // USAGE_MEDIA → STREAM_MUSIC (15 volume steps, full loudspeaker)
+                    // AEC still works — it's attached to AudioRecord session, not AudioTrack
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
@@ -126,18 +160,52 @@ class AudioStreamManager @Inject constructor() {
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                     .build()
             )
-            .setBufferSizeInBytes(bufferSize * 2)
+            .setBufferSizeInBytes(bufferSize * 8)
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
 
         audioTrack?.play()
+
+        // Drain audio chunks on a dedicated IO thread to avoid blocking Main
+        val ch = Channel<ByteArray>(capacity = 50)
+        playbackChannel = ch
+        playbackJob = playbackScope.launch {
+            for (chunk in ch) {
+                val result = audioTrack?.write(chunk, 0, chunk.size) ?: -99
+                if (result < 0) Log.e(TAG, "AudioTrack.write() error: $result")
+            }
+        }
     }
 
     fun playAudioChunk(data: ByteArray) {
-        audioTrack?.write(data, 0, data.size)
+        val sent = playbackChannel?.trySend(data)?.isSuccess ?: false
+        if (!sent) Log.w(TAG, "Playback channel full — dropped ${data.size}B audio chunk")
+    }
+
+    /**
+     * Immediately discards all queued audio and recreates the playback channel.
+     * Called when the server sends `interrupted: true` (VAD detected user speaking).
+     */
+    fun interrupt() {
+        val oldChannel = playbackChannel
+        val ch = Channel<ByteArray>(capacity = 50)
+        playbackChannel = ch
+        oldChannel?.cancel()  // drops all buffered chunks
+        playbackJob?.cancel()
+        playbackJob = playbackScope.launch {
+            for (chunk in ch) {
+                val result = audioTrack?.write(chunk, 0, chunk.size) ?: -99
+                if (result < 0) Log.e(TAG, "AudioTrack.write() error: $result")
+            }
+        }
+        Log.d(TAG, "Playback interrupted — audio queue cleared")
     }
 
     fun stopPlayback() {
+        playbackChannel?.close()  // no more sends; coroutine drains and exits naturally
+        playbackChannel = null
+        playbackJob?.cancel()
+        playbackJob = null
         try {
             audioTrack?.stop()
             audioTrack?.release()

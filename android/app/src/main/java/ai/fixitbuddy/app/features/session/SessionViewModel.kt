@@ -21,6 +21,7 @@ import ai.fixitbuddy.app.features.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -76,6 +77,20 @@ class SessionViewModel @Inject constructor(
     /** Track session start time for duration calculation */
     private var sessionStartMs: Long = 0L
 
+    /**
+     * True while the agent is speaking (playing audio chunks).
+     * Mic audio is suppressed during this window + 400ms after the last chunk
+     * to prevent AEC tail-end leakage from triggering a second agent response.
+     */
+    @Volatile private var agentSpeaking = false
+
+    /**
+     * Timer-based turn-end detection: if no audio chunk arrives within 1200ms,
+     * the agent turn is considered complete and the mic gate is opened.
+     * This is a fallback for when the server sends no non-audio "listening" frame.
+     */
+    private var turnEndJob: Job? = null
+
     /** Jobs for streaming forwarding — cancelled on stopSession() */
     private var sessionJob: Job? = null
     private var frameForwardingJob: Job? = null
@@ -125,13 +140,32 @@ class SessionViewModel @Inject constructor(
             webSocket.incomingMessages.collect { message ->
                 when (message) {
                     is AgentMessage.Audio -> {
+                        agentSpeaking = true
                         audioManager.playAudioChunk(message.data)
+                        // Reset turn-end timer: open mic 1200ms after the last audio chunk
+                        turnEndJob?.cancel()
+                        turnEndJob = launch {
+                            delay(1200)
+                            agentSpeaking = false
+                        }
                     }
                     is AgentMessage.Transcript -> {
                         _uiState.update { it.copy(transcript = message.text) }
                     }
                     is AgentMessage.Status -> {
                         _uiState.update { it.copy(agentState = message.state) }
+                        if (message.state == "listening") {
+                            // Hold mic mute for 400ms after agent finishes so AEC tail settles
+                            launch {
+                                delay(400)
+                                agentSpeaking = false
+                            }
+                        }
+                    }
+                    is AgentMessage.Interrupted -> {
+                        turnEndJob?.cancel()
+                        audioManager.interrupt()
+                        agentSpeaking = false
                     }
                     is AgentMessage.ToolCall -> {
                         // Tool calls are handled server-side; we display them via chip + status
@@ -217,10 +251,11 @@ class SessionViewModel @Inject constructor(
             // Step 4: Forward camera frames — restartable via switchCameraSource()
             startFrameForwarding(_uiState.value.cameraSource)
 
-            // Step 5: Forward audio chunks (child coroutine — cancelled with parent)
+            // Step 5: Forward audio chunks — gated while agent is speaking to prevent
+            // AEC tail-end echo from triggering a second agent response
             launch {
                 audioManager.audioChunks.collect { chunk ->
-                    webSocket.sendAudioChunk(chunk)
+                    if (!agentSpeaking) webSocket.sendAudioChunk(chunk)
                 }
             }
         }
@@ -279,6 +314,7 @@ class SessionViewModel @Inject constructor(
             }
         }
         sessionStartMs = 0L
+        agentSpeaking = false
 
         audioManager.stopRecording()
         audioManager.stopPlayback()
