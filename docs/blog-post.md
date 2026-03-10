@@ -50,23 +50,34 @@ All three streams flow through a single OkHttp WebSocket connection to the backe
 
 The backend uses Google's Agent Development Kit (ADK) with `adk web`, which exposes a `/run_live` WebSocket endpoint for bidi-streaming. This handles the complexity of maintaining a live conversation session with Gemini.
 
-The agent has three custom tools:
+The agent has six custom tools — three for safety and session logging, three for live knowledge access:
 
-1. **`lookup_equipment_knowledge`** — Queries an embedded knowledge base of diagnostic procedures. Seven equipment documents cover automotive, electrical, and appliance scenarios, with 33 error codes and 28 step-by-step procedures. Each procedure includes visual cues that tell the agent what to look for through the camera.
+1. **`lookup_equipment_knowledge`** — Queries the embedded knowledge base (fast, offline, no API cost). First call for any recognized equipment category.
 
-2. **`get_safety_warnings`** — Returns category-specific safety warnings (electrical, mechanical, fluid, pressure, heat, chemical). The agent *must* call this before guiding any physical action — it's enforced in the system prompt.
+2. **`get_safety_warnings`** — Returns category-specific safety warnings (electrical, mechanical, fluid, pressure, heat, chemical). The agent *must* call this before guiding any physical action — enforced in the system prompt.
 
 3. **`log_diagnostic_step`** — Records each diagnostic step for the session transcript, building a structured repair log.
 
+4. **`google_search`** — Real-time web search for error codes, repair guides, and model-specific procedures not in the embedded KB.
+
+5. **`analyze_youtube_repair_video`** — Extracts and summarizes repair steps from YouTube tutorials, then narrates them verbally.
+
+6. **`lookup_user_manual`** — Finds the official manufacturer PDF via grounded search, extracts text with `pypdf`, and summarizes error codes and troubleshooting procedures.
+
 ```python
+from google.adk.tools.google_search_tool import GoogleSearchTool
+
 agent = Agent(
-    model="gemini-2.5-flash-native-audio-preview-12-2025",
+    model="gemini-2.5-flash-native-audio-latest",
     name="fixitgenie",
     instruction=SYSTEM_INSTRUCTION,
     tools=[
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
+        GoogleSearchTool(bypass_multi_tools_limit=True),
+        analyze_youtube_repair_video,
+        lookup_user_manual,
     ],
 )
 ```
@@ -111,15 +122,13 @@ Each document includes diagnostic steps with visual cues (what the agent should 
 
 ## Expanding Beyond the Embedded KB
 
-A curated knowledge base of 7 documents covers the demo scenarios well, but equipment repair is a long tail. Someone with a 2009 Mitsubishi Outlander asking about a P2101 throttle actuator code, or a 1970s lathe throwing an unfamiliar alarm, will exhaust the embedded KB quickly. To handle the long tail, three new knowledge tools were added that reach out to the web at query time.
+A curated knowledge base of 7 documents covers the demo scenarios well, but equipment repair is a long tail. Someone with a 2009 Mitsubishi Outlander asking about a P2101 throttle actuator code, or a 1970s lathe throwing an unfamiliar alarm, will exhaust the embedded KB quickly. The three web knowledge tools (listed above) handle this long tail — but each had implementation decisions worth explaining.
 
-**Why a fixed knowledge base is limiting**: Unknown model numbers, niche error codes, regional equipment variants, firmware-specific behavior — no static KB can anticipate all of these. The real world of repair is too fragmented.
+**`google_search`** — One non-obvious constraint: `GoogleSearchTool` (ADK's built-in grounding tool) cannot coexist with custom function tools in the same agent by default. ADK enforces a limit that prevents mixing built-in tools with custom function tools — a restriction that isn't prominently documented and required reading ADK source code to find. The fix: `bypass_multi_tools_limit=True` on the `GoogleSearchTool` instance. Without it, the agent deployment throws a 400 INVALID_ARGUMENT on every live session.
 
-**`google_search`** (backed by ADK's `GoogleSearchTool`) performs real-time web search for error codes, repair guides, and model-specific procedures. One non-obvious implementation detail: using `GoogleSearchTool` alongside custom function tools requires setting `bypass_multi_tools_limit=True` on the search tool. Without this flag, ADK enforces a constraint that prevents mixing built-in tools with custom function tools in the same agent — a limit that isn't prominently documented and took direct ADK source inspection to discover.
+**`analyze_youtube_repair_video`** — The natural first approach is passing the YouTube URL directly to Gemini's REST API and asking it to summarize the video. This works for massively popular, well-indexed videos (think Rick Astley), but silently fails for anything from a niche repair channel — which is exactly the content that's most useful. The reliable solution: fetch the transcript independently via `youtube-transcript-api` (works for any video with auto-generated captions), pass the text to Gemini for summarization, and have the agent narrate the steps. Deterministic, fast, no dependency on Gemini's video indexing corpus.
 
-**`analyze_youtube_repair_video`** bridges the gap between the vast library of YouTube repair tutorials and the agent's voice-first interface. The strategy: fetch the video transcript with `youtube-transcript-api` (reliable, works for any video with captions), pass the relevant portion to Gemini for summarization focused on the user's specific problem, and have the agent narrate the steps verbally. The initial approach of passing the YouTube URL directly to Gemini works for well-indexed videos but silently fails for others — the transcript API approach is deterministic regardless of whether Gemini has seen the video.
-
-**`lookup_user_manual`** handles the common case where an error code is only documented in the official manufacturer service manual. A grounded search finds the most relevant PDF, `pypdf` extracts and structures the text, and Gemini summarizes the error code table and troubleshooting procedure relevant to the user's question. The three tools work together: search surfaces the right source, the PDF tool extracts structured content, and the agent synthesizes it into a step-by-step verbal guide.
+**`lookup_user_manual`** — ManualsLib has no public API, and scraping it is blocked by bot detection. Instead: a grounded Gemini search query finds the manufacturer's official PDF URL directly, `requests` fetches it, `pypdf` extracts the text, and a second Gemini call summarizes the error code table and relevant troubleshooting steps. The three tools compose naturally: search surfaces the YouTube tutorial or manual URL, the specialized tools extract structured content from those sources, and the live agent synthesizes everything into a spoken step-by-step guide.
 
 ## Lessons Learned
 
