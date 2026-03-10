@@ -4,6 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import ai.fixitbuddy.app.core.audio.AudioStreamManager
 import ai.fixitbuddy.app.core.camera.CameraManager
+import ai.fixitbuddy.app.core.camera.GlassesCameraManager
+import ai.fixitbuddy.app.core.camera.GlassesState
 import ai.fixitbuddy.app.core.websocket.AgentMessage
 import ai.fixitbuddy.app.core.websocket.AgentWebSocket
 import ai.fixitbuddy.app.core.websocket.ConnectionState
@@ -28,6 +30,7 @@ class SessionViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var cameraManager: CameraManager
+    private lateinit var glassesCameraManager: GlassesCameraManager
     private lateinit var audioManager: AudioStreamManager
     private lateinit var webSocket: AgentWebSocket
     private lateinit var dataStore: DataStore<Preferences>
@@ -42,6 +45,7 @@ class SessionViewModelTest {
         Dispatchers.setMain(testDispatcher)
 
         cameraManager = mockk(relaxed = true)
+        glassesCameraManager = mockk(relaxed = true)
         audioManager = mockk(relaxed = true)
         webSocket = mockk(relaxed = true)
         dataStore = mockk(relaxed = true)
@@ -51,6 +55,8 @@ class SessionViewModelTest {
         every { webSocket.connectionState } returns connectionStateFlow
         every { webSocket.incomingMessages } returns incomingMessagesFlow
         every { cameraManager.frames } returns MutableSharedFlow()
+        every { glassesCameraManager.frames } returns MutableSharedFlow()
+        every { glassesCameraManager.connectionState } returns MutableStateFlow(GlassesState.DISCONNECTED)
         every { audioManager.audioChunks } returns MutableSharedFlow()
         every { audioManager.audioLevel } returns MutableStateFlow(0f)
         every { dataStore.data } returns flowOf(mockk(relaxed = true))
@@ -62,7 +68,7 @@ class SessionViewModelTest {
     }
 
     private fun createViewModel(): SessionViewModel {
-        return SessionViewModel(cameraManager, audioManager, webSocket, dataStore, okHttpClient, historyStore)
+        return SessionViewModel(cameraManager, glassesCameraManager, audioManager, webSocket, dataStore, okHttpClient, historyStore)
     }
 
     @Test

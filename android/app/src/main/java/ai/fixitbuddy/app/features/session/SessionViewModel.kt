@@ -9,6 +9,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ai.fixitbuddy.app.core.audio.AudioStreamManager
 import ai.fixitbuddy.app.core.camera.CameraManager
+import ai.fixitbuddy.app.core.camera.GlassesCameraManager
+import ai.fixitbuddy.app.core.camera.GlassesState
 import ai.fixitbuddy.app.core.config.AppConfig
 import ai.fixitbuddy.app.core.websocket.AgentMessage
 import ai.fixitbuddy.app.core.websocket.AgentWebSocket
@@ -41,7 +43,9 @@ data class SessionUiState(
     val toolCallCount: Int = 0,
     val isTorchOn: Boolean = false,
     val hasTorch: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val cameraSource: CameraSource = CameraSource.PHONE,
+    val glassesState: GlassesState = GlassesState.DISCONNECTED
 )
 
 /** High-level session lifecycle states. */
@@ -49,9 +53,13 @@ enum class SessionState {
     Idle, Connecting, Active, Error
 }
 
+/** Which camera feed is sent to the agent. */
+enum class CameraSource { PHONE, GLASSES }
+
 @HiltViewModel
 class SessionViewModel @Inject constructor(
     val cameraManager: CameraManager,
+    val glassesCameraManager: GlassesCameraManager,
     private val audioManager: AudioStreamManager,
     private val webSocket: AgentWebSocket,
     private val dataStore: DataStore<Preferences>,
@@ -74,6 +82,7 @@ class SessionViewModel @Inject constructor(
     init {
         observeConnectionState()
         observeIncomingMessages()
+        observeGlassesState()
     }
 
     private fun observeConnectionState() {
@@ -139,6 +148,23 @@ class SessionViewModel @Inject constructor(
         }
     }
 
+    private fun observeGlassesState() {
+        viewModelScope.launch {
+            glassesCameraManager.connectionState.collect { state ->
+                _uiState.update { it.copy(glassesState = state) }
+            }
+        }
+    }
+
+    fun switchCameraSource(source: CameraSource) {
+        _uiState.update { it.copy(cameraSource = source) }
+        if (source == CameraSource.GLASSES) {
+            glassesCameraManager.startStream()
+        } else {
+            glassesCameraManager.stopStream()
+        }
+    }
+
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun startSession() {
         sessionStartMs = System.currentTimeMillis()
@@ -174,9 +200,11 @@ class SessionViewModel @Inject constructor(
 
             // Step 4: Forward camera frames (child coroutine — cancelled with parent)
             launch {
-                cameraManager.frames.collect { frame ->
-                    webSocket.sendVideoFrame(frame)
-                }
+                val frameSource = if (_uiState.value.cameraSource == CameraSource.GLASSES)
+                    glassesCameraManager.frames
+                else
+                    cameraManager.frames
+                frameSource.collect { frame -> webSocket.sendVideoFrame(frame) }
             }
 
             // Step 5: Forward audio chunks (child coroutine — cancelled with parent)
@@ -270,6 +298,7 @@ class SessionViewModel @Inject constructor(
     override fun onCleared() {
         stopSession()
         cameraManager.stopCamera()
+        glassesCameraManager.stopStream()
         super.onCleared()
     }
 

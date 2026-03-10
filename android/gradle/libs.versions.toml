@@ -16,6 +16,7 @@ coreKtx = "1.15.0"
 junit = "4.13.2"
 mockk = "1.13.14"
 coroutinesTest = "1.9.0"
+mwdat = "0.4.0"
 
 [libraries]
 # Compose BOM
@@ -57,6 +58,11 @@ camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = 
 camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
 camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
 camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+
+# Meta Wearables Device Access Toolkit
+mwdat-core       = { group = "com.meta.wearable", name = "mwdat-core",       version.ref = "mwdat" }
+mwdat-camera     = { group = "com.meta.wearable", name = "mwdat-camera",     version.ref = "mwdat" }
+mwdat-mockdevice = { group = "com.meta.wearable", name = "mwdat-mockdevice", version.ref = "mwdat" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

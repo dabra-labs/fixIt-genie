@@ -1,0 +1,241 @@
+package ai.fixitbuddy.app.core.camera
+
+import android.app.Activity
+import android.content.Context
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.graphics.YuvImage
+import android.util.Log
+import androidx.activity.result.ActivityResultLauncher
+import com.meta.wearable.dat.camera.StreamSession
+import com.meta.wearable.dat.camera.startStreamSession
+import com.meta.wearable.dat.camera.types.StreamConfiguration
+import com.meta.wearable.dat.camera.types.VideoFrame
+import com.meta.wearable.dat.camera.types.VideoQuality
+import com.meta.wearable.dat.core.Wearables
+import com.meta.wearable.dat.core.selectors.AutoDeviceSelector
+import com.meta.wearable.dat.core.types.Permission
+import com.meta.wearable.dat.core.types.PermissionStatus
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+/**
+ * Manages Ray-Ban Meta smart glasses camera streaming via the Meta Wearables DAT SDK.
+ *
+ * Emits JPEG frames via [frames] — identical interface to [CameraManager] — so
+ * [ai.fixitbuddy.app.features.session.SessionViewModel] can swap sources transparently.
+ *
+ * Frame pipeline: Glasses (I420) → I420→NV21→JPEG conversion → [frames] SharedFlow
+ *
+ * Requires Android 12+ (API 31) — enforced by the Meta DAT SDK.
+ */
+@Singleton
+class GlassesCameraManager @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val _frames = MutableSharedFlow<ByteArray>(extraBufferCapacity = 2)
+    val frames: SharedFlow<ByteArray> = _frames
+
+    private val _connectionState = MutableStateFlow(GlassesState.DISCONNECTED)
+    val connectionState: StateFlow<GlassesState> = _connectionState
+
+    private var streamSession: StreamSession? = null
+    private var videoJob: Job? = null
+    private var stateJob: Job? = null
+
+    @Volatile private var initialized = false
+
+    // ── Lifecycle ──────────────────────────────────────────────────────────────
+
+    /**
+     * Must be called once from [Activity.onCreate] after Android permissions are granted.
+     * Safe to call multiple times — initializes only once.
+     */
+    fun initialize() {
+        if (initialized) return
+        Wearables.initialize(context)
+        initialized = true
+        Log.d(TAG, "Wearables SDK initialized")
+    }
+
+    /**
+     * Registers the app with Meta. Shows an in-place dialog (no app switching since SDK v0.4.0).
+     * Call from an Activity context.
+     */
+    fun register(activity: Activity) {
+        Wearables.startRegistration(activity)
+    }
+
+    // ── Camera Permission ──────────────────────────────────────────────────────
+
+    /**
+     * Checks whether the glasses camera permission has been granted.
+     * Returns true if granted, false otherwise.
+     */
+    suspend fun hasCameraPermission(): Boolean {
+        val result = Wearables.checkPermissionStatus(Permission.CAMERA)
+        return result.getOrNull() == PermissionStatus.Granted
+    }
+
+    /**
+     * Call this in your Activity to build the permission launcher.
+     * Pass [onResult] to handle grant/deny.
+     *
+     * Usage in Activity:
+     * ```kotlin
+     * val launcher = glassesCameraManager.buildPermissionLauncher(this) { granted ->
+     *     if (granted) startGlassesStream()
+     * }
+     * glassesCameraManager.requestCameraPermission(launcher)
+     * ```
+     */
+    fun requestCameraPermission(launcher: ActivityResultLauncher<Permission>) {
+        launcher.launch(Permission.CAMERA)
+    }
+
+    // ── Streaming ──────────────────────────────────────────────────────────────
+
+    /**
+     * Starts the glasses camera stream. Frames are emitted via [frames].
+     * Requires [initialize] to have been called first.
+     * Requires camera permission — check [hasCameraPermission] first.
+     */
+    fun startStream() {
+        if (!initialized) {
+            Log.e(TAG, "startStream called before initialize()")
+            return
+        }
+
+        stopStream() // clean up any existing session
+
+        _connectionState.value = GlassesState.CONNECTING
+        Log.d(TAG, "Starting glasses stream")
+
+        val session = Wearables.startStreamSession(
+            context,
+            AutoDeviceSelector(),
+            StreamConfiguration(
+                videoQuality = VideoQuality.MEDIUM,
+                frameRate = 2  // minimum supported by SDK; we throttle further in SessionViewModel
+            )
+        ).also { streamSession = it }
+
+        // Collect video frames
+        videoJob = scope.launch {
+            session.videoStream.collect { frame ->
+                val jpeg = convertI420toJpeg(frame)
+                if (jpeg != null) {
+                    _frames.tryEmit(jpeg)
+                }
+            }
+        }
+
+        // Monitor stream state
+        stateJob = scope.launch {
+            session.state.collect { state ->
+                Log.d(TAG, "Stream state: $state")
+                _connectionState.value = when (state.name) {
+                    "STREAMING" -> GlassesState.STREAMING
+                    "STARTING"  -> GlassesState.CONNECTING
+                    else        -> GlassesState.DISCONNECTED
+                }
+            }
+        }
+    }
+
+    /**
+     * Stops the glasses camera stream and releases the session.
+     */
+    fun stopStream() {
+        videoJob?.cancel()
+        videoJob = null
+        stateJob?.cancel()
+        stateJob = null
+        streamSession?.close()
+        streamSession = null
+        _connectionState.value = GlassesState.DISCONNECTED
+        Log.d(TAG, "Glasses stream stopped")
+    }
+
+    // ── Frame Conversion ───────────────────────────────────────────────────────
+
+    /**
+     * Converts a raw I420 VideoFrame from the glasses to a JPEG ByteArray.
+     *
+     * I420 format: [YYYY...][UU...][VV...] (planar YUV)
+     * NV21 format: [YYYY...][VUVU...] (semi-planar, required by Android YuvImage)
+     *
+     * Conversion code ported verbatim from Meta's CameraAccess sample app:
+     * StreamViewModel.convertI420toNV21() + handleVideoFrame()
+     */
+    private fun convertI420toJpeg(frame: VideoFrame): ByteArray? {
+        return try {
+            val buffer: ByteBuffer = frame.buffer
+            val width = frame.width
+            val height = frame.height
+            val dataSize = buffer.remaining()
+
+            // Copy buffer without consuming it
+            val bytes = ByteArray(dataSize)
+            val savedPos = buffer.position()
+            buffer.get(bytes)
+            buffer.position(savedPos)
+
+            // I420 → NV21
+            val nv21 = convertI420toNV21(bytes, width, height)
+
+            // NV21 → JPEG
+            val yuv = YuvImage(nv21, ImageFormat.NV21, width, height, null)
+            ByteArrayOutputStream().use { out ->
+                yuv.compressToJpeg(Rect(0, 0, width, height), JPEG_QUALITY, out)
+                out.toByteArray()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Frame conversion failed — skipping frame", e)
+            null
+        }
+    }
+
+    private fun convertI420toNV21(input: ByteArray, width: Int, height: Int): ByteArray {
+        val output = ByteArray(input.size)
+        val size = width * height
+        val quarter = size / 4
+
+        // Y plane is identical
+        input.copyInto(output, 0, 0, size)
+
+        // Interleave U and V planes: I420 has U then V; NV21 wants V then U
+        for (n in 0 until quarter) {
+            output[size + n * 2]     = input[size + quarter + n]  // V
+            output[size + n * 2 + 1] = input[size + n]            // U
+        }
+        return output
+    }
+
+    companion object {
+        private const val TAG = "GlassesCameraManager"
+        private const val JPEG_QUALITY = 75
+    }
+}
+
+/** Connection state of the Ray-Ban glasses. */
+enum class GlassesState {
+    DISCONNECTED,
+    CONNECTING,
+    STREAMING
+}
