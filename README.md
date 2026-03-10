@@ -40,7 +40,7 @@ flowchart TD
     end
 
     subgraph CloudRun["Cloud Run — ADK Agent (Python)"]
-        ADK["Google ADK · adk web\nGemini 2.5 Flash Native Audio\nSkillToolset (3 domain skills)\nVector KB (Firestore + gemini-embedding-001)\n6 Custom Function Tools"]
+        ADK["Google ADK · adk web\nGemini 2.5 Flash Native Audio\nSkillToolset (3 skills · 9 refs)\n6 Function Tools\nVector KB via Firestore"]
     end
 
     subgraph External["External Services"]
@@ -48,6 +48,7 @@ flowchart TD
         SEARCH["Google Search\n(grounding)"]
         YT["YouTube\nTranscripts"]
         PDF["Manufacturer\nPDF Manuals"]
+        FS["Firestore\nVector Search\n(gemini-embedding-001)"]
     end
 
     CAM -->|JPEG frames| APP
@@ -61,7 +62,7 @@ flowchart TD
     ADK --- SEARCH
     ADK --- YT
     ADK --- PDF
-    ADK --- FS["Firestore\nVector Search\n(gemini-embedding-001)"]
+    ADK --- FS
 ```
 
 **Live deployment**: Cloud Run at `us-central1` with session affinity for persistent WebSocket connections.

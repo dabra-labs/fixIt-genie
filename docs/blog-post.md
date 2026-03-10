@@ -50,28 +50,40 @@ All three streams flow through a single OkHttp WebSocket connection to the backe
 
 The backend uses Google's Agent Development Kit (ADK) with `adk web`, which exposes a `/run_live` WebSocket endpoint for bidi-streaming. This handles the complexity of maintaining a live conversation session with Gemini.
 
-The agent has six custom tools — three for safety and session logging, three for live knowledge access:
+The agent combines three ADK domain skills with six function tools:
 
-1. **`lookup_equipment_knowledge`** — Queries the embedded knowledge base (fast, offline, no API cost). First call for any recognized equipment category.
+**Domain Skills** (via `SkillToolset`) — loaded on demand as the conversation develops:
+- `automotive` — engine oil, battery/electrical, cooling system
+- `electrical` — breaker panel, GFCI outlets
+- `appliances` — washing machine, dishwasher, LG refrigerator
 
-2. **`get_safety_warnings`** — Returns category-specific safety warnings (electrical, mechanical, fluid, pressure, heat, chemical). The agent *must* call this before guiding any physical action — enforced in the system prompt.
+Each skill is a `SKILL.md` with behavioral instructions plus `references/` markdown docs. The agent calls `list_skills` to discover what's available and `load_skill` to pull a domain into context only when needed — keeping the context window lean.
 
-3. **`log_diagnostic_step`** — Records each diagnostic step for the session transcript, building a structured repair log.
-
-4. **`google_search`** — Real-time web search for error codes, repair guides, and model-specific procedures not in the embedded KB.
-
-5. **`analyze_youtube_repair_video`** — Extracts and summarizes repair steps from YouTube tutorials, then narrates them verbally.
-
+**Function Tools:**
+1. **`lookup_equipment_knowledge`** — Semantic vector search via Firestore `find_nearest()` with `gemini-embedding-001` embeddings. Falls back to keyword matching if Firestore is unavailable.
+2. **`get_safety_warnings`** — Returns category-specific safety warnings (electrical, mechanical, fluid, pressure, heat, chemical). Called before any physical action — enforced in the system prompt.
+3. **`log_diagnostic_step`** — Records each diagnostic step for the session transcript.
+4. **`google_search`** — Real-time web search for error codes and model-specific procedures.
+5. **`analyze_youtube_repair_video`** — Fetches the video transcript and summarizes repair steps with Gemini, then narrates them verbally.
 6. **`lookup_user_manual`** — Finds the official manufacturer PDF via grounded search, extracts text with `pypdf`, and summarizes error codes and troubleshooting procedures.
 
 ```python
+from google.adk.skills import load_skill_from_dir
+from google.adk.tools.skill_toolset import SkillToolset
 from google.adk.tools.google_search_tool import GoogleSearchTool
+
+_skill_toolset = SkillToolset(skills=[
+    load_skill_from_dir(_SKILLS_DIR / "automotive"),
+    load_skill_from_dir(_SKILLS_DIR / "electrical"),
+    load_skill_from_dir(_SKILLS_DIR / "appliances"),
+])
 
 agent = Agent(
     model="gemini-2.5-flash-native-audio-latest",
     name="fixitgenie",
     instruction=SYSTEM_INSTRUCTION,
     tools=[
+        _skill_toolset,
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
@@ -108,9 +120,9 @@ The production architecture uses two complementary layers:
 
 **ADK Skills** (`SkillToolset` from `google.adk.tools.skill_toolset`) — three domain skill packages (`automotive`, `electrical`, `appliances`), each a `SKILL.md` with behavioral instructions plus `references/` markdown docs. The agent calls `list_skills` to discover available domains and `load_skill` to pull instructions into context on demand, keeping the context window lean. Skills define HOW the agent behaves in a domain; they don't replace knowledge retrieval.
 
-**Firestore Vector Search** — the equipment documents are embedded with `gemini-embedding-001` (768-dim) and stored in Firestore with a COSINE vector index. `lookup_equipment_knowledge` now calls `find_nearest()` — "engine oil pressure alarm" semantically matches the oil system document even without any keyword overlap. The original Python dict stays as a last-resort fallback, so the tool never fails silently.
+**Firestore Vector Search** — the equipment documents are embedded with `gemini-embedding-001` (3072-dim) and stored in Firestore with a COSINE vector index. `lookup_equipment_knowledge` now calls `find_nearest()` — "engine oil pressure alarm" semantically matches the oil system document even without any keyword overlap. The original Python dict stays as a last-resort fallback, so the tool never fails silently.
 
-This is fully Google-native: Vertex AI for embeddings, Firestore for vector storage, ADK for the skill layer — and it cleanly separates what the agent *knows* from how it *behaves*.
+This is fully Google-native: Gemini API for embeddings, Firestore for vector storage, ADK for the skill layer — and it cleanly separates what the agent *knows* from how it *behaves*.
 
 ### Why Safety-First as a Core Design Principle?
 
@@ -118,7 +130,7 @@ This isn't just a nice feature — it's a differentiator. Every tool interaction
 
 ## The Knowledge Base
 
-Seven curated documents covering real-world repair scenarios:
+Nine equipment documents across three categories, organized as ADK skill references:
 
 **Automotive** — Engine oil system (dipstick reading, oil level, oil pressure codes P0520-P0524), car battery and electrical (terminal corrosion, jump starting, alternator diagnosis, codes P0562-P0621), and cooling system (overheating, coolant levels, radiator cap safety, codes P0115-P0128).
 
@@ -126,11 +138,11 @@ Seven curated documents covering real-world repair scenarios:
 
 **Appliances** — Washing machine (12 error codes across brands, drain issues, unbalanced loads), dishwasher (Bosch E15 water-in-base, drain problems), and LG refrigerator (12 error codes including Er IF/FF/CF/dF, ice maker troubleshooting, compressor diagnosis, Smart Diagnosis feature).
 
-Each document includes diagnostic steps with visual cues (what the agent should look for through the camera), common issues with root causes and fixes, error code mappings, and safety notes. The visual cues are especially important — they tell the agent what to describe when confirming it sees the right thing through the camera.
+Each reference document includes diagnostic steps with visual cues (what the agent should look for through the camera), error code tables, common issues with root causes and fixes, and safety notes. The visual cues are especially important — they tell the agent what to describe when confirming it sees the right thing through the camera.
 
-## Expanding Beyond the Embedded KB
+## Expanding Beyond the Skills KB
 
-A curated knowledge base of 7 documents covers the demo scenarios well, but equipment repair is a long tail. Someone with a 2009 Mitsubishi Outlander asking about a P2101 throttle actuator code, or a 1970s lathe throwing an unfamiliar alarm, will exhaust the embedded KB quickly. The three web knowledge tools (listed above) handle this long tail — but each had implementation decisions worth explaining.
+The nine skill reference documents cover common demo scenarios well, but equipment repair is a long tail. Someone with a 2009 Mitsubishi Outlander asking about a P2101 throttle actuator code, or a 1970s lathe throwing an unfamiliar alarm, will exhaust the skills KB quickly. The three web knowledge tools handle this long tail — but each had implementation decisions worth explaining.
 
 **`google_search`** — One non-obvious constraint: `GoogleSearchTool` (ADK's built-in grounding tool) cannot coexist with custom function tools in the same agent by default. ADK enforces a limit that prevents mixing built-in tools with custom function tools — a restriction that isn't prominently documented and required reading ADK source code to find. The fix: `bypass_multi_tools_limit=True` on the `GoogleSearchTool` instance. Without it, the agent deployment throws a 400 INVALID_ARGUMENT on every live session.
 
