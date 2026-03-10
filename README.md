@@ -1,6 +1,6 @@
-# FixIt Buddy
+# FixIt Genie
 
-**See. Hear. Fix.** Point your phone camera at broken equipment, describe the problem, and get expert step-by-step voice guidance in real time.
+**See. Hear. Fix.** Point your phone camera at broken equipment, describe the problem, and get expert step-by-step voice guidance in real time. Your AI repair genie.
 
 Built with **Google ADK** + **Gemini Live API** for the [Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/).
 
@@ -8,11 +8,11 @@ Built with **Google ADK** + **Gemini Live API** for the [Gemini Live Agent Chall
 
 ## What It Does
 
-FixIt Buddy is a multimodal AI agent that:
+FixIt Genie is a multimodal AI agent that:
 
-1. **Sees** through your phone camera — identifies equipment, reads error codes, gauges, and labels
+1. **Sees** through your phone camera (or optionally through connected Ray-Ban Meta glasses) — identifies equipment, reads error codes, gauges, and labels
 2. **Listens** to you describe the problem — understands context and asks clarifying questions
-3. **Talks you through the fix** — step-by-step voice guidance, confirming each step visually before moving on
+3. **Talks you through the fix** — step-by-step voice guidance with an animated genie avatar driven by audio level, confirming each step visually before moving on
 4. **Keeps you safe** — always checks safety warnings before guiding any physical action
 
 ### Demo Scenarios
@@ -27,17 +27,40 @@ Same architecture works for industrial equipment, HVAC, plumbing, and more.
 
 ## Architecture
 
-```
-┌─────────────────────┐     WebSocket (ADK LiveRequest)     ┌──────────────────────────────┐
-│   Android App       │◄───────────────────────────────────►│   Google Cloud Run            │
-│                     │                                      │                              │
-│  • CameraX (1 FPS)  │  Audio PCM 16kHz ──────────►        │  • Google ADK (adk web)      │
-│  • AudioRecord      │  ◄────────── Audio PCM 24kHz        │  • Gemini 2.5 Flash          │
-│  • Jetpack Compose  │  ◄────────── Transcripts             │    Native Audio Preview      │
-│  • Material 3       │                                      │  • 3 Custom Function Tools   │
-│  • OkHttp WebSocket │                                      │  • Embedded Knowledge Base   │
-│  • Hilt DI          │                                      │    (7 docs, 33 error codes)  │
-└─────────────────────┘                                      └──────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Inputs["Inputs to Android App"]
+        CAM["Phone Camera\n(CameraX 1 FPS)"]
+        MIC["Microphone\n(AudioRecord 16kHz)"]
+        GLASSES["Ray-Ban Glasses\n(Meta DAT SDK v0.4.0)"]
+    end
+
+    subgraph Android["Android App (Kotlin + Jetpack Compose)"]
+        APP["SessionViewModel\nAudioStreamManager\nAgentWebSocket\nGlassesCameraManager"]
+    end
+
+    subgraph CloudRun["Cloud Run — ADK Agent (Python)"]
+        ADK["Google ADK · adk web\nGemini 2.5 Flash Native Audio\n6 Custom Function Tools\nEmbedded KB (7 docs · 33 error codes)"]
+    end
+
+    subgraph External["External Services"]
+        GEMINI["Gemini 2.5 Flash\nNative Audio\n(bidi-streaming)"]
+        SEARCH["Google Search\n(grounding)"]
+        YT["YouTube\nTranscripts"]
+        PDF["Manufacturer\nPDF Manuals"]
+    end
+
+    CAM -->|JPEG frames| APP
+    MIC -->|PCM audio| APP
+    GLASSES -->|I420 frames via Wearables SDK| APP
+
+    APP -->|"Audio PCM 16kHz\nJPEG frames"| CloudRun
+    CloudRun -->|"Audio PCM 24kHz\nTranscripts"| APP
+
+    ADK --- GEMINI
+    ADK --- SEARCH
+    ADK --- YT
+    ADK --- PDF
 ```
 
 **Live deployment**: Cloud Run at `us-central1` with session affinity for persistent WebSocket connections.
@@ -49,9 +72,11 @@ Same architecture works for industrial equipment, HVAC, plumbing, and more.
 | Layer | Technology |
 |-------|-----------|
 | Android App | Kotlin 2.3, Jetpack Compose (BOM 2025.04.01), Material 3, CameraX 1.4.1, Hilt 2.59.2 |
+| Glasses Integration | Meta DAT SDK v0.4.0 (`mwdat-core`, `mwdat-camera`), Ray-Ban Meta glasses |
 | Backend Agent | Google ADK (`adk web`), Gemini 2.5 Flash Native Audio Preview, Python 3.12 |
 | Infrastructure | Google Cloud Run (2 vCPU, 2 GiB), IaC via `deploy.sh` |
 | Communication | OkHttp WebSocket, ADK bidi-streaming (LiveRequest/LiveEvent protocol) |
+| Backend Libraries | requests, pypdf, youtube-transcript-api |
 
 ---
 
@@ -61,15 +86,15 @@ Same architecture works for industrial equipment, HVAC, plumbing, and more.
 fixitbuddy/
 ├── android/                    # Native Android app
 │   ├── app/src/main/java/ai/fixitbuddy/app/
-│   │   ├── core/               # Camera, Audio, WebSocket, Config, DI
+│   │   ├── core/               # Camera, Audio, WebSocket, Config, DI, GlassesCameraManager
 │   │   ├── features/           # Session, History, Settings, Onboarding
 │   │   ├── navigation/         # Compose Navigation
 │   │   └── ui/                 # StatusIndicator, TranscriptOverlay, CameraViewfinder
-│   └── app/src/test/           # 109 unit tests
+│   └── app/src/test/           # 109 unit tests + 10 glasses tests (5 instrumented, 5 unit)
 ├── backend/
 │   ├── fixitbuddy/             # ADK agent directory
 │   │   ├── agent.py            # Agent definition + system prompt
-│   │   ├── tools.py            # 3 custom tools + embedded knowledge base
+│   │   ├── tools.py            # 6 custom tools + embedded knowledge base
 │   │   └── config.py           # Environment config
 │   ├── tests/                  # 115 unit tests
 │   ├── Dockerfile              # Container (python:3.12-slim → adk web)
@@ -130,6 +155,9 @@ cd android
 | `lookup_equipment_knowledge` | Query curated knowledge base for diagnostic procedures, error codes, and visual cues |
 | `get_safety_warnings` | Get safety warnings before any physical action (electrical, mechanical, fluid, heat, etc.) |
 | `log_diagnostic_step` | Record each diagnostic step for the session transcript |
+| `google_search` | Real-time web search for error codes, repair guides, and model-specific procedures not in the embedded KB (`GoogleSearchTool` with `bypass_multi_tools_limit=True`) |
+| `analyze_youtube_repair_video` | Fetch video transcript via youtube-transcript-api and summarize with Gemini; agent narrates the relevant steps verbally |
+| `lookup_user_manual` | Grounded search to find the official manufacturer PDF, extract text with pypdf, summarize error codes and troubleshooting steps |
 
 ---
 
@@ -147,7 +175,7 @@ Each document includes diagnostic steps with visual cues, common issues with roo
 
 ## Safety First
 
-FixIt Buddy always calls `get_safety_warnings()` before guiding any physical action. The agent will stop and recommend calling a professional if the situation appears dangerous. Safety categories include electrical, mechanical, fluid, pressure, heat, and chemical hazards.
+FixIt Genie always calls `get_safety_warnings()` before guiding any physical action. The agent will stop and recommend calling a professional if the situation appears dangerous. Safety categories include electrical, mechanical, fluid, pressure, heat, and chemical hazards.
 
 ---
 
