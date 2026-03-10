@@ -86,6 +86,14 @@ class AudioStreamManager @Inject constructor(
             bufferSize * 2
         )
 
+        if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
+            Log.e(TAG, "AudioRecord failed to initialize — state=${audioRecord?.state}. " +
+                "Check RECORD_AUDIO permission and hardware availability.")
+            audioRecord?.release()
+            audioRecord = null
+            return
+        }
+
         // Attach hardware AEC to cancel speaker output from mic input
         val sessionId = audioRecord!!.audioSessionId
         if (AcousticEchoCanceler.isAvailable()) {
@@ -104,9 +112,16 @@ class AudioStreamManager @Inject constructor(
             val buffer = ByteArray(bufferSize)
             while (isRecording) {
                 val bytesRead = audioRecord?.read(buffer, 0, buffer.size) ?: 0
-                if (bytesRead > 0) {
-                    _audioChunks.emit(buffer.copyOf(bytesRead))
-                    _audioLevel.value = computeRmsLevel(buffer, bytesRead)
+                when {
+                    bytesRead > 0 -> {
+                        _audioChunks.emit(buffer.copyOf(bytesRead))
+                        _audioLevel.value = computeRmsLevel(buffer, bytesRead)
+                    }
+                    bytesRead == AudioRecord.ERROR_DEAD_OBJECT -> {
+                        Log.e(TAG, "AudioRecord.ERROR_DEAD_OBJECT — mic connection lost, stopping")
+                        break
+                    }
+                    bytesRead < 0 -> Log.e(TAG, "AudioRecord.read() error: $bytesRead")
                 }
             }
             _audioLevel.value = 0f

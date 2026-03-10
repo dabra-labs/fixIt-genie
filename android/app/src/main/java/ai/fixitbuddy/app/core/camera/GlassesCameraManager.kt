@@ -59,6 +59,7 @@ class GlassesCameraManager @Inject constructor(
     private var stateJob: Job? = null
 
     private var initialized = false
+    private var consecutiveConversionFailures = 0
 
     // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -95,6 +96,7 @@ class GlassesCameraManager @Inject constructor(
      */
     suspend fun hasCameraPermission(): Boolean {
         val result = Wearables.checkPermissionStatus(Permission.CAMERA)
+        result.onFailure { e -> Log.e(TAG, "Failed to check glasses camera permission", e) }
         return result.getOrNull() == PermissionStatus.Granted
     }
 
@@ -224,9 +226,17 @@ class GlassesCameraManager @Inject constructor(
             ByteArrayOutputStream().use { out ->
                 yuv.compressToJpeg(Rect(0, 0, width, height), JPEG_QUALITY, out)
                 out.toByteArray()
-            }
+            }.also { consecutiveConversionFailures = 0 }
         } catch (e: Exception) {
-            Log.w(TAG, "Frame conversion failed — skipping frame", e)
+            consecutiveConversionFailures++
+            if (consecutiveConversionFailures >= MAX_CONSECUTIVE_CONVERSION_FAILURES) {
+                Log.e(TAG, "Frame conversion failed $consecutiveConversionFailures times in a row — " +
+                    "possible SDK or hardware issue. Stopping stream.", e)
+                _connectionState.value = GlassesState.DISCONNECTED
+            } else {
+                Log.w(TAG, "Frame conversion failed (${consecutiveConversionFailures}/" +
+                    "$MAX_CONSECUTIVE_CONVERSION_FAILURES) — skipping frame", e)
+            }
             null
         }
     }
@@ -250,6 +260,7 @@ class GlassesCameraManager @Inject constructor(
     companion object {
         private const val TAG = "GlassesCameraManager"
         private const val JPEG_QUALITY = 75
+        private const val MAX_CONSECUTIVE_CONVERSION_FAILURES = 20
     }
 }
 

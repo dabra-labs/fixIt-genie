@@ -282,8 +282,14 @@ class SessionViewModel @Inject constructor(
                     .post("{}".toRequestBody("application/json".toMediaType()))
                     .build()
                 okHttpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@withContext null
-                    val body = response.body?.string() ?: return@withContext null
+                    if (!response.isSuccessful) {
+                        Log.w(TAG, "ADK session creation failed: HTTP ${response.code}")
+                        return@withContext null
+                    }
+                    val body = response.body?.string() ?: run {
+                        Log.w(TAG, "ADK session creation failed: empty response body")
+                        return@withContext null
+                    }
                     // Parse {"id":"..."} from response
                     val match = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(body)
                     match?.groupValues?.get(1)

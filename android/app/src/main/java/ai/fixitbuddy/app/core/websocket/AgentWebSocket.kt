@@ -1,7 +1,7 @@
 package ai.fixitbuddy.app.core.websocket
 
-import android.util.Base64
 import android.util.Log
+import java.util.Base64 as JvmBase64
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -123,6 +123,13 @@ class AgentWebSocket @Inject constructor(
         })
     }
 
+    /** Emits a message; logs a warning if the buffer is full and the message is dropped. */
+    private fun emit(message: AgentMessage) {
+        if (!_incomingMessages.tryEmit(message)) {
+            Log.w(TAG, "Incoming message buffer full — dropped: $message")
+        }
+    }
+
     /**
      * Parses incoming ADK LiveEvent JSON (camelCase, URL-safe base64 audio data).
      *
@@ -143,7 +150,7 @@ class AgentWebSocket @Inject constructor(
             // Interrupt: server cut off current response (VAD detected user speaking)
             if (obj["interrupted"]?.jsonPrimitive?.content == "true") {
                 Log.d(TAG, "Server interrupted response — clearing audio queue")
-                _incomingMessages.tryEmit(AgentMessage.Interrupted)
+                emit(AgentMessage.Interrupted)
                 return
             }
 
@@ -153,7 +160,7 @@ class AgentWebSocket @Inject constructor(
             // This is the definitive end-of-turn signal from the server; open mic gate.
             if (obj["turnComplete"]?.jsonPrimitive?.content == "true") {
                 Log.d(TAG, "Turn complete")
-                _incomingMessages.tryEmit(AgentMessage.Status("listening"))
+                emit(AgentMessage.Status("listening"))
                 return
             }
 
@@ -168,9 +175,7 @@ class AgentWebSocket @Inject constructor(
                 // Text response
                 partObj["text"]?.jsonPrimitive?.content?.let { txt ->
                     if (txt.isNotBlank()) {
-                        _incomingMessages.tryEmit(
-                            AgentMessage.Transcript(txt, isFinal = !isPartial)
-                        )
+                        emit(AgentMessage.Transcript(txt, isFinal = !isPartial))
                     }
                 }
 
@@ -179,9 +184,9 @@ class AgentWebSocket @Inject constructor(
                     val mimeType = inlineData["mimeType"]?.jsonPrimitive?.content ?: ""
                     val data = inlineData["data"]?.jsonPrimitive?.content ?: ""
                     if (mimeType.startsWith("audio/") && data.isNotEmpty()) {
-                        val audioBytes = Base64.decode(data, Base64.URL_SAFE)
+                        val audioBytes = JvmBase64.getUrlDecoder().decode(data)
                         Log.d(TAG, "Audio chunk: mimeType=$mimeType bytes=${audioBytes.size}")
-                        _incomingMessages.tryEmit(AgentMessage.Audio(audioBytes))
+                        emit(AgentMessage.Audio(audioBytes))
                         hasAudio = true
                     }
                 }
@@ -191,7 +196,7 @@ class AgentWebSocket @Inject constructor(
                     val name = fnCall["name"]?.jsonPrimitive?.content ?: ""
                     val args = fnCall["args"]?.toString() ?: "{}"
                     if (name.isNotEmpty()) {
-                        _incomingMessages.tryEmit(AgentMessage.ToolCall(name, args))
+                        emit(AgentMessage.ToolCall(name, args))
                     }
                 }
             }
@@ -201,7 +206,7 @@ class AgentWebSocket @Inject constructor(
             // would open the mic gate mid-response. isPartial is an additional heuristic to
             // avoid emitting on final non-audio echo frames at the end of a turn.
             if (author == "fixitbuddy" && isPartial && !hasAudio) {
-                _incomingMessages.tryEmit(AgentMessage.Status("speaking"))
+                emit(AgentMessage.Status("speaking"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse ADK event: ${text.take(200)}", e)
@@ -219,7 +224,7 @@ class AgentWebSocket @Inject constructor(
             return
         }
         try {
-            val b64 = Base64.encodeToString(frameData, Base64.NO_WRAP)
+            val b64 = JvmBase64.getEncoder().encodeToString(frameData)
             val request = LiveRequest(blob = LiveBlob(mimeType = "image/jpeg", data = b64))
             ws.send(json.encodeToString(LiveRequest.serializer(), request))
         } catch (e: Exception) {
@@ -238,7 +243,7 @@ class AgentWebSocket @Inject constructor(
             return
         }
         try {
-            val b64 = Base64.encodeToString(audioData, Base64.NO_WRAP)
+            val b64 = JvmBase64.getEncoder().encodeToString(audioData)
             val request = LiveRequest(blob = LiveBlob(mimeType = "audio/pcm;rate=16000", data = b64))
             ws.send(json.encodeToString(LiveRequest.serializer(), request))
         } catch (e: Exception) {
