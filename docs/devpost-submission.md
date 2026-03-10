@@ -49,7 +49,7 @@ We've all stood in front of broken equipment scrolling through YouTube, trying t
 - **Safety-first architecture**: The agent always calls `get_safety_warnings()` before guiding any physical action — it's enforced in the system prompt and verified by unit tests
 - **Real conversation, not a chatbot**: Bidi-streaming with native audio feels qualitatively different from request-response — the agent interrupts, handles "wait" and "hold on" gracefully, and adapts in real time
 - **Professional polish**: Beautiful onboarding flow ("See It. Say It. Fix It."), Material 3 theming with purposeful colors (Safety Orange, Tool Blue), animated status indicators
-- **ADK Skills + vector search architecture**: Domain skills (`SkillToolset`) provide behavioral context loaded on demand; Firestore vector search with `gemini-embedding-001` enables semantic retrieval — "engine oil pressure alarm" matches the right document without keyword overlap. Fully Google-native stack (Vertex AI + Firestore + ADK).
+- **ADK Skills + vector search architecture**: Domain skills (`SkillToolset`) provide behavioral context loaded on demand; Firestore vector search with `gemini-embedding-001` (3072-dim COSINE) enables semantic retrieval — "engine oil pressure alarm" matches the right document without keyword overlap. Fully Google-native stack (Gemini API + Firestore + ADK).
 - **Ray-Ban Meta glasses integration**: Hands-free camera via Meta DAT SDK v0.4.0 — I420→JPEG pipeline, live toggle in the session UI, same WebSocket pipeline as the phone camera
 - **Knowledge expansion to the open web**: Three tools (`google_search`, `analyze_youtube_repair_video`, `lookup_user_manual`) extend the agent beyond the embedded KB to handle any equipment, any error code, any model number
 
