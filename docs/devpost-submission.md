@@ -31,8 +31,8 @@ We've all stood in front of broken equipment scrolling through YouTube, trying t
 - **Android App**: Kotlin 2.3, Jetpack Compose (Material 3), CameraX 1.4.1 for 1 FPS JPEG capture, AudioRecord/AudioTrack for bidirectional 16kHz/24kHz PCM audio, OkHttp WebSocket using ADK LiveRequest protocol, Hilt DI
 - **Ray-Ban Glasses**: Meta DAT SDK v0.4.0 (`mwdat-core`, `mwdat-camera`) — `GlassesCameraManager` streams I420 frames from glasses, converted to JPEG and sent over the same WebSocket pipeline; live toggle between phone and glasses camera via `CameraSource` enum in `SessionViewModel`; minSdk bumped to 31 (Android 12+)
 - **Backend**: Google ADK (`adk web`) on Cloud Run, Gemini 2.5 Flash Native Audio Preview for bidi-streaming with custom function calling
-- **Knowledge Base**: 7 embedded equipment documents with 33 error codes and 28 diagnostic procedures, each including visual cues for camera verification
-- **Custom Tools (6 total)**: Equipment knowledge lookup, safety warnings system (6 hazard categories), diagnostic step logging, `google_search` (GoogleSearchTool with `bypass_multi_tools_limit=True`), `analyze_youtube_repair_video` (transcript API + Gemini summarization), `lookup_user_manual` (grounded PDF search + pypdf extraction)
+- **Knowledge Architecture**: Two-layer system — ADK `SkillToolset` with 3 domain skills (automotive, electrical, appliances), each a `SKILL.md` + `references/` markdown docs loaded on demand; Firestore vector search with `gemini-embedding-001` (3072-dim COSINE) for semantic `lookup_equipment_knowledge`; embedded Python dict as last-resort fallback
+- **Custom Tools (6 total)**: Equipment knowledge lookup (vector search), safety warnings system (6 hazard categories), diagnostic step logging, `google_search` (GoogleSearchTool with `bypass_multi_tools_limit=True`), `analyze_youtube_repair_video` (transcript API + Gemini summarization), `lookup_user_manual` (grounded PDF search + pypdf extraction)
 - **Infrastructure**: IaC deployment via `deploy.sh` (enables APIs, creates Artifact Registry, builds container, deploys to Cloud Run with session affinity)
 - **Testing**: 234 automated tests (115 backend + 109 Android unit tests + 10 glasses tests: 5 instrumented, 5 unit)
 
@@ -49,9 +49,9 @@ We've all stood in front of broken equipment scrolling through YouTube, trying t
 - **Safety-first architecture**: The agent always calls `get_safety_warnings()` before guiding any physical action — it's enforced in the system prompt and verified by unit tests
 - **Real conversation, not a chatbot**: Bidi-streaming with native audio feels qualitatively different from request-response — the agent interrupts, handles "wait" and "hold on" gracefully, and adapts in real time
 - **Professional polish**: Beautiful onboarding flow ("See It. Say It. Fix It."), Material 3 theming with purposeful colors (Safety Orange, Tool Blue), animated status indicators
-- **Comprehensive knowledge base**: 7 equipment documents with visual cues designed specifically for camera-based verification — the agent knows *what to look for*, not just what to say
+- **ADK Skills + vector search architecture**: Domain skills (`SkillToolset`) provide behavioral context loaded on demand; Firestore vector search with `gemini-embedding-001` enables semantic retrieval — "engine oil pressure alarm" matches the right document without keyword overlap. Fully Google-native stack (Vertex AI + Firestore + ADK).
 - **Ray-Ban Meta glasses integration**: Hands-free camera via Meta DAT SDK v0.4.0 — I420→JPEG pipeline, live toggle in the session UI, same WebSocket pipeline as the phone camera
-- **Knowledge expansion to the open web**: Three new tools (`google_search`, `analyze_youtube_repair_video`, `lookup_user_manual`) extend the agent beyond the embedded KB to handle any equipment, any error code, any model number
+- **Knowledge expansion to the open web**: Three tools (`google_search`, `analyze_youtube_repair_video`, `lookup_user_manual`) extend the agent beyond the embedded KB to handle any equipment, any error code, any model number
 
 ## What We Learned
 - 1 FPS video is plenty for equipment diagnosis — equipment doesn't move fast, and lower frame rates keep bandwidth manageable
