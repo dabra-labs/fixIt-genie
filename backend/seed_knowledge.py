@@ -1,4 +1,4 @@
-"""Seed Firestore with equipment knowledge base data."""
+"""Seed Firestore with equipment knowledge base data + text-embedding-004 vectors."""
 from __future__ import annotations
 
 import os
@@ -6,8 +6,26 @@ import os
 from google.cloud import firestore
 
 
+_EMBED_MODEL = "gemini-embedding-001"
+
+
+def _embed_text(text: str) -> list[float]:
+    """Generate a 3072-dim embedding vector via the Gemini REST API."""
+    import requests
+
+    api_key = os.environ["GOOGLE_API_KEY"]
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{_EMBED_MODEL}:embedContent"
+    payload = {
+        "model": f"models/{_EMBED_MODEL}",
+        "content": {"parts": [{"text": text}]},
+    }
+    resp = requests.post(url, json=payload, params={"key": api_key}, timeout=30)
+    resp.raise_for_status()
+    return resp.json()["embedding"]["values"]
+
+
 def seed() -> None:
-    """Upload the embedded knowledge base to Firestore for production use."""
+    """Upload the embedded knowledge base to Firestore with vector embeddings."""
     project = os.environ.get("GOOGLE_CLOUD_PROJECT", "fixitbuddy")
     db = firestore.Client(project=project)
 
@@ -17,12 +35,26 @@ def seed() -> None:
     print(f"Seeding Firestore for project: {project}")
     print("=" * 50)
 
-    # Seed equipment documents
+    # Seed equipment documents with embeddings
     for doc_id, data in _KNOWLEDGE_BASE.items():
-        db.collection("equipment").document(doc_id).set(data)
-        print(f"  ✓ equipment/{doc_id}")
+        # Build embedding text: combine name, description, error codes, and keywords
+        # for best semantic coverage
+        embed_parts = [
+            data.get("name", ""),
+            data.get("description", ""),
+            " ".join(data.get("error_codes", [])),
+            " ".join(data.get("keywords", [])),
+        ]
+        embed_text = " ".join(p for p in embed_parts if p)
 
-    # Seed category overviews
+        print(f"  Embedding {doc_id}...", end=" ", flush=True)
+        embedding = _embed_text(embed_text)
+
+        doc_data = {**data, "embedding": embedding}
+        db.collection("equipment").document(doc_id).set(doc_data)
+        print(f"✓ (dim={len(embedding)})")
+
+    # Seed category overviews (no embeddings needed — not searched via vector)
     overviews = {
         "automotive": {
             "description": "Common automotive systems and diagnostics",
@@ -46,7 +78,13 @@ def seed() -> None:
         print(f"  ✓ equipment_overview/{doc_id}")
 
     print("=" * 50)
-    print(f"Done! Seeded {len(_KNOWLEDGE_BASE)} equipment docs + {len(overviews)} overviews.")
+    print(
+        f"Done! Seeded {len(_KNOWLEDGE_BASE)} equipment docs with embeddings"
+        f" + {len(overviews)} overviews."
+    )
+    print()
+    print("Next step: deploy the Firestore vector index before querying:")
+    print("  firebase deploy --only firestore:indexes")
 
 
 if __name__ == "__main__":

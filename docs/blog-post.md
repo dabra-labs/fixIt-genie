@@ -100,9 +100,17 @@ Three reasons:
 
 3. **Polished UX** — Material 3 theming with a purposeful color palette (Safety Orange primary, Tool Blue secondary) gives the app a professional, trustworthy feel. The onboarding flow ("See It. Say It. Fix It.") sets expectations clearly before the first session.
 
-### Why an Embedded Knowledge Base?
+### Why ADK Skills + Vector Search Instead of a Hardcoded Dict?
 
-The 7 equipment documents are embedded directly in `tools.py` as a Python dictionary. This means the agent works without any external database dependency — critical for demo reliability and fast response times. The knowledge base covers 33 error codes across automotive (P-codes), electrical, and appliance (E/F/UE/OE codes) categories, with Firestore available as an extension point for production scaling.
+The initial prototype embedded equipment knowledge directly in `tools.py` as a Python dictionary — fast and dependency-free, but architecturally weak. Keyword matching fails on synonyms ("engine won't turn over" misses the battery document). Adding knowledge requires redeploying code. And a hardcoded dict is a poor answer to the hackathon judge's question: "Is there evidence of grounding?"
+
+The production architecture uses two complementary layers:
+
+**ADK Skills** (`SkillToolset` from `google.adk.tools.skill_toolset`) — three domain skill packages (`automotive`, `electrical`, `appliances`), each a `SKILL.md` with behavioral instructions plus `references/` markdown docs. The agent calls `list_skills` to discover available domains and `load_skill` to pull instructions into context on demand, keeping the context window lean. Skills define HOW the agent behaves in a domain; they don't replace knowledge retrieval.
+
+**Firestore Vector Search** — the equipment documents are embedded with `gemini-embedding-001` (768-dim) and stored in Firestore with a COSINE vector index. `lookup_equipment_knowledge` now calls `find_nearest()` — "engine oil pressure alarm" semantically matches the oil system document even without any keyword overlap. The original Python dict stays as a last-resort fallback, so the tool never fails silently.
+
+This is fully Google-native: Vertex AI for embeddings, Firestore for vector storage, ADK for the skill layer — and it cleanly separates what the agent *knows* from how it *behaves*.
 
 ### Why Safety-First as a Core Design Principle?
 
