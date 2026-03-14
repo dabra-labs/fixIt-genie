@@ -128,6 +128,7 @@ class GlassesCameraManager @Inject constructor(
      * Requires [initialize] to have been called first.
      * Requires camera permission — check [hasCameraPermission] first.
      */
+    @Synchronized
     fun startStream() {
         if (!initialized) {
             Log.e(TAG, "startStream called before initialize() — SDK not ready")
@@ -208,6 +209,7 @@ class GlassesCameraManager @Inject constructor(
     /**
      * Stops the glasses camera stream and releases the session.
      */
+    @Synchronized
     fun stopStream() {
         videoJob?.cancel()
         videoJob = null
