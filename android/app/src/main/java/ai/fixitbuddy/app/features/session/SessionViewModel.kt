@@ -260,6 +260,7 @@ class SessionViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Frame forwarding stopped unexpectedly", e)
                 frameForwardingJob = null
+                _uiState.update { it.copy(errorMessage = "Camera feed interrupted — agent can no longer see your camera.") }
             }
         }
     }
