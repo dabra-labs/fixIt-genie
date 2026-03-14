@@ -4,24 +4,80 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Wrench icon centered in adaptive icon safe zone (54, 54) with 36 radius circle -->
-    <!-- Circle background for safety -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,18c19.88,0 36,16.12 36,36s-16.12,36 -36,36s-36,-16.12 -36,-36S34.12,18 54,18z" />
 
-    <!-- Wrench icon -->
-    <path
-        android:fillColor="#FF9800"
-        android:pathData="M54,35c-10.49,0 -19,8.51 -19,19s8.51,19 19,19s19,-8.51 19,-19S64.49,35 54,35zM54,68c-7.73,0 -14,-6.27 -14,-14s6.27,-14 14,-14s14,6.27 14,14S61.73,68 54,68z" />
+    <!--
+      Genie lamp scaled to fit the 72×72 adaptive icon safe zone.
+      Original lamp: viewBox 94×62 (from ic_genie_lamp.xml)
+      Scale: 72/94 = 0.766  →  72×47.5
+      Offset: x=18, y=30  (centers the 72×47.5 lamp in 108×108 canvas)
+    -->
+    <group
+        android:pivotX="0"
+        android:pivotY="0"
+        android:scaleX="0.766"
+        android:scaleY="0.766"
+        android:translateX="18"
+        android:translateY="30">
 
-    <!-- Wrench handle (top part) -->
-    <path
-        android:fillColor="#FF9800"
-        android:pathData="M60,44c-1.66,0 -3,1.34 -3,3v8c0,1.66 1.34,3 3,3h12c1.66,0 3,-1.34 3,-3v-8c0,-1.66 -1.34,-3 -3,-3H60zM72,52c0,0.55 -0.45,1 -1,1h-10c-0.55,0 -1,-0.45 -1,-1v-6c0,-0.55 0.45,-1 1,-1h10c0.55,0 1,0.45 1,1V52z" />
+        <!-- FOOT -->
+        <path android:pathData="M40,56 A12,3 0 1 0 64,56 A12,3 0 1 0 40,56 Z"
+              android:fillColor="#9A4200"/>
 
-    <!-- Wrench nut (circular detail) -->
-    <path
-        android:fillColor="#FF9800"
-        android:pathData="M48,52m-3 0a3,3 0 1,1 6,0a3,3 0 1,1 -6,0" />
+        <!-- SPOUT -->
+        <path android:pathData="M32,40 C26,37 18,31 12,25 C9,21 6,18 6,18 C3,16 2,19 3,21 C4,23 7,24 11,26 C17,29 25,35 32,48 Z"
+              android:fillColor="#E8860E"/>
+        <path android:pathData="M32,48 C25,44 17,38 11,33 C7,30 4,28 3,28 L3,21 C4,23 7,24 11,26 C17,29 25,35 32,48 Z"
+              android:fillColor="#7A3000" android:fillAlpha="0.35"/>
+        <path android:pathData="M3,19 C5,16 9,15 11,18 C9,20 5,21 3,21 Z"
+              android:fillColor="#C06010"/>
+
+        <!-- BODY -->
+        <path android:pathData="M30,44 A22,12 0 1 0 74,44 A22,12 0 1 0 30,44 Z"
+              android:fillColor="#E8860E"/>
+        <path android:pathData="M30,44 A22,12 0 1 0 74,44 A22,12 0 1 0 30,44 Z"
+              android:fillColor="#7A3000" android:fillAlpha="0.22"/>
+
+        <!-- HIGHLIGHT -->
+        <group android:pivotX="45" android:pivotY="38" android:rotation="-20">
+            <path android:pathData="M37,38 A8,4 0 1 0 53,38 A8,4 0 1 0 37,38 Z"
+                  android:fillColor="#FFFFDC" android:fillAlpha="0.22"/>
+        </group>
+
+        <!-- LID NECK -->
+        <path android:pathData="M45,29 Q45,29 45,30.5 L45,31.5 Q45,33 46.5,33 L57.5,33 Q59,33 59,31.5 L59,30.5 Q59,29 57.5,29 Z"
+              android:fillColor="#B85800"/>
+
+        <!-- LID BASE RING -->
+        <path android:pathData="M42,27 A10,3.5 0 1 0 62,27 A10,3.5 0 1 0 42,27 Z"
+              android:fillColor="#FFE090"/>
+
+        <!-- LID DOME -->
+        <path android:pathData="M45,25 A7,2.8 0 1 0 59,25 A7,2.8 0 1 0 45,25 Z"
+              android:fillColor="#FFE880"/>
+
+        <!-- FINIAL -->
+        <path android:pathData="M49.5,25 C49.5,22 51,19 52,17 C53,19 54.5,22 54.5,25 Z"
+              android:fillColor="#FFD840"/>
+
+        <!-- HANDLE -->
+        <path android:pathData="M72,36 C84,34 90,39 90,44 C90,49 84,54 72,53 L72,49 C82,49 86,46 86,44 C86,41 82,38 72,40 Z"
+              android:fillColor="#C06010"/>
+
+        <!-- SMOKE -->
+        <path android:pathData="M5,20 C3,16 6,12 4,8 C2,5 4,3 3,0"
+              android:strokeColor="#9060DD" android:strokeWidth="2.2"
+              android:strokeLineCap="round" android:fillColor="#00000000"
+              android:strokeAlpha="0.9"/>
+        <path android:pathData="M9,17 C7,14 9,10 7,7"
+              android:strokeColor="#9060DD" android:strokeWidth="1.3"
+              android:strokeLineCap="round" android:fillColor="#00000000"
+              android:strokeAlpha="0.5"/>
+
+        <!-- STARS -->
+        <path android:pathData="M18,8 L19.1,11 L22.1,12.1 L19.1,13.2 L18,16.2 L16.9,13.2 L13.9,12.1 L16.9,11 Z"
+              android:fillColor="#FFE840"/>
+        <path android:pathData="M77,7 L77.8,9.4 L80.2,10.2 L77.8,11 L77,13.4 L76.2,11 L73.8,10.2 L76.2,9.4 Z"
+              android:fillColor="#FFDD33" android:fillAlpha="0.85"/>
+
+    </group>
 </vector>
