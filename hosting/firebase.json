@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "target": "fixit-genie",
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ]
+  }
+}

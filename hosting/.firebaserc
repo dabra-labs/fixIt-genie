@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "rational-investor-cf3ff"
+  },
+  "targets": {
+    "rational-investor-cf3ff": {
+      "hosting": {
+        "fixit-genie": [
+          "fixit-genie"
+        ]
+      }
+    }
+  }
+}

@@ -4,6 +4,8 @@
 
 Built with **Google ADK** + **Gemini Live API** for the [Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/).
 
+**[→ Live Demo Page](https://fixit-genie.web.app)** · **[→ Technical Blog](https://fixit-genie.web.app/blog.html)**
+
 ---
 
 ## What It Does

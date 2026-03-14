@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eyes, Voice, and a Wrench — FixIt Genie Blog</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --orange: #ff6a1e;
+    --bg: #080810;
+    --bg2: #0e0e1a;
+    --surface: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f0f5;
+    --muted: rgba(240,240,245,0.5);
+    --purple: #9060dd;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 16px 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(8,8,16,0.85);
+    backdrop-filter: blur(20px);
+  }
+  .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-text { display: flex; flex-direction: column; line-height: 1; }
+  .logo-fixit { font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+  .logo-genie {
+    font-size: 18px; font-weight: 900; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #ffb347 0%, var(--orange) 60%, #e84d00 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    padding-right: 2px;
+  }
+  .nav-back {
+    font-size: 12px; color: var(--muted); text-decoration: none;
+    display: flex; align-items: center; gap: 6px;
+    transition: color 0.2s;
+  }
+  .nav-back:hover { color: var(--text); }
+
+  /* HERO */
+  .blog-hero {
+    padding: 140px 24px 80px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .blog-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,106,30,0.1);
+    border: 1px solid rgba(255,106,30,0.25);
+    color: var(--orange);
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 5px 14px; border-radius: 20px;
+    margin-bottom: 28px;
+  }
+  .blog-title {
+    font-size: clamp(28px, 4vw, 46px);
+    font-weight: 900;
+    line-height: 1.15;
+    letter-spacing: -1px;
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+  .blog-subtitle {
+    font-size: 17px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 40px;
+    max-width: 600px;
+  }
+  .blog-meta {
+    display: flex; align-items: center; gap: 20px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--muted);
+  }
+  .blog-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+
+  /* CONTENT */
+  .blog-content {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 24px 120px;
+  }
+
+  .blog-content h2 {
+    font-size: 24px; font-weight: 800; letter-spacing: -0.5px;
+    color: var(--text);
+    margin: 60px 0 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .blog-content h2:first-child { border-top: none; margin-top: 0; }
+
+  .blog-content h3 {
+    font-size: 17px; font-weight: 700;
+    color: var(--text);
+    margin: 36px 0 14px;
+  }
+
+  .blog-content p {
+    font-size: 16px; color: rgba(240,240,245,0.82);
+    margin-bottom: 20px;
+    max-width: 680px;
+  }
+
+  .blog-content strong { color: var(--text); font-weight: 700; }
+
+  .blog-content em { color: rgba(240,240,245,0.7); font-style: italic; }
+
+  .blog-content hr {
+    border: none; border-top: 1px solid var(--border);
+    margin: 52px 0;
+  }
+
+  .blog-content ol, .blog-content ul {
+    margin: 16px 0 20px 0;
+    padding-left: 24px;
+  }
+  .blog-content li {
+    font-size: 16px; color: rgba(240,240,245,0.82);
+    margin-bottom: 10px;
+    line-height: 1.65;
+  }
+
+  /* Code blocks */
+  .blog-content pre {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 24px 0;
+  }
+  .blog-content code {
+    font-family: 'SF Mono', 'Fira Code', 'Menlo', monospace;
+    font-size: 13px;
+    color: rgba(255,190,100,0.9);
+    line-height: 1.6;
+  }
+  .blog-content p code, .blog-content li code {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: rgba(255,180,90,0.9);
+  }
+
+  /* Callout */
+  .callout {
+    background: rgba(255,106,30,0.07);
+    border-left: 3px solid var(--orange);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin: 24px 0;
+    font-size: 15px;
+    color: rgba(240,240,245,0.85);
+    line-height: 1.6;
+  }
+  .callout strong { color: rgba(255,160,80,0.95); }
+
+  /* Pull quote */
+  .pull-quote {
+    border-left: 2px solid var(--orange);
+    padding: 12px 24px;
+    margin: 32px 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.4;
+    letter-spacing: -0.3px;
+  }
+
+  /* Chip list (for tools etc) */
+  .chip-list {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin: 16px 0 24px;
+    list-style: none; padding: 0;
+  }
+  .chip-list li {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.13);
+    color: rgba(240,240,245,0.85);
+    font-size: 12px; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px;
+    margin: 0;
+  }
+  .chip-orange { border-color: rgba(255,106,30,0.3) !important; color: rgba(255,170,90,0.9) !important; background: rgba(255,106,30,0.08) !important; }
+  .chip-purple { border-color: rgba(144,96,221,0.35) !important; color: rgba(190,150,255,0.9) !important; background: rgba(144,96,221,0.08) !important; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 24px;
+    text-align: center;
+  }
+  footer p { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  .footer-links { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; }
+  .footer-links a { font-size: 12px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--text); }
+
+  /* ── SHARED DIAGRAM WRAPPER ── */
+  .diag-wrap {
+    margin: 32px 0 36px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 24px 24px 20px;
+    max-width: 720px;
+  }
+  .diag-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: rgba(240,240,245,0.35);
+    margin-bottom: 20px;
+  }
+
+  /* ── DIAGRAM 1: PIPELINE ── */
+  .pipeline-grid {
+    display: grid;
+    grid-template-columns: 1fr 64px 1fr;
+    gap: 0;
+    align-items: stretch;
+  }
+  .pipeline-device {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pipeline-device-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: rgba(240,240,245,0.45);
+    margin-bottom: 4px;
+  }
+  .pipeline-lane {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 10px 12px;
+    position: relative; overflow: hidden;
+  }
+  .pipeline-lane-down { border-color: rgba(144,96,221,0.3); background: rgba(144,96,221,0.05); }
+  .pipeline-lane-name { font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .pipeline-lane-detail { font-size: 9px; color: var(--muted); line-height: 1.4; }
+  .pipeline-dots {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 40px;
+    pointer-events: none;
+  }
+  .pdot {
+    position: absolute; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--orange); opacity: 0;
+    animation: dot-travel 1.8s linear infinite;
+  }
+  .pdot-spk {
+    background: #9060dd;
+    animation: dot-travel-rev 1.8s linear infinite;
+  }
+  @keyframes dot-travel {
+    0%   { right: 32px; top: 50%; transform: translateY(-50%); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { right: -4px; top: 50%; transform: translateY(-50%); opacity: 0; }
+  }
+  @keyframes dot-travel-rev {
+    0%   { right: -4px; top: 50%; transform: translateY(-50%); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { right: 32px; top: 50%; transform: translateY(-50%); opacity: 0; }
+  }
+  .pipeline-ws {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; padding: 0 4px;
+  }
+  .pipeline-ws-label { font-size: 9px; color: rgba(255,106,30,0.5); letter-spacing: 1px; }
+  .pipeline-ws-badge {
+    background: rgba(255,106,30,0.12);
+    border: 1px solid rgba(255,106,30,0.3);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 9px; font-weight: 700; letter-spacing: 1px;
+    color: rgba(255,160,80,0.9);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+  }
+  .pipeline-device-right .pipeline-lane { border-color: rgba(255,106,30,0.15); background: rgba(255,106,30,0.04); }
+
+  /* ── DIAGRAM 2: KNOWLEDGE STACK ── */
+  .kstack-query {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px; padding: 10px 16px;
+    font-size: 14px; font-weight: 600; color: var(--text);
+    margin-bottom: 4px;
+  }
+  .kstack-query-icon { font-size: 18px; }
+  .kstack-arrow-down {
+    text-align: center; font-size: 18px;
+    color: rgba(255,255,255,0.2); margin: 4px 0;
+  }
+  .kstack-layers { display: flex; flex-direction: column; gap: 4px; }
+  .kstack-miss {
+    font-size: 9px; color: rgba(255,255,255,0.2);
+    text-align: center; letter-spacing: 1px; padding: 2px 0;
+  }
+  .kstack-layer {
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .kstack-layer:hover { background: rgba(255,255,255,0.04); }
+  .kstack-l1 { border-color: rgba(144,96,221,0.3); background: rgba(144,96,221,0.05); }
+  .kstack-l2 { border-color: rgba(50,130,255,0.25); background: rgba(50,130,255,0.04); }
+  .kstack-l3 { border-color: rgba(255,106,30,0.25); background: rgba(255,106,30,0.04); }
+  .kstack-layer-header { display: flex; align-items: center; gap: 12px; }
+  .kstack-layer-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; flex-shrink: 0;
+    color: var(--text);
+  }
+  .kstack-layer-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .kstack-layer-sub { font-size: 9.5px; color: var(--muted); margin-top: 2px; }
+  .kstack-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .kstack-chip {
+    font-size: 9px; font-weight: 600;
+    padding: 3px 8px; border-radius: 20px;
+    border: 1px solid transparent;
+  }
+  .kstack-chip-purple { background: rgba(144,96,221,0.15); border-color: rgba(144,96,221,0.4); color: rgba(190,150,255,0.9); }
+  .kstack-chip-blue   { background: rgba(50,130,255,0.12); border-color: rgba(80,150,255,0.35); color: rgba(140,190,255,0.9); }
+  .kstack-chip-orange { background: rgba(255,106,30,0.12); border-color: rgba(255,106,30,0.35); color: rgba(255,170,90,0.9); }
+  .kstack-layer-detail {
+    display: none;
+    font-size: 13px; color: rgba(240,240,245,0.7);
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    line-height: 1.6;
+  }
+  .kstack-layer-detail code { font-size: 11px; background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 3px; color: rgba(255,180,90,0.9); }
+  .kstack-layer.open .kstack-layer-detail { display: block; }
+
+  /* ── DIAGRAM 3: SEQUENCE ── */
+  .seq-container { display: flex; flex-direction: column; gap: 10px; }
+  .seq-step { opacity: 0; transform: translateY(8px); transition: all 0.4s ease; }
+  .seq-step.visible { opacity: 1; transform: translateY(0); }
+  .seq-bubble {
+    border-radius: 10px; padding: 12px 16px; max-width: 90%;
+  }
+  .seq-bubble-user {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    margin-left: auto;
+  }
+  .seq-bubble-agent {
+    background: rgba(144,96,221,0.1); border: 1px solid rgba(144,96,221,0.25);
+    margin-right: auto;
+  }
+  .seq-who { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+  .seq-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+  .seq-tag { font-size: 9px; color: rgba(255,255,255,0.25); margin-top: 4px; letter-spacing: 0.5px; }
+  .seq-tag-right { text-align: right; }
+  .seq-tool-call {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,106,30,0.08); border: 1px solid rgba(255,106,30,0.3);
+    border-radius: 10px; padding: 12px 16px;
+  }
+  .seq-tool-icon { font-size: 20px; }
+  .seq-tool-name { font-size: 12px; font-weight: 700; color: rgba(255,170,90,0.95); font-family: 'SF Mono','Fira Code',monospace; }
+  .seq-tool-args { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .seq-tool-args code { color: rgba(255,200,100,0.7); font-size: 10px; }
+  .seq-tool-badge {
+    margin-left: auto; font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+    background: var(--orange); color: #fff;
+    padding: 3px 8px; border-radius: 4px;
+  }
+  .seq-tool-result {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-left: 3px solid rgba(255,106,30,0.5);
+    border-radius: 0 8px 8px 0; padding: 12px 16px;
+  }
+  .seq-tool-result-label { font-size: 9px; font-weight: 700; color: rgba(255,160,80,0.7); letter-spacing: 1px; margin-bottom: 6px; }
+  .seq-tool-result-text { font-size: 12px; color: rgba(240,240,245,0.7); line-height: 1.5; font-style: italic; }
+  .seq-controls { display: flex; gap: 10px; margin-top: 16px; justify-content: center; }
+  .seq-btn {
+    background: var(--orange); color: #fff; border: none;
+    font-size: 12px; font-weight: 700; padding: 8px 20px;
+    border-radius: 6px; cursor: pointer; transition: opacity 0.2s;
+  }
+  .seq-btn:hover { opacity: 0.85; }
+  .seq-btn-ghost {
+    background: rgba(255,255,255,0.06); color: var(--muted);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .seq-btn-ghost:hover { color: var(--text); opacity: 1; }
+
+  /* ── GLASSES DIAGRAM ── */
+  .glasses-grid {
+    display: grid; grid-template-columns: 1fr 60px 1fr; gap: 0;
+    align-items: center; margin-bottom: 20px;
+  }
+  .glasses-source {
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px; padding: 16px;
+    text-align: center; transition: all 0.35s ease;
+  }
+  .glasses-source-phone { background: rgba(255,255,255,0.05); }
+  .glasses-source-rb    { background: rgba(144,96,221,0.05); border-color: rgba(144,96,221,0.2); }
+  .glasses-source.is-active { border-color: var(--orange); background: rgba(255,106,30,0.07); box-shadow: 0 0 20px rgba(255,106,30,0.1); }
+  .glasses-source.is-active.glasses-source-rb { border-color: rgba(144,96,221,0.6); background: rgba(144,96,221,0.1); box-shadow: 0 0 20px rgba(144,96,221,0.15); }
+  .glasses-source-icon { font-size: 28px; margin-bottom: 8px; }
+  .glasses-source-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .glasses-source-detail { font-size: 9.5px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+  .glasses-source-badge {
+    display: inline-block; font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+    padding: 3px 10px; border-radius: 20px;
+  }
+  .glasses-badge-active   { background: var(--orange); color: #fff; }
+  .glasses-badge-inactive { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.1); }
+  .glasses-badge-active.glasses-badge-purple { background: rgba(144,96,221,0.8); }
+  .glasses-toggle-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .glasses-toggle-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
+    color: var(--text); font-size: 18px; cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+  }
+  .glasses-toggle-btn:hover { background: rgba(255,106,30,0.15); border-color: rgba(255,106,30,0.4); }
+  .glasses-toggle-label { font-size: 9px; color: rgba(255,255,255,0.25); letter-spacing: 1px; }
+  .glasses-stack { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 16px; }
+  .glasses-stack-label { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(240,240,245,0.3); margin-bottom: 10px; }
+  .glasses-stack-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .glasses-stack-chip {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(240,240,245,0.7); font-size: 10px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+  }
+  .glasses-stack-arrow { font-size: 12px; color: rgba(255,255,255,0.2); flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="logo-text">
+      <span class="logo-fixit">FixIt</span>
+      <span class="logo-genie">Genie</span>
+    </div>
+  </a>
+  <a href="/" class="nav-back">← Back to demo</a>
+</nav>
+
+<div class="blog-hero">
+  <div class="blog-tag">✦ Gemini Live Agent Challenge</div>
+  <h1 class="blog-title">Eyes, Voice, and a Wrench: What Happens When AI Can See What You See</h1>
+  <p class="blog-subtitle">Building FixIt Genie — a real-time multimodal AI agent for equipment repair, powered by Gemini Live API and Google ADK.</p>
+  <div class="blog-meta">
+    <span>March 2026</span>
+    <div class="blog-meta-dot"></div>
+    <span>12 min read</span>
+    <div class="blog-meta-dot"></div>
+    <span>#GeminiLiveAgentChallenge</span>
+  </div>
+</div>
+
+<div class="blog-content">
+
+  <h2>The Problem Is Bigger Than a Broken Dishwasher</h2>
+
+  <p>There are 15 million skilled trade workers in the United States alone. Electricians, mechanics, HVAC technicians, biomedical engineers, factory maintenance techs. Every single day, they face equipment they've never seen before, error codes with no obvious cause, and procedures that require three hands and a photographic memory.</p>
+
+  <p>The tools they have? A PDF manual. A YouTube video that doesn't quite match their model. A colleague who might pick up the phone.</p>
+
+  <p>Now picture this: a maintenance technician on a factory floor, hands inside an electrical panel, Ray-Ban glasses on. An AI agent is watching through the glasses camera — seeing the exact wiring configuration, the exact components in front of them — and talking them through the fault diagnosis step by step. Hands-free. No phone to hold. No manual to flip through. Just a voice that sees what they see.</p>
+
+  <div class="callout">That's not a demo. That's what we built.</div>
+
+  <div class="pull-quote">People in skilled trades don't need more manuals. They need someone who can see what they're looking at and talk them through it. Gemini Live makes that possible.</div>
+
+  <hr>
+
+  <h2>A New Category of AI Tool</h2>
+
+  <p>Most AI tools today are either blind (text chat) or passive (image upload → response). What Gemini Live enables is something qualitatively different: an AI that <strong>sees continuously, speaks naturally, and acts on domain knowledge</strong> — all at the same time, in real time.</p>
+
+  <p>That combination defines a new class of tool. Not a chatbot. Not a vision API wrapper. Something that behaves more like a knowledgeable colleague standing next to you.</p>
+
+  <p>The pattern generalizes far beyond home repair:</p>
+
+  <ul>
+    <li><strong>Factory floor</strong> — A technician wears Ray-Ban glasses. The agent sees the machine, cross-references the OEM maintenance manual, and guides the lockout/tagout procedure before any panel opens.</li>
+    <li><strong>Insurance claims</strong> — A field adjuster points their phone at storm damage. The agent reads repair guides and local building codes in real time, then generates a structured damage report on the spot.</li>
+    <li><strong>Biomedical engineering</strong> — A technician servicing hospital imaging equipment gets an agent that cross-references FDA device databases, manufacturer service manuals, and facility service history — with the same safety-first discipline that warns about radiation interlocks and high-voltage components.</li>
+  </ul>
+
+  <p><strong>FixIt Genie is our proof of concept.</strong> It targets equipment repair for consumers and professionals — but the architecture is the platform.</p>
+
+  <hr>
+
+  <h2>What FixIt Genie Does</h2>
+
+  <p>FixIt Genie is a native Android app powered by Gemini 2.5 Flash Native Audio through the Google Agent Development Kit (ADK). You point your camera at whatever's broken, describe the problem out loud, and the AI agent sees what you see, understands what you're saying, and walks you through diagnosis and repair in natural conversation.</p>
+
+  <p><strong>Three core capabilities:</strong></p>
+
+  <ol>
+    <li><strong>Visual Understanding</strong> — The agent processes camera frames at 1 FPS, identifying equipment types, reading error codes, checking gauge levels, and spotting issues you might miss.</li>
+    <li><strong>Conversational Guidance</strong> — Bidirectional audio streaming means you talk naturally. The agent asks clarifying questions, gives one step at a time, and confirms each step visually before moving on.</li>
+    <li><strong>Safety-First Design</strong> — Before guiding any physical action (breaker panel, hot coolant, battery terminals), the agent always retrieves and communicates relevant safety warnings. This isn't a feature — it's enforced in the system prompt.</li>
+  </ol>
+
+  <h3>Ray-Ban Glasses: Hands-Free Repair</h3>
+
+  <p>For situations where holding a phone gets in the way — under a car, inside an appliance panel, deep in an engine bay — FixIt Genie supports <strong>Ray-Ban Meta glasses</strong> as a fully integrated camera source. One tap switches the live video stream from your phone camera to the glasses. The same AI agent that was watching your phone is now watching through your eyewear, hands-free.</p>
+
+  <p>This isn't a novelty. For professional use cases — factory floor, field service, surgical suite — it's the only viable form factor. You cannot hold a phone while your hands are inside running machinery.</p>
+
+  <!-- DIAGRAM: Glasses Camera Source Toggle -->
+  <div class="diag-wrap">
+    <div class="diag-label">Camera Source — Live Toggle</div>
+
+    <div class="glasses-grid">
+
+      <!-- Phone source -->
+      <div class="glasses-source glasses-source-phone" id="gsrc-phone">
+        <div class="glasses-source-icon">📱</div>
+        <div class="glasses-source-name">Phone Camera</div>
+        <div class="glasses-source-detail">CameraX ImageAnalysis<br>Back camera · 1 FPS</div>
+        <div class="glasses-source-badge glasses-badge-active">ACTIVE</div>
+      </div>
+
+      <!-- Toggle arrow -->
+      <div class="glasses-toggle-col">
+        <button class="glasses-toggle-btn" onclick="toggleGlassesSource()" title="Switch camera source">
+          <span id="toggle-icon">⇄</span>
+        </button>
+        <div class="glasses-toggle-label">one tap</div>
+      </div>
+
+      <!-- Glasses source -->
+      <div class="glasses-source glasses-source-rb" id="gsrc-glasses">
+        <div class="glasses-source-icon">🕶️</div>
+        <div class="glasses-source-name">Ray-Ban Meta Glasses</div>
+        <div class="glasses-source-detail">Meta DAT SDK v0.4<br>I420 → JPEG conversion</div>
+        <div class="glasses-source-badge glasses-badge-inactive">STANDBY</div>
+      </div>
+
+    </div>
+
+    <!-- SDK stack -->
+    <div class="glasses-stack">
+      <div class="glasses-stack-label">Integration stack</div>
+      <div class="glasses-stack-row">
+        <div class="glasses-stack-chip" style="border-color:rgba(144,96,221,0.4);color:rgba(190,150,255,0.9);">SessionViewModel · CameraSource enum</div>
+        <div class="glasses-stack-arrow">↓</div>
+        <div class="glasses-stack-chip" style="border-color:rgba(255,106,30,0.3);color:rgba(255,170,90,0.9);">GlassesCameraManager</div>
+        <div class="glasses-stack-arrow">↓</div>
+        <div class="glasses-stack-chip">Meta Wearables SDK · mwdat-camera</div>
+        <div class="glasses-stack-arrow">↓</div>
+        <div class="glasses-stack-chip">I420 → JPEG · same ADK LiveRequest pipeline</div>
+      </div>
+    </div>
+
+    <p style="font-size:11px;color:rgba(240,240,245,0.3);margin-top:14px;">No session restart required on switch · agent sees the new stream immediately</p>
+  </div>
+
+  <p>The integration uses the Meta DAT SDK (<code>mwdat-core</code>, <code>mwdat-camera</code>) to stream glasses frames via the Wearables SDK. <code>GlassesCameraManager</code> handles I420→JPEG conversion and feeds frames into the same WebSocket pipeline as the phone camera. <code>SessionViewModel</code> exposes a <code>CameraSource</code> enum (<code>PHONE</code> / <code>GLASSES</code>) — switching is live with no session restart.</p>
+
+  <hr>
+
+  <h2>Architecture: How It All Fits Together</h2>
+
+  <p>The system is a monorepo: a native Android app and a Python backend on Google Cloud Run.</p>
+
+  <h3>The Android App (Kotlin + Jetpack Compose)</h3>
+
+  <p>Three real-time data streams, one WebSocket connection:</p>
+
+  <!-- DIAGRAM 1: Live Streaming Pipeline -->
+  <div class="diag-wrap" id="diag-pipeline">
+    <div class="diag-label">Live Streaming Pipeline</div>
+    <div class="pipeline-grid">
+
+      <!-- Android column -->
+      <div class="pipeline-device">
+        <div class="pipeline-device-title">Android App</div>
+        <div class="pipeline-lane" id="lane-cam">
+          <div class="pipeline-lane-name">📱 Camera</div>
+          <div class="pipeline-lane-detail">CameraX · 1 FPS · 768×768 JPEG</div>
+          <div class="pipeline-dots" id="dots-cam"></div>
+        </div>
+        <div class="pipeline-lane" id="lane-mic">
+          <div class="pipeline-lane-name">🎙️ Mic In</div>
+          <div class="pipeline-lane-detail">AudioRecord · 16 kHz PCM mono</div>
+          <div class="pipeline-dots" id="dots-mic"></div>
+        </div>
+        <div class="pipeline-lane pipeline-lane-down" id="lane-spk">
+          <div class="pipeline-lane-name">🔊 Speaker</div>
+          <div class="pipeline-lane-detail">AudioTrack · 24 kHz PCM · AEC</div>
+          <div class="pipeline-dots" id="dots-spk"></div>
+        </div>
+      </div>
+
+      <!-- WebSocket bridge -->
+      <div class="pipeline-ws">
+        <div class="pipeline-ws-label">wss://</div>
+        <div class="pipeline-ws-badge">WebSocket</div>
+        <div class="pipeline-ws-label" style="margin-top:6px;font-size:9px;opacity:0.4">single connection</div>
+      </div>
+
+      <!-- Cloud Run column -->
+      <div class="pipeline-device pipeline-device-right">
+        <div class="pipeline-device-title" style="color:rgba(255,160,80,0.9)">Cloud Run · ADK</div>
+        <div class="pipeline-lane" style="border-color:rgba(255,106,30,0.25);">
+          <div class="pipeline-lane-name" style="color:rgba(255,160,80,0.9)">👁️ Vision</div>
+          <div class="pipeline-lane-detail">Gemini sees frames continuously</div>
+        </div>
+        <div class="pipeline-lane" style="border-color:rgba(255,106,30,0.25);">
+          <div class="pipeline-lane-name" style="color:rgba(255,160,80,0.9)">👂 Hear</div>
+          <div class="pipeline-lane-detail">Native VAD · no start/stop signals</div>
+        </div>
+        <div class="pipeline-lane pipeline-lane-down" style="border-color:rgba(255,106,30,0.25);">
+          <div class="pipeline-lane-name" style="color:rgba(255,160,80,0.9)">🗣️ Speak</div>
+          <div class="pipeline-lane-detail">gemini-2.5-flash-native-audio</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <p><strong>Camera (CameraX)</strong> — <code>ImageAnalysis</code> captures frames from the back camera at 1 FPS, scaled to 768×768, JPEG-compressed, Base64-encoded, and sent as ADK <code>LiveRequest</code> JSON blobs. When glasses mode is active, <code>GlassesCameraManager</code> replaces this stream with I420→JPEG-converted frames from the Meta DAT SDK.</p>
+
+  <p><strong>Audio Input (AudioRecord)</strong> — Raw PCM at 16kHz mono, streamed as Base64-encoded blobs over the same connection. The native audio model handles voice activity detection automatically — no need to signal speech start/end.</p>
+
+  <p><strong>Audio Output (AudioTrack)</strong> — The agent's voice responses arrive as PCM audio in <code>LiveEvent</code> messages. <code>AudioTrack</code> is configured with <code>USAGE_VOICE_COMMUNICATION</code> and <code>MODE_IN_COMMUNICATION</code> so hardware acoustic echo cancellation kicks in — critical when the agent's voice and the user's microphone are in the same room.</p>
+
+  <ul class="chip-list">
+    <li class="chip-orange">SessionViewModel</li>
+    <li class="chip-orange">AudioStreamManager</li>
+    <li class="chip-orange">AgentWebSocket</li>
+    <li class="chip-orange">GlassesCameraManager</li>
+    <li class="chip-orange">GenieAvatar · Compose Canvas</li>
+  </ul>
+
+  <h3>The Backend (Google ADK on Cloud Run)</h3>
+
+  <p>The backend uses ADK's <code>adk web</code>, which exposes a <code>/run_live</code> WebSocket endpoint for bidi-streaming. The agent combines three ADK domain skills with six function tools:</p>
+
+  <p><strong>Domain Skills</strong> (<code>SkillToolset</code>) — loaded on demand:</p>
+  <ul class="chip-list">
+    <li class="chip-purple">🚗 Automotive</li>
+    <li class="chip-purple">⚡ Electrical</li>
+    <li class="chip-purple">🏠 Appliances</li>
+  </ul>
+
+  <p>Each skill is a <code>SKILL.md</code> with behavioral instructions plus <code>references/</code> markdown docs. The agent calls <code>list_skills</code> to discover available domains and <code>load_skill</code> to pull one into context only when needed — keeping the context window lean.</p>
+
+  <p><strong>Function Tools:</strong></p>
+  <ul class="chip-list">
+    <li>🔧 lookup_equipment_knowledge</li>
+    <li>⚠️ get_safety_warnings</li>
+    <li>▶️ analyze_youtube_repair_video</li>
+    <li>📄 lookup_user_manual</li>
+    <li>🔍 google_search (built-in)</li>
+    <li>📝 log_diagnostic_step</li>
+  </ul>
+
+<pre><code>from google.adk.skills import load_skill_from_dir
+from google.adk.tools.skill_toolset import SkillToolset
+from google.adk.tools.google_search_tool import GoogleSearchTool
+
+_skill_toolset = SkillToolset(skills=[
+    load_skill_from_dir(_SKILLS_DIR / "automotive"),
+    load_skill_from_dir(_SKILLS_DIR / "electrical"),
+    load_skill_from_dir(_SKILLS_DIR / "appliances"),
+])
+
+agent = Agent(
+    model="gemini-2.5-flash-native-audio-latest",
+    name="fixitgenie",
+    instruction=SYSTEM_INSTRUCTION,
+    tools=[
+        _skill_toolset,
+        lookup_equipment_knowledge,
+        get_safety_warnings,
+        log_diagnostic_step,
+        GoogleSearchTool(bypass_multi_tools_limit=True),
+        analyze_youtube_repair_video,
+        lookup_user_manual,
+    ],
+)</code></pre>
+
+  <h3>Deployment</h3>
+
+  <p>Cloud Run with session affinity (critical for persistent WebSocket connections). The <code>deploy.sh</code> script is a single-command IaC deployment: enables APIs, creates the Artifact Registry, builds the container, deploys. One discovery worth noting: <code>gemini-2.5-flash-native-audio-latest</code> only works with the Gemini API, not Vertex AI. <code>GOOGLE_GENAI_USE_VERTEXAI=FALSE</code> plus a direct API key is the required configuration.</p>
+
+  <hr>
+
+  <h2>The Knowledge Stack</h2>
+
+  <h3>Why ADK Skills + Vector Search Instead of a Hardcoded Dict?</h3>
+
+  <p>The first prototype embedded knowledge directly in <code>tools.py</code> as a Python dictionary. Fast, dependency-free, and architecturally wrong for three reasons: keyword matching fails on synonyms ("engine won't turn over" misses the battery document), adding knowledge requires redeploying code, and a hardcoded dict is a weak answer to "show me evidence of grounding."</p>
+
+  <p>The production architecture uses two complementary layers:</p>
+
+  <!-- DIAGRAM 2: Knowledge Stack Cascade -->
+  <div class="diag-wrap">
+    <div class="diag-label">Knowledge Lookup Cascade</div>
+    <div class="kstack-query">
+      <span class="kstack-query-icon">💬</span>
+      <span>"engine oil pressure alarm"</span>
+    </div>
+    <div class="kstack-arrow-down">↓</div>
+    <div class="kstack-layers">
+
+      <div class="kstack-layer kstack-l1" onclick="kstackToggle(this)">
+        <div class="kstack-layer-header">
+          <div class="kstack-layer-num">1</div>
+          <div>
+            <div class="kstack-layer-title">ADK Domain Skills</div>
+            <div class="kstack-layer-sub">Behavioral instructions · domain expertise · repair patterns</div>
+          </div>
+          <div class="kstack-chips">
+            <span class="kstack-chip kstack-chip-purple">🚗 Automotive</span>
+            <span class="kstack-chip kstack-chip-purple">⚡ Electrical</span>
+            <span class="kstack-chip kstack-chip-purple">🏠 Appliances</span>
+          </div>
+        </div>
+        <div class="kstack-layer-detail">
+          Each skill is a <code>SKILL.md</code> with reference docs loaded on demand via <code>load_skill</code>. Defines <em>how</em> the agent diagnoses — what questions to ask, when to escalate, what safety checks to run. Loaded into context only when needed — keeps the context window lean.
+        </div>
+      </div>
+
+      <div class="kstack-miss">miss → next layer</div>
+
+      <div class="kstack-layer kstack-l2" onclick="kstackToggle(this)">
+        <div class="kstack-layer-header">
+          <div class="kstack-layer-num">2</div>
+          <div>
+            <div class="kstack-layer-title">Firestore Vector Search</div>
+            <div class="kstack-layer-sub">Semantic similarity · 3072-dim embeddings · COSINE index</div>
+          </div>
+          <div class="kstack-chips">
+            <span class="kstack-chip kstack-chip-blue">find_nearest()</span>
+            <span class="kstack-chip kstack-chip-blue">text-embedding-004</span>
+          </div>
+        </div>
+        <div class="kstack-layer-detail">
+          Equipment documents embedded with <code>text-embedding-004</code> and stored in Firestore. "engine oil pressure alarm" semantically matches the oil system document — zero keyword overlap required. Handles synonyms, paraphrases, and partial descriptions.
+        </div>
+      </div>
+
+      <div class="kstack-miss">miss → next layer</div>
+
+      <div class="kstack-layer kstack-l3" onclick="kstackToggle(this)">
+        <div class="kstack-layer-header">
+          <div class="kstack-layer-num">3</div>
+          <div>
+            <div class="kstack-layer-title">Live Web Tools</div>
+            <div class="kstack-layer-sub">Real-time search · video transcripts · manufacturer PDFs</div>
+          </div>
+          <div class="kstack-chips">
+            <span class="kstack-chip kstack-chip-orange">google_search</span>
+            <span class="kstack-chip kstack-chip-orange">YouTube</span>
+            <span class="kstack-chip kstack-chip-orange">PDF manuals</span>
+          </div>
+        </div>
+        <div class="kstack-layer-detail">
+          Handles the long tail — the 2009 Mitsubishi Outlander P2101 that no KB covers. Google Search finds relevant pages, <code>analyze_youtube_repair_video</code> extracts transcripts from niche repair channels, <code>lookup_user_manual</code> fetches and parses manufacturer PDFs.
+        </div>
+      </div>
+
+    </div>
+    <p style="font-size:11px;color:rgba(240,240,245,0.3);text-align:center;margin-top:12px;">Click a layer to expand · layers compose, not replace</p>
+  </div>
+
+  <p><strong>ADK Skills</strong> — Each skill package is a <code>SKILL.md</code> with behavioral instructions plus <code>references/</code> markdown docs. The behavioral layer (how the agent diagnoses, what questions it asks, when it escalates) is separate from the knowledge layer. Agents that mix behavior and facts in a single blob become brittle.</p>
+
+  <p><strong>Firestore Vector Search</strong> — Equipment documents are embedded with <code>text-embedding-004</code> (3072 dimensions) and stored in Firestore with a COSINE vector index. <code>lookup_equipment_knowledge</code> calls <code>find_nearest()</code> — "engine oil pressure alarm" semantically matches the oil system document with zero keyword overlap.</p>
+
+  <h3>Handling the Long Tail</h3>
+
+  <p>Nine knowledge documents cover common scenarios well. Someone with a 2009 Mitsubishi Outlander asking about a P2101 throttle actuator code will exhaust the skills KB fast. Three web tools handle the rest — each with non-obvious implementation decisions:</p>
+
+  <p><strong><code>google_search</code></strong> — <code>GoogleSearchTool</code> (ADK's built-in grounding tool) cannot coexist with custom function tools by default. The fix: <code>bypass_multi_tools_limit=True</code> on the <code>GoogleSearchTool</code> instance. Without it, every live session throws a <code>400 INVALID_ARGUMENT</code> on deployment.</p>
+
+  <p><strong><code>analyze_youtube_repair_video</code></strong> — The obvious approach (pass the YouTube URL to Gemini's REST API) works for massively popular videos but silently fails for niche repair channels — exactly the content that's most useful. The fix: fetch the transcript independently via <code>youtube-transcript-api</code>, pass the text to Gemini for summarization.</p>
+
+  <p><strong><code>lookup_user_manual</code></strong> — ManualsLib has no public API and bot-detection blocks scraping. Instead: a grounded Gemini search query finds the manufacturer's official PDF URL, <code>requests</code> fetches it, <code>pypdf</code> extracts the text, a second Gemini call summarizes the relevant sections.</p>
+
+  <hr>
+
+  <h2>Design Decisions That Mattered</h2>
+
+  <p><strong>Why native Android instead of web?</strong> CameraX and AudioRecord give much lower latency than WebRTC in a browser. When you're talking someone through a repair, every millisecond of lag makes the conversation feel unnatural. Native also handles background audio properly and gives access to the real camera torch — genuinely useful when peering into dark engine bays.</p>
+
+  <p><strong>Why safety-first as a core design principle?</strong> Every tool call that could result in physical action requires a safety check before the agent gives any instruction. The agent won't tell you to "open the breaker panel" without first warning about lethal voltages. Responsible AI design isn't a compliance checkbox — for a repair guidance app, it's what makes the product trustworthy.</p>
+
+  <hr>
+
+  <h2>Lessons Learned</h2>
+
+  <p><strong>Bidi-streaming is the key differentiator.</strong> Most entries will use request-response patterns. Real-time bidi-streaming with audio feels qualitatively different — it's a conversation, not a chatbot. The Gemini native audio model handles VAD automatically, which makes the interaction feel natural without any engineering effort.</p>
+
+  <p><strong>1 FPS is plenty for equipment diagnosis.</strong> Equipment doesn't move fast. One frame per second at 768×768 JPEG is enough for reading gauges, error codes, and identifying components while keeping bandwidth and cost reasonable.</p>
+
+  <p><strong>System prompts matter enormously for multimodal agents.</strong> The difference between "identify the equipment" and "describe what you see to build trust, then identify the equipment" is the difference between a tool and an assistant. Users need to know the agent is actually seeing what they're showing it.</p>
+
+  <p><strong>Function calling during live streaming is powerful.</strong> The native audio model supports custom function calling alongside bidi-streaming. The user says "my washing machine shows E4" and the agent seamlessly queries the knowledge base mid-conversation — no interruption in the flow.</p>
+
+  <!-- DIAGRAM 3: Tool Call Sequence -->
+  <div class="diag-wrap">
+    <div class="diag-label">Function Call Mid-Conversation</div>
+    <div class="seq-container" id="seq-container">
+
+      <div class="seq-step" data-step="0">
+        <div class="seq-bubble seq-bubble-user">
+          <div class="seq-who">You</div>
+          <div class="seq-text">"My washing machine shows E4 and stopped mid-cycle"</div>
+        </div>
+        <div class="seq-tag seq-tag-right">PCM 16kHz → Cloud Run</div>
+      </div>
+
+      <div class="seq-step" data-step="1">
+        <div class="seq-bubble seq-bubble-agent">
+          <div class="seq-who">Agent</div>
+          <div class="seq-text">Identifies "E4" + "washing machine" → triggers lookup</div>
+        </div>
+        <div class="seq-tag seq-tag-left">Gemini Live API · function_call detected</div>
+      </div>
+
+      <div class="seq-step" data-step="2">
+        <div class="seq-tool-call">
+          <div class="seq-tool-icon">🔧</div>
+          <div>
+            <div class="seq-tool-name">lookup_equipment_knowledge</div>
+            <div class="seq-tool-args"><code>query="washing machine E4 error"</code></div>
+          </div>
+          <div class="seq-tool-badge">TOOL CALL</div>
+        </div>
+      </div>
+
+      <div class="seq-step" data-step="3">
+        <div class="seq-tool-result">
+          <div class="seq-tool-result-label">↩ Result</div>
+          <div class="seq-tool-result-text">"E4: water supply issue — machine not filling within time limit. Check: inlet valves open, inlet filters not clogged, water pressure adequate."</div>
+        </div>
+      </div>
+
+      <div class="seq-step" data-step="4">
+        <div class="seq-bubble seq-bubble-agent">
+          <div class="seq-who">Agent speaks</div>
+          <div class="seq-text">"E4 on a Samsung typically means a water supply issue. Are both the hot and cold valves behind the machine fully open?"</div>
+        </div>
+        <div class="seq-tag seq-tag-left">PCM 24kHz → AudioTrack → speaker</div>
+      </div>
+
+    </div>
+    <div class="seq-controls">
+      <button class="seq-btn" id="seq-play-btn" onclick="seqPlay()">▶ Play through</button>
+      <button class="seq-btn seq-btn-ghost" onclick="seqReset()">↺ Reset</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>The Pattern Generalizes</h2>
+
+  <p>FixIt Genie targets equipment repair, but the architecture is a template. The camera and audio pipeline, WebSocket protocol, ADK skills structure, safety-first design, and Ray-Ban glasses support are all reusable infrastructure. A new vertical means new tools and a new system prompt — the streaming core stays the same.</p>
+
+  <ul>
+    <li><strong>Industrial maintenance</strong> — Ray-Ban glasses on the factory floor, agent sees through the glasses camera, guides lockout/tagout before any panel opens.</li>
+    <li><strong>Fleet and field service</strong> — Agent knows the vehicle VIN, pulls active service bulletins, guides roadside repair and escalates when outside safe scope.</li>
+    <li><strong>Healthcare equipment</strong> — Biomedical tech gets cross-referenced FDA databases, manufacturer manuals, and safety warnings for radiation interlocks and high-voltage components.</li>
+  </ul>
+
+  <div class="pull-quote">Swap the knowledge tools and system prompt. The streaming core delivers the same conversational, visually-grounded experience.</div>
+
+  <hr>
+
+  <h2>Close</h2>
+
+  <p>We started with a simple observation: the most dangerous moment in equipment repair is when someone who doesn't know what they're looking at has to make a decision. The standard solution — manuals, tutorials, hotlines — all have the same flaw. They can't see what you see.</p>
+
+  <p>Gemini Live changes that constraint. An AI that streams your camera, hears your voice, retrieves domain knowledge, and talks back in real time isn't a better search engine. It's a different kind of tool entirely.</p>
+
+  <p><strong>FixIt Genie is one application. The category is wide open.</strong></p>
+
+  <hr>
+
+  <p><em>Built for the Gemini Live Agent Challenge using Google ADK, Gemini 2.5 Flash Native Audio, Cloud Run, and a native Android app with CameraX, Ray-Ban Meta glasses support, and Jetpack Compose.</em></p>
+
+</div>
+
+<footer>
+  <p>FixIt Genie · Gemini Live Agent Challenge · 2026</p>
+  <div class="footer-links">
+    <a href="/">Demo Page</a>
+    <a href="https://github.com/dabra-labs/fixbuddy" target="_blank">GitHub</a>
+    <a href="https://geminiliveagentchallenge.devpost.com" target="_blank">Devpost</a>
+  </div>
+</footer>
+
+<script>
+// ── DIAGRAM 1: Animated dots ──────────────────────────────────────────────
+function makeDots(containerId, cls, count, delaySpread) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('div');
+    d.className = 'pdot' + (cls ? ' ' + cls : '');
+    d.style.animationDelay = (i * delaySpread) + 's';
+    el.appendChild(d);
+  }
+}
+makeDots('dots-cam', '',         3, 0.6);
+makeDots('dots-mic', '',         4, 0.45);
+makeDots('dots-spk', 'pdot-spk', 3, 0.7);
+
+// ── GLASSES DIAGRAM: source toggle ───────────────────────────────────────
+let glassesActive = false;
+function toggleGlassesSource() {
+  glassesActive = !glassesActive;
+  const phone   = document.getElementById('gsrc-phone');
+  const glasses = document.getElementById('gsrc-glasses');
+  if (!phone || !glasses) return;
+
+  const phoneBadge   = phone.querySelector('.glasses-source-badge');
+  const glassesBadge = glasses.querySelector('.glasses-source-badge');
+
+  if (glassesActive) {
+    phone.classList.remove('is-active');
+    glasses.classList.add('is-active');
+    phoneBadge.textContent   = 'STANDBY';
+    phoneBadge.className     = 'glasses-source-badge glasses-badge-inactive';
+    glassesBadge.textContent = 'ACTIVE';
+    glassesBadge.className   = 'glasses-source-badge glasses-badge-active glasses-badge-purple';
+  } else {
+    glasses.classList.remove('is-active');
+    phone.classList.add('is-active');
+    glassesBadge.textContent = 'STANDBY';
+    glassesBadge.className   = 'glasses-source-badge glasses-badge-inactive';
+    phoneBadge.textContent   = 'ACTIVE';
+    phoneBadge.className     = 'glasses-source-badge glasses-badge-active';
+  }
+}
+// Start with phone active
+document.addEventListener('DOMContentLoaded', () => {
+  const phone = document.getElementById('gsrc-phone');
+  if (phone) phone.classList.add('is-active');
+});
+
+// ── DIAGRAM 2: Knowledge stack toggle ────────────────────────────────────
+function kstackToggle(el) {
+  el.classList.toggle('open');
+}
+
+// ── DIAGRAM 3: Sequence animation ────────────────────────────────────────
+const steps = document.querySelectorAll('.seq-step');
+let seqTimer = null;
+
+function seqPlay() {
+  seqReset();
+  const btn = document.getElementById('seq-play-btn');
+  btn.disabled = true;
+  btn.textContent = '▶ Playing...';
+  let i = 0;
+  function showNext() {
+    if (i >= steps.length) {
+      btn.textContent = '✓ Done';
+      return;
+    }
+    steps[i].classList.add('visible');
+    i++;
+    seqTimer = setTimeout(showNext, i === 3 ? 900 : 650);
+  }
+  showNext();
+}
+
+function seqReset() {
+  clearTimeout(seqTimer);
+  steps.forEach(s => s.classList.remove('visible'));
+  const btn = document.getElementById('seq-play-btn');
+  btn.disabled = false;
+  btn.textContent = '▶ Play through';
+}
+
+// Auto-play sequence when it scrolls into view
+const seqObs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) {
+    seqObs.disconnect();
+    setTimeout(seqPlay, 400);
+  }
+}, { threshold: 0.4 });
+const seqEl = document.getElementById('seq-container');
+if (seqEl) seqObs.observe(seqEl);
+</script>
+</body>
+</html>
