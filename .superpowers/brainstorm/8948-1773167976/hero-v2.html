@@ -470,90 +470,97 @@
   <a href="#" class="nav-logo">
     <div class="logo-mark">
       <div class="logo-aura"></div>
-      <!-- Genie lamp — classic oil lamp, flat & wide, spout LEFT, handle RIGHT -->
-      <svg viewBox="-2 -4 94 62" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Genie lamp — classic Aladdin side view, spout LEFT, handle RIGHT -->
+      <svg viewBox="0 -6 90 72" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="lG" x1="6" y1="12" x2="80" y2="52" gradientUnits="userSpaceOnUse">
+          <linearGradient id="lG" x1="8" y1="16" x2="82" y2="62" gradientUnits="userSpaceOnUse">
             <stop offset="0%"   stop-color="#ffe99a"/>
             <stop offset="45%"  stop-color="#e8860e"/>
             <stop offset="100%" stop-color="#a84800"/>
           </linearGradient>
-          <linearGradient id="shG" x1="42" y1="28" x2="62" y2="50" gradientUnits="userSpaceOnUse">
+          <linearGradient id="shG" x1="40" y1="30" x2="62" y2="58" gradientUnits="userSpaceOnUse">
             <stop offset="0%"   stop-color="#7a3000" stop-opacity="0"/>
-            <stop offset="100%" stop-color="#7a3000" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#7a3000" stop-opacity="0.55"/>
           </linearGradient>
-          <linearGradient id="lidG" x1="38" y1="14" x2="60" y2="24" gradientUnits="userSpaceOnUse">
+          <linearGradient id="lidG" x1="38" y1="16" x2="58" y2="28" gradientUnits="userSpaceOnUse">
             <stop offset="0%"   stop-color="#ffe880"/>
             <stop offset="100%" stop-color="#bf5e10"/>
           </linearGradient>
-          <linearGradient id="smokeG" x1="0" y1="20" x2="0" y2="-4" gradientUnits="userSpaceOnUse">
+          <linearGradient id="smokeG" x1="0" y1="28" x2="0" y2="2" gradientUnits="userSpaceOnUse">
             <stop offset="0%"   stop-color="#9060dd" stop-opacity="0.9"/>
             <stop offset="100%" stop-color="#c080ff" stop-opacity="0"/>
           </linearGradient>
         </defs>
 
-        <!-- FOOT -->
-        <ellipse cx="50" cy="52" rx="12" ry="3" fill="#9a4200"/>
+        <!-- BASE FOOT — flat oval at bottom -->
+        <ellipse cx="48" cy="60" rx="12" ry="3.5" fill="#9a4200"/>
 
-        <!-- BODY — flat oil-lamp oval, 2:1 width:height -->
-        <ellipse cx="50" cy="40" rx="22" ry="12" fill="url(#lG)"/>
-        <ellipse cx="50" cy="40" rx="22" ry="12" fill="url(#shG)"/>
-        <!-- highlight -->
-        <ellipse cx="43" cy="34" rx="8" ry="4" fill="rgba(255,255,220,0.22)" transform="rotate(-20 43 34)"/>
+        <!-- BODY — big round pot shape (wider than tall, like a rounded vase on its side) -->
+        <path d="M 34 52 C 28 52, 24 47, 24 40 C 24 31, 30 22, 42 20 C 48 19, 58 19, 64 22 C 72 26, 74 33, 72 41 C 70 50, 62 56, 50 57 C 42 58, 37 56, 34 52 Z"
+              fill="url(#lG)"/>
+        <!-- Body shading (bottom-right darker) -->
+        <path d="M 34 52 C 28 52, 24 47, 24 40 C 24 31, 30 22, 42 20 C 48 19, 58 19, 64 22 C 72 26, 74 33, 72 41 C 70 50, 62 56, 50 57 C 42 58, 37 56, 34 52 Z"
+              fill="url(#shG)"/>
+        <!-- Body highlight — top-left gleam -->
+        <ellipse cx="38" cy="28" rx="9" ry="5" fill="rgba(255,255,220,0.22)" transform="rotate(-25 38 28)"/>
 
-        <!-- LID NECK -->
-        <rect x="43" y="25" width="14" height="4" rx="1.5" fill="#b85800"/>
-        <!-- LID base ring -->
-        <ellipse cx="50" cy="23" rx="10" ry="3.5" fill="url(#lidG)"/>
-        <!-- LID dome -->
-        <ellipse cx="50" cy="21"  rx="7"  ry="2.8" fill="#ffe090"/>
-        <!-- FINIAL — slim pointed top -->
-        <path d="M 47.5 21 C 47.5 18, 49 15, 50 13 C 51 15, 52.5 18, 52.5 21 Z" fill="#ffd840"/>
-        <ellipse cx="49.2" cy="16" rx="0.7" ry="1.4" fill="rgba(255,255,255,0.5)" transform="rotate(-10 49 16)"/>
+        <!-- LID NECK — narrow collar connecting to lid -->
+        <path d="M 40 20 L 40 16 L 58 16 L 58 20 Z" fill="#b85800" rx="2"/>
+        <!-- LID — domed cap -->
+        <ellipse cx="49" cy="14" rx="11" ry="4.5" fill="url(#lidG)"/>
+        <!-- LID dome top -->
+        <ellipse cx="49" cy="11" rx="7"  ry="3"   fill="#ffe090"/>
+        <!-- FINIAL (pointed top knob) -->
+        <path d="M 46 11 C 46 8, 48 5, 49 3 C 50 5, 52 8, 52 11 Z" fill="#ffd840"/>
+        <!-- Finial shine -->
+        <ellipse cx="48" cy="6" rx="0.8" ry="1.5" fill="rgba(255,255,255,0.5)" transform="rotate(-15 48 6)"/>
 
-        <!-- SPOUT — exits body left at mid-height, arcs up-left, narrows to tip -->
+        <!-- SPOUT — curves out from body LEFT side, upward then sweeps left -->
+        <!-- Outer (top) edge: exits body at (34,36), arcs up-left, curves to tip at (6,14) -->
+        <!-- Inner (bottom) edge: returns from tip to body at (34,44) -->
         <path d="
-          M 30 36
-          C 24 33, 16 27, 10 21
-          C  7 17,  4 14,  4 14
-          C  1 12,  0 15,  1 17
-          C  2 19,  5 20,  9 22
-          C 15 25, 23 31, 30 44
+          M 34 36
+          C 28 34, 20 28, 14 22
+          C 10 18,  6 14,  6 14
+          C  3 12,  1 14,  2 17
+          C  3 19,  6 20, 10 22
+          C 16 25, 24 32, 34 44
           Z"
           fill="url(#lG)"/>
-        <!-- spout underside shadow -->
-        <path d="M 30 44 C 23 40, 15 34, 9 29 C 5 26, 2 24, 1 24 L 1 17 C 2 19, 5 20, 9 22 C 15 25, 23 31, 30 44 Z"
-              fill="rgba(100,40,0,0.32)"/>
-        <!-- spout tip upturned lip -->
-        <path d="M 1 15 C 3 12, 7 11, 9 14 C 7 16, 3 17, 1 17 Z" fill="#c06010"/>
+        <!-- Spout underside shading -->
+        <path d="M 34 44 C 24 40, 16 34, 10 29 C 6 26, 3 24, 2 24 L 2 17 C 3 19, 6 20, 10 22 C 16 25, 24 32, 34 44 Z"
+              fill="rgba(100,40,0,0.35)"/>
+        <!-- Spout tip cup rim — small upturned lip at the end -->
+        <path d="M 2 15 C 4 12, 8 11, 10 14 C 8 16, 4 17, 2 17 Z" fill="#c06010"/>
 
         <!-- HANDLE — open D-loop on RIGHT -->
         <path d="
-          M 70 32
-          C 82 30, 88 35, 88 40
-          C 88 45, 82 50, 70 49
-          L 70 45
-          C 80 45, 84 42, 84 40
-          C 84 37, 80 34, 70 36
+          M 70 28
+          C 82 26, 88 31, 88 38
+          C 88 45, 82 50, 70 50
+          L 70 46
+          C 80 46, 84 42, 84 38
+          C 84 34, 80 30.5, 70 32
           Z"
           fill="#c06010"/>
-        <path d="M 70 33 C 81 31, 86 35.5, 86 40 C 86 44.5, 81 48, 70 48"
-              stroke="rgba(255,200,80,0.18)" stroke-width="1.2" fill="none"/>
+        <!-- Handle inner highlight -->
+        <path d="M 70 29.5 C 81 28, 86 33, 86 38 C 86 44, 81 48, 70 49"
+              stroke="rgba(255,200,80,0.2)" stroke-width="1.2" fill="none"/>
 
-        <!-- SMOKE from spout tip -->
-        <path d="M 3 16 C 1 12, 4 8, 2 4 C 0 1, 2 -1, 1 -4"
+        <!-- PURPLE SMOKE from spout tip — wispy upward curls -->
+        <path d="M 4 16 C 2 12, 5 8, 3 4 C 1 1, 3 -1, 2 -4"
               stroke="url(#smokeG)" stroke-width="2.2" stroke-linecap="round" fill="none"
-              style="animation: smoke-drift 3.5s ease-in-out infinite; transform-origin: 3px 16px;"/>
-        <path d="M 7 13 C 5 10, 7 6, 5 3"
-              stroke="#9060dd" stroke-width="1.3" stroke-linecap="round" fill="none" opacity="0.45"
-              style="animation: smoke-drift 3.5s ease-in-out infinite 0.9s; transform-origin: 7px 13px;"/>
+              style="animation: smoke-drift 3.5s ease-in-out infinite; transform-origin: 4px 16px;"/>
+        <path d="M 7 13 C 5 10, 7 7, 5 4"
+              stroke="#9060dd" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.5"
+              style="animation: smoke-drift 3.5s ease-in-out infinite 0.8s; transform-origin: 7px 13px;"/>
 
-        <!-- STARS -->
-        <path d="M 16 4 L 17.1 7 L 20.1 8.1 L 17.1 9.2 L 16 12.2 L 14.9 9.2 L 11.9 8.1 L 14.9 7 Z"
+        <!-- SPARKLE STARS — 4-point diamonds -->
+        <path d="M 16 5  L 17.2 8.2 L 20.4 9.4 L 17.2 10.6 L 16 13.8 L 14.8 10.6 L 11.6 9.4 L 14.8 8.2 Z"
               fill="#ffe840" style="animation: star-twinkle 2.1s ease-in-out infinite;"/>
-        <path d="M 75 3 L 75.8 5.4 L 78.2 6.2 L 75.8 7 L 75 9.4 L 74.2 7 L 71.8 6.2 L 74.2 5.4 Z"
+        <path d="M 74 4  L 74.9 6.5 L 77.4 7.4 L 74.9 8.3 L 74 10.8 L 73.1 8.3 L 70.6 7.4 L 73.1 6.5 Z"
               fill="#ffdd33" opacity="0.85" style="animation: star-twinkle 1.7s ease-in-out infinite 0.6s;"/>
-        <path d="M 83 25 L 83.5 26.8 L 85.3 27.3 L 83.5 27.8 L 83 29.6 L 82.5 27.8 L 80.7 27.3 L 82.5 26.8 Z"
+        <path d="M 82 26 L 82.6 28 L 84.6 28.6 L 82.6 29.2 L 82 31.2 L 81.4 29.2 L 79.4 28.6 L 81.4 28 Z"
               fill="#ffcc22" opacity="0.7" style="animation: star-twinkle 2.4s ease-in-out infinite 1.2s;"/>
       </svg>
     </div>
@@ -565,7 +572,7 @@
   <div class="nav-links">
     <a href="#capabilities">How it works</a>
     <a href="#blog">Blog</a>
-    <a href="https://github.com/dabra-labs/fixIt-genie" target="_blank">GitHub</a>
+    <a href="https://github.com/dabra-labs/fixbuddy" target="_blank">GitHub</a>
     <a href="#demo" class="nav-cta">▶ Watch Demo</a>
   </div>
 </nav>
@@ -594,7 +601,7 @@
 
   <div class="hero-actions">
     <a href="#demo" class="btn-primary">▶ &nbsp;Watch Demo</a>
-    <a href="https://github.com/dabra-labs/fixIt-genie" class="btn-secondary">⬡ &nbsp;View on GitHub</a>
+    <a href="https://github.com/dabra-labs/fixbuddy" class="btn-secondary">⬡ &nbsp;View on GitHub</a>
   </div>
 
   <!-- Phone mockup -->
@@ -696,125 +703,120 @@
 <div id="architecture" style="padding: 100px 24px; max-width: 1100px; margin: 0 auto;">
   <div class="section-label">Architecture</div>
   <h2 class="section-title">One pipeline. Real-time everywhere.</h2>
-  <p class="section-sub">Three live streams — camera frames, voice in, voice out — multiplexed over a single WebSocket to a Google ADK agent on Cloud Run.</p>
+  <p class="section-sub">Three live data streams — camera, voice in, voice out — over a single WebSocket to an ADK agent on Cloud Run.</p>
 
-  <div style="margin-top: 56px; position: relative;">
+  <div style="margin-top: 48px; position: relative;">
 
-    <!-- ── TIER 1: INPUTS ── -->
-    <div style="display:flex; justify-content:center; gap:12px; margin-bottom:0;">
+    <!-- Row: Inputs -->
+    <div style="display: flex; justify-content: center; gap: 16px; margin-bottom: 0;">
 
-      <div class="arch-node" style="width:140px">
+      <div class="arch-node" style="width:130px">
         <div class="arch-icon">📱</div>
         <div class="arch-title">Phone Camera</div>
-        <div class="arch-sub">CameraX · 1 FPS<br>768×768 JPEG base64</div>
+        <div class="arch-sub">CameraX · 1 FPS · 768×768 JPEG</div>
       </div>
 
-      <div class="arch-node" style="width:140px">
+      <div class="arch-node" style="width:130px">
         <div class="arch-icon">🎙️</div>
         <div class="arch-title">Microphone</div>
-        <div class="arch-sub">AudioRecord · 16 kHz<br>PCM mono · native VAD</div>
+        <div class="arch-sub">AudioRecord · 16kHz PCM · VAD</div>
       </div>
 
-      <div class="arch-node" style="width:140px; border-color:rgba(160,100,255,0.35); background:rgba(140,80,240,0.06);">
+      <div class="arch-node" style="width:130px">
         <div class="arch-icon">🕶️</div>
-        <div class="arch-title" style="color:#c8a0ff;">Ray-Ban Glasses</div>
-        <div class="arch-sub" style="color:rgba(200,160,255,0.7);">Meta DAT SDK v0.4<br>I420 → JPEG · live toggle</div>
+        <div class="arch-title">Ray-Ban Glasses</div>
+        <div class="arch-sub">Meta DAT SDK · I420→JPEG</div>
       </div>
 
     </div>
 
-    <!-- arrows tier 1 → 2 -->
-    <div style="display:flex; justify-content:center; gap:12px;">
-      <div class="arch-arrow-v" style="width:140px"></div>
-      <div class="arch-arrow-v" style="width:140px"></div>
-      <div class="arch-arrow-v arch-arrow-purple" style="width:140px"></div>
+    <!-- Arrows down to Android -->
+    <div style="display:flex; justify-content:center; gap:16px; margin: 0;">
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
     </div>
 
-    <!-- ── TIER 2: ANDROID APP ── -->
+    <!-- Android App block -->
     <div style="display:flex; justify-content:center; margin-bottom:0;">
       <div class="arch-block-wide">
-        <div class="arch-block-label">Android · Kotlin 2.3 · Jetpack Compose · Hilt DI</div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
-          <div class="arch-chip arch-chip-bright">SessionViewModel</div>
-          <div class="arch-chip arch-chip-bright">AudioStreamManager</div>
-          <div class="arch-chip arch-chip-bright">AgentWebSocket</div>
-          <div class="arch-chip arch-chip-bright">GlassesCameraManager</div>
-          <div class="arch-chip arch-chip-bright">GenieAvatar · Compose Canvas</div>
+        <div class="arch-block-label">Android App · Kotlin + Jetpack Compose</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+          <div class="arch-chip">SessionViewModel</div>
+          <div class="arch-chip">AudioStreamManager</div>
+          <div class="arch-chip">AgentWebSocket</div>
+          <div class="arch-chip">GlassesCameraManager</div>
         </div>
       </div>
     </div>
 
-    <!-- bidirectional WebSocket arrow -->
-    <div style="display:flex; flex-direction:column; align-items:center; margin:0; gap:0;">
-      <div style="width:1px; height:14px; background:linear-gradient(to bottom, rgba(255,106,30,0.3), rgba(255,106,30,0.9));"></div>
-      <div style="display:flex; align-items:center; gap:14px; padding: 6px 20px; border: 1px solid rgba(255,106,30,0.25); border-radius:8px; background:rgba(255,106,30,0.07);">
-        <div style="font-size:10px; color:rgba(255,160,80,0.9); letter-spacing:0.5px; font-weight:600;">↑ PCM 16kHz · JPEG frames · JSON</div>
-        <div style="font-size:9px; color:rgba(255,255,255,0.35); letter-spacing:2px;">wss://</div>
-        <div style="font-size:10px; color:rgba(255,160,80,0.9); letter-spacing:0.5px; font-weight:600;">↓ PCM 24kHz · transcript text</div>
+    <!-- Bidirectional arrow -->
+    <div style="display:flex; flex-direction:column; align-items:center; margin: 0; gap:2px;">
+      <div style="width:1px; height:16px; background: linear-gradient(to bottom, rgba(255,106,30,0.4), rgba(255,106,30,0.8));"></div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="font-size:9px; color:rgba(255,106,30,0.7); letter-spacing:1px;">PCM 16kHz · JPEG frames</div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
+          <div style="font-size:11px; color:var(--orange);">↑↓</div>
+        </div>
+        <div style="font-size:9px; color:rgba(255,106,30,0.7); letter-spacing:1px;">PCM 24kHz · Transcripts</div>
       </div>
-      <div style="width:1px; height:14px; background:linear-gradient(to bottom, rgba(255,106,30,0.9), rgba(255,106,30,0.3));"></div>
+      <div style="font-size:9px; color:rgba(255,255,255,0.2); letter-spacing:2px; text-transform:uppercase;">WebSocket · wss://</div>
+      <div style="width:1px; height:16px; background: linear-gradient(to bottom, rgba(255,106,30,0.8), rgba(255,106,30,0.4));"></div>
     </div>
 
-    <!-- ── TIER 3: CLOUD RUN / ADK AGENT ── -->
+    <!-- Cloud Run block -->
     <div style="display:flex; justify-content:center; margin-bottom:0;">
-      <div class="arch-block-wide" style="border-color:rgba(255,106,30,0.4); background:rgba(255,106,30,0.07); max-width:680px;">
-        <div class="arch-block-label" style="color:rgba(255,160,80,0.9);">Google Cloud Run · ADK Agent · Python</div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;">
-          <div class="arch-chip arch-chip-orange">Gemini Live API · gemini-2.5-flash-native-audio</div>
-          <div class="arch-chip arch-chip-orange">Google ADK · adk web · /run_live</div>
-        </div>
-        <!-- Tool rows -->
-        <div style="border-top:1px solid rgba(255,106,30,0.15); padding-top:10px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
-          <div class="arch-chip arch-chip-tool">🔧 lookup_equipment_knowledge</div>
-          <div class="arch-chip arch-chip-tool">⚠️ get_safety_warnings</div>
-          <div class="arch-chip arch-chip-tool">▶️ analyze_youtube_repair_video</div>
-          <div class="arch-chip arch-chip-tool">📄 lookup_user_manual</div>
-          <div class="arch-chip arch-chip-tool">🔍 google_search (built-in)</div>
-          <div class="arch-chip arch-chip-tool">📝 log_diagnostic_step</div>
-        </div>
-        <!-- Skills row -->
-        <div style="border-top:1px solid rgba(255,106,30,0.15); padding-top:10px; margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
-          <div style="font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,200,100,0.6); width:100%; margin-bottom:4px;">ADK SkillToolset</div>
-          <div class="arch-chip arch-chip-skill">🚗 Automotive</div>
-          <div class="arch-chip arch-chip-skill">⚡ Electrical</div>
-          <div class="arch-chip arch-chip-skill">🏠 Appliances</div>
+      <div class="arch-block-wide" style="border-color: rgba(255,106,30,0.3); background: rgba(255,106,30,0.05);">
+        <div class="arch-block-label" style="color:var(--orange);">Cloud Run · Google ADK · Python</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+          <div class="arch-chip" style="border-color:rgba(255,106,30,0.3); color:rgba(255,160,80,0.9);">adk web · /run_live</div>
+          <div class="arch-chip" style="border-color:rgba(255,106,30,0.3); color:rgba(255,160,80,0.9);">Gemini 2.5 Flash Native Audio</div>
+          <div class="arch-chip" style="border-color:rgba(255,106,30,0.3); color:rgba(255,160,80,0.9);">SkillToolset · 3 skills</div>
+          <div class="arch-chip" style="border-color:rgba(255,106,30,0.3); color:rgba(255,160,80,0.9);">6 Function Tools</div>
         </div>
       </div>
     </div>
 
-    <!-- arrows tier 3 → 4 -->
-    <div style="display:flex; justify-content:center; gap:12px; margin:0;">
-      <div class="arch-arrow-v" style="width:120px"></div>
-      <div class="arch-arrow-v" style="width:120px"></div>
-      <div class="arch-arrow-v" style="width:120px"></div>
-      <div class="arch-arrow-v" style="width:120px"></div>
+    <!-- Arrows down to external -->
+    <div style="display:flex; justify-content:center; gap:16px; margin: 0;">
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
     </div>
 
-    <!-- ── TIER 4: EXTERNAL SERVICES ── -->
-    <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+    <!-- External services -->
+    <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
 
-      <div class="arch-node arch-node-sm" style="border-color:rgba(255,106,30,0.35); background:rgba(255,106,30,0.07);">
-        <div class="arch-icon" style="font-size:20px">✨</div>
-        <div class="arch-title" style="color:#ffb060;">Gemini Live API</div>
-        <div class="arch-sub" style="color:rgba(255,180,100,0.7);">Bidi-stream · native audio<br>text-embedding-004</div>
+      <div class="arch-node arch-node-sm">
+        <div class="arch-icon" style="font-size:18px">✨</div>
+        <div class="arch-title" style="font-size:11px">Gemini API</div>
+        <div class="arch-sub">bidi-stream + embeddings</div>
       </div>
 
       <div class="arch-node arch-node-sm">
-        <div class="arch-icon" style="font-size:20px">🔍</div>
-        <div class="arch-title">Google Search</div>
-        <div class="arch-sub">Real-time grounding<br>error codes · bulletins</div>
+        <div class="arch-icon" style="font-size:18px">🔍</div>
+        <div class="arch-title" style="font-size:11px">Google Search</div>
+        <div class="arch-sub">Grounding · error codes</div>
       </div>
 
       <div class="arch-node arch-node-sm">
-        <div class="arch-icon" style="font-size:20px">▶️</div>
-        <div class="arch-title">YouTube</div>
-        <div class="arch-sub">Transcript extraction<br>repair video analysis</div>
+        <div class="arch-icon" style="font-size:18px">▶️</div>
+        <div class="arch-title" style="font-size:11px">YouTube</div>
+        <div class="arch-sub">Transcript extraction</div>
       </div>
 
       <div class="arch-node arch-node-sm">
-        <div class="arch-icon" style="font-size:20px">🗄️</div>
-        <div class="arch-title">Firestore</div>
-        <div class="arch-sub">Vector search · 3072-dim<br>semantic KB lookup</div>
+        <div class="arch-icon" style="font-size:18px">📄</div>
+        <div class="arch-title" style="font-size:11px">PDF Manuals</div>
+        <div class="arch-sub">pypdf + Gemini summary</div>
+      </div>
+
+      <div class="arch-node arch-node-sm">
+        <div class="arch-icon" style="font-size:18px">🗄️</div>
+        <div class="arch-title" style="font-size:11px">Firestore</div>
+        <div class="arch-sub">Vector search · 3072-dim</div>
       </div>
 
     </div>
@@ -824,18 +826,18 @@
 
 <style>
   .arch-node {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.14);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 16px 12px;
     text-align: center;
     transition: all 0.2s;
   }
-  .arch-node:hover { border-color: rgba(255,106,30,0.35); background: rgba(255,106,30,0.06); }
-  .arch-node-sm { width: 128px; }
+  .arch-node:hover { border-color: rgba(255,106,30,0.25); background: rgba(255,106,30,0.04); }
+  .arch-node-sm { width: 120px; }
   .arch-icon { font-size: 22px; margin-bottom: 8px; }
-  .arch-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; color: #f0f0f5; }
-  .arch-sub { font-size: 9.5px; color: rgba(240,240,245,0.55); line-height: 1.5; }
+  .arch-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+  .arch-sub { font-size: 9px; color: var(--muted); line-height: 1.4; }
   .arch-arrow-v {
     display: flex; justify-content: center; padding: 4px 0;
   }
@@ -844,65 +846,30 @@
     display: block;
     width: 1px;
     height: 28px;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.12), rgba(255,106,30,0.5));
-  }
-  .arch-arrow-purple::after {
-    background: linear-gradient(to bottom, rgba(160,100,255,0.15), rgba(160,100,255,0.5));
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,106,30,0.4));
   }
   .arch-block-wide {
-    width: 100%; max-width: 620px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.14);
+    width: 100%; max-width: 600px;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 20px 24px;
     text-align: center;
   }
   .arch-block-label {
     font-size: 10px; font-weight: 700; letter-spacing: 2px;
-    text-transform: uppercase; color: rgba(240,240,245,0.5);
+    text-transform: uppercase; color: rgba(255,255,255,0.4);
     margin-bottom: 14px;
   }
   .arch-chip {
     display: inline-flex;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: rgba(240,240,245,0.85);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
     font-size: 10px; font-weight: 600;
     padding: 4px 10px; border-radius: 20px;
   }
-  .arch-chip-bright {
-    background: rgba(255,255,255,0.09);
-    border-color: rgba(255,255,255,0.2);
-    color: rgba(240,240,245,0.95);
-  }
-  .arch-chip-orange {
-    background: rgba(255,106,30,0.12);
-    border-color: rgba(255,106,30,0.4);
-    color: rgba(255,170,90,0.95);
-    font-weight: 700;
-  }
-  .arch-chip-tool {
-    background: rgba(255,255,255,0.06);
-    border-color: rgba(255,106,30,0.2);
-    color: rgba(255,200,140,0.85);
-    font-size: 9.5px;
-  }
-  .arch-chip-skill {
-    background: rgba(140,80,240,0.1);
-    border-color: rgba(160,100,255,0.35);
-    color: rgba(200,160,255,0.9);
-    font-weight: 700;
-  }
 </style>
-
-<!-- DEMO VIDEO -->
-<div id="demo" class="blog-section" style="text-align:center">
-  <div class="blog-chip">Demo Video</div>
-  <h2 class="blog-title" style="margin-bottom:24px">See It In Action</h2>
-  <div style="max-width:720px;margin:0 auto;border-radius:16px;overflow:hidden;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);aspect-ratio:16/9;display:flex;align-items:center;justify-content:center">
-    <p style="color:rgba(240,240,245,0.4);font-size:14px">Demo video coming soon</p>
-  </div>
-</div>
 
 <!-- BLOG PREVIEW -->
 <div id="blog" class="blog-section">
@@ -911,30 +878,30 @@
   <p class="blog-excerpt">
     There are 15 million skilled trade workers in the US alone. Every day they face equipment they've never seen before, error codes with no obvious cause. The standard solution — manuals, tutorials, hotlines — all have the same flaw: they can't see what you see. Gemini Live changes that constraint.
   </p>
-  <a href="/blog.html" class="blog-read-more">Read the full post →</a>
+  <a href="#" class="blog-read-more">Read the full post →</a>
 </div>
 
 <!-- FOOTER -->
 <footer>
   <a href="#" class="nav-logo" style="opacity:0.7">
-    <div class="logo-mark" style="width:32px;height:22px">
-      <svg viewBox="-2 -4 94 62" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div class="logo-mark" style="width:32px;height:24px">
+      <svg viewBox="0 -6 90 72" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="lG2" x1="6" y1="12" x2="80" y2="52" gradientUnits="userSpaceOnUse">
+          <linearGradient id="lG2" x1="8" y1="16" x2="82" y2="62" gradientUnits="userSpaceOnUse">
             <stop offset="0%"   stop-color="#ffe99a"/>
             <stop offset="45%"  stop-color="#e8860e"/>
             <stop offset="100%" stop-color="#a84800"/>
           </linearGradient>
         </defs>
-        <ellipse cx="50" cy="52" rx="12" ry="3" fill="#9a4200"/>
-        <ellipse cx="50" cy="40" rx="22" ry="12" fill="url(#lG2)"/>
-        <rect x="43" y="25" width="14" height="4" rx="1.5" fill="#b85800"/>
-        <ellipse cx="50" cy="23" rx="10" ry="3.5" fill="#e8860e"/>
-        <ellipse cx="50" cy="21" rx="7"  ry="2.8" fill="#ffe090"/>
-        <path d="M 47.5 21 C 47.5 18, 49 15, 50 13 C 51 15, 52.5 18, 52.5 21 Z" fill="#ffd840"/>
-        <path d="M 30 36 C 24 33, 16 27, 10 21 C 7 17, 4 14, 4 14 C 1 12, 0 15, 1 17 C 2 19, 5 20, 9 22 C 15 25, 23 31, 30 44 Z" fill="url(#lG2)"/>
-        <path d="M 70 32 C 82 30, 88 35, 88 40 C 88 45, 82 50, 70 49 L 70 45 C 80 45, 84 42, 84 40 C 84 37, 80 34, 70 36 Z" fill="#c06010"/>
-        <path d="M 3 16 C 1 12, 4 8, 2 4 C 0 1, 2 -1, 1 -4" stroke="#9060dd" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.8"/>
+        <ellipse cx="48" cy="60" rx="12" ry="3.5" fill="#9a4200"/>
+        <path d="M 34 52 C 28 52, 24 47, 24 40 C 24 31, 30 22, 42 20 C 48 19, 58 19, 64 22 C 72 26, 74 33, 72 41 C 70 50, 62 56, 50 57 C 42 58, 37 56, 34 52 Z" fill="url(#lG2)"/>
+        <path d="M 40 20 L 40 16 L 58 16 L 58 20 Z" fill="#b85800"/>
+        <ellipse cx="49" cy="14" rx="11" ry="4.5" fill="#e8860e"/>
+        <ellipse cx="49" cy="11" rx="7"  ry="3"   fill="#ffe090"/>
+        <path d="M 46 11 C 46 8, 48 5, 49 3 C 50 5, 52 8, 52 11 Z" fill="#ffd840"/>
+        <path d="M 34 36 C 28 34, 20 28, 14 22 C 10 18, 6 14, 6 14 C 3 12, 1 14, 2 17 C 3 19, 6 20, 10 22 C 16 25, 24 32, 34 44 Z" fill="url(#lG2)"/>
+        <path d="M 70 28 C 82 26, 88 31, 88 38 C 88 45, 82 50, 70 50 L 70 46 C 80 46, 84 42, 84 38 C 84 34, 80 30.5, 70 32 Z" fill="#c06010"/>
+        <path d="M 4 16 C 2 12, 5 8, 3 4 C 1 1, 3 -1, 2 -4" stroke="#9060dd" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.8"/>
       </svg>
     </div>
     <div class="logo-text">
@@ -943,8 +910,8 @@
     </div>
   </a>
   <div class="footer-links">
-    <a href="https://github.com/dabra-labs/fixIt-genie" target="_blank">GitHub</a>
-    <a href="/blog.html" target="_blank">Blog</a>
+    <a href="https://github.com/dabra-labs/fixbuddy" target="_blank">GitHub</a>
+    <a href="#" target="_blank">Blog</a>
     <a href="#demo">Demo Video</a>
     <a href="https://ai.google.dev" target="_blank">Built with Google ADK</a>
   </div>

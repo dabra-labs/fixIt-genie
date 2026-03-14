@@ -758,11 +758,11 @@ agent = Agent(
           </div>
           <div class="kstack-chips">
             <span class="kstack-chip kstack-chip-blue">find_nearest()</span>
-            <span class="kstack-chip kstack-chip-blue">text-embedding-004</span>
+            <span class="kstack-chip kstack-chip-blue">gemini-embedding-001</span>
           </div>
         </div>
         <div class="kstack-layer-detail">
-          Equipment documents embedded with <code>text-embedding-004</code> and stored in Firestore. "engine oil pressure alarm" semantically matches the oil system document — zero keyword overlap required. Handles synonyms, paraphrases, and partial descriptions.
+          Equipment documents embedded with <code>gemini-embedding-001</code> and stored in Firestore. "engine oil pressure alarm" semantically matches the oil system document — zero keyword overlap required. Handles synonyms, paraphrases, and partial descriptions.
         </div>
       </div>
 
@@ -792,7 +792,7 @@ agent = Agent(
 
   <p><strong>ADK Skills</strong> — Each skill package is a <code>SKILL.md</code> with behavioral instructions plus <code>references/</code> markdown docs. The behavioral layer (how the agent diagnoses, what questions it asks, when it escalates) is separate from the knowledge layer. Agents that mix behavior and facts in a single blob become brittle.</p>
 
-  <p><strong>Firestore Vector Search</strong> — Equipment documents are embedded with <code>text-embedding-004</code> (3072 dimensions) and stored in Firestore with a COSINE vector index. <code>lookup_equipment_knowledge</code> calls <code>find_nearest()</code> — "engine oil pressure alarm" semantically matches the oil system document with zero keyword overlap.</p>
+  <p><strong>Firestore Vector Search</strong> — Equipment documents are embedded with <code>gemini-embedding-001</code> (3072 dimensions) and stored in Firestore with a COSINE vector index. <code>lookup_equipment_knowledge</code> calls <code>find_nearest()</code> — "engine oil pressure alarm" semantically matches the oil system document with zero keyword overlap.</p>
 
   <h3>Handling the Long Tail</h3>
 
@@ -817,6 +817,8 @@ agent = Agent(
   <h2>Lessons Learned</h2>
 
   <p><strong>Bidi-streaming is the key differentiator.</strong> Most entries will use request-response patterns. Real-time bidi-streaming with audio feels qualitatively different — it's a conversation, not a chatbot. The Gemini native audio model handles VAD automatically, which makes the interaction feel natural without any engineering effort.</p>
+
+  <p><strong>True interruption requires always-on audio streaming.</strong> The obvious implementation gates the microphone while the agent is speaking — to prevent echo feedback from triggering a second response. But this kills bidi-streaming's most important property: the ability to interrupt. The correct approach is to stream audio continuously and let Gemini's native VAD and AEC handle it. When you speak mid-response, the server sends <code>interrupted: true</code>, the app immediately clears the audio queue, and the agent listens. Say "wait" or "hold on" naturally — the agent stops. This is what separates a live agent from a chatbot with a voice skin.</p>
 
   <p><strong>1 FPS is plenty for equipment diagnosis.</strong> Equipment doesn't move fast. One frame per second at 768×768 JPEG is enough for reading gauges, error codes, and identifying components while keeping bandwidth and cost reasonable.</p>
 

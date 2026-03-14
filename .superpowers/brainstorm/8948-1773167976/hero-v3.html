@@ -565,7 +565,7 @@
   <div class="nav-links">
     <a href="#capabilities">How it works</a>
     <a href="#blog">Blog</a>
-    <a href="https://github.com/dabra-labs/fixIt-genie" target="_blank">GitHub</a>
+    <a href="https://github.com/dabra-labs/fixbuddy" target="_blank">GitHub</a>
     <a href="#demo" class="nav-cta">▶ Watch Demo</a>
   </div>
 </nav>
@@ -594,7 +594,7 @@
 
   <div class="hero-actions">
     <a href="#demo" class="btn-primary">▶ &nbsp;Watch Demo</a>
-    <a href="https://github.com/dabra-labs/fixIt-genie" class="btn-secondary">⬡ &nbsp;View on GitHub</a>
+    <a href="https://github.com/dabra-labs/fixbuddy" class="btn-secondary">⬡ &nbsp;View on GitHub</a>
   </div>
 
   <!-- Phone mockup -->
@@ -696,125 +696,120 @@
 <div id="architecture" style="padding: 100px 24px; max-width: 1100px; margin: 0 auto;">
   <div class="section-label">Architecture</div>
   <h2 class="section-title">One pipeline. Real-time everywhere.</h2>
-  <p class="section-sub">Three live streams — camera frames, voice in, voice out — multiplexed over a single WebSocket to a Google ADK agent on Cloud Run.</p>
+  <p class="section-sub">Three live data streams — camera, voice in, voice out — over a single WebSocket to an ADK agent on Cloud Run.</p>
 
-  <div style="margin-top: 56px; position: relative;">
+  <div style="margin-top: 48px; position: relative;">
 
-    <!-- ── TIER 1: INPUTS ── -->
-    <div style="display:flex; justify-content:center; gap:12px; margin-bottom:0;">
+    <!-- Row: Inputs -->
+    <div style="display: flex; justify-content: center; gap: 16px; margin-bottom: 0;">
 
-      <div class="arch-node" style="width:140px">
+      <div class="arch-node" style="width:130px">
         <div class="arch-icon">📱</div>
         <div class="arch-title">Phone Camera</div>
-        <div class="arch-sub">CameraX · 1 FPS<br>768×768 JPEG base64</div>
+        <div class="arch-sub">CameraX · 1 FPS · 768×768 JPEG</div>
       </div>
 
-      <div class="arch-node" style="width:140px">
+      <div class="arch-node" style="width:130px">
         <div class="arch-icon">🎙️</div>
         <div class="arch-title">Microphone</div>
-        <div class="arch-sub">AudioRecord · 16 kHz<br>PCM mono · native VAD</div>
+        <div class="arch-sub">AudioRecord · 16kHz PCM · VAD</div>
       </div>
 
-      <div class="arch-node" style="width:140px; border-color:rgba(160,100,255,0.35); background:rgba(140,80,240,0.06);">
+      <div class="arch-node" style="width:130px">
         <div class="arch-icon">🕶️</div>
-        <div class="arch-title" style="color:#c8a0ff;">Ray-Ban Glasses</div>
-        <div class="arch-sub" style="color:rgba(200,160,255,0.7);">Meta DAT SDK v0.4<br>I420 → JPEG · live toggle</div>
+        <div class="arch-title">Ray-Ban Glasses</div>
+        <div class="arch-sub">Meta DAT SDK · I420→JPEG</div>
       </div>
 
     </div>
 
-    <!-- arrows tier 1 → 2 -->
-    <div style="display:flex; justify-content:center; gap:12px;">
-      <div class="arch-arrow-v" style="width:140px"></div>
-      <div class="arch-arrow-v" style="width:140px"></div>
-      <div class="arch-arrow-v arch-arrow-purple" style="width:140px"></div>
+    <!-- Arrows down to Android -->
+    <div style="display:flex; justify-content:center; gap:16px; margin: 0;">
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
     </div>
 
-    <!-- ── TIER 2: ANDROID APP ── -->
+    <!-- Android App block -->
     <div style="display:flex; justify-content:center; margin-bottom:0;">
       <div class="arch-block-wide">
-        <div class="arch-block-label">Android · Kotlin 2.3 · Jetpack Compose · Hilt DI</div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
-          <div class="arch-chip arch-chip-bright">SessionViewModel</div>
-          <div class="arch-chip arch-chip-bright">AudioStreamManager</div>
-          <div class="arch-chip arch-chip-bright">AgentWebSocket</div>
-          <div class="arch-chip arch-chip-bright">GlassesCameraManager</div>
-          <div class="arch-chip arch-chip-bright">GenieAvatar · Compose Canvas</div>
+        <div class="arch-block-label">Android App · Kotlin + Jetpack Compose</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+          <div class="arch-chip">SessionViewModel</div>
+          <div class="arch-chip">AudioStreamManager</div>
+          <div class="arch-chip">AgentWebSocket</div>
+          <div class="arch-chip">GlassesCameraManager</div>
         </div>
       </div>
     </div>
 
-    <!-- bidirectional WebSocket arrow -->
-    <div style="display:flex; flex-direction:column; align-items:center; margin:0; gap:0;">
-      <div style="width:1px; height:14px; background:linear-gradient(to bottom, rgba(255,106,30,0.3), rgba(255,106,30,0.9));"></div>
-      <div style="display:flex; align-items:center; gap:14px; padding: 6px 20px; border: 1px solid rgba(255,106,30,0.25); border-radius:8px; background:rgba(255,106,30,0.07);">
-        <div style="font-size:10px; color:rgba(255,160,80,0.9); letter-spacing:0.5px; font-weight:600;">↑ PCM 16kHz · JPEG frames · JSON</div>
-        <div style="font-size:9px; color:rgba(255,255,255,0.35); letter-spacing:2px;">wss://</div>
-        <div style="font-size:10px; color:rgba(255,160,80,0.9); letter-spacing:0.5px; font-weight:600;">↓ PCM 24kHz · transcript text</div>
+    <!-- Bidirectional arrow -->
+    <div style="display:flex; flex-direction:column; align-items:center; margin: 0; gap:2px;">
+      <div style="width:1px; height:16px; background: linear-gradient(to bottom, rgba(255,106,30,0.4), rgba(255,106,30,0.8));"></div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="font-size:9px; color:rgba(255,106,30,0.7); letter-spacing:1px;">PCM 16kHz · JPEG frames</div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
+          <div style="font-size:11px; color:var(--orange);">↑↓</div>
+        </div>
+        <div style="font-size:9px; color:rgba(255,106,30,0.7); letter-spacing:1px;">PCM 24kHz · Transcripts</div>
       </div>
-      <div style="width:1px; height:14px; background:linear-gradient(to bottom, rgba(255,106,30,0.9), rgba(255,106,30,0.3));"></div>
+      <div style="font-size:9px; color:rgba(255,255,255,0.2); letter-spacing:2px; text-transform:uppercase;">WebSocket · wss://</div>
+      <div style="width:1px; height:16px; background: linear-gradient(to bottom, rgba(255,106,30,0.8), rgba(255,106,30,0.4));"></div>
     </div>
 
-    <!-- ── TIER 3: CLOUD RUN / ADK AGENT ── -->
+    <!-- Cloud Run block -->
     <div style="display:flex; justify-content:center; margin-bottom:0;">
-      <div class="arch-block-wide" style="border-color:rgba(255,106,30,0.4); background:rgba(255,106,30,0.07); max-width:680px;">
-        <div class="arch-block-label" style="color:rgba(255,160,80,0.9);">Google Cloud Run · ADK Agent · Python</div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;">
-          <div class="arch-chip arch-chip-orange">Gemini Live API · gemini-2.5-flash-native-audio</div>
-          <div class="arch-chip arch-chip-orange">Google ADK · adk web · /run_live</div>
-        </div>
-        <!-- Tool rows -->
-        <div style="border-top:1px solid rgba(255,106,30,0.15); padding-top:10px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
-          <div class="arch-chip arch-chip-tool">🔧 lookup_equipment_knowledge</div>
-          <div class="arch-chip arch-chip-tool">⚠️ get_safety_warnings</div>
-          <div class="arch-chip arch-chip-tool">▶️ analyze_youtube_repair_video</div>
-          <div class="arch-chip arch-chip-tool">📄 lookup_user_manual</div>
-          <div class="arch-chip arch-chip-tool">🔍 google_search (built-in)</div>
-          <div class="arch-chip arch-chip-tool">📝 log_diagnostic_step</div>
-        </div>
-        <!-- Skills row -->
-        <div style="border-top:1px solid rgba(255,106,30,0.15); padding-top:10px; margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
-          <div style="font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,200,100,0.6); width:100%; margin-bottom:4px;">ADK SkillToolset</div>
-          <div class="arch-chip arch-chip-skill">🚗 Automotive</div>
-          <div class="arch-chip arch-chip-skill">⚡ Electrical</div>
-          <div class="arch-chip arch-chip-skill">🏠 Appliances</div>
+      <div class="arch-block-wide" style="border-color: rgba(255,106,30,0.3); background: rgba(255,106,30,0.05);">
+        <div class="arch-block-label" style="color:var(--orange);">Cloud Run · Google ADK · Python</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+          <div class="arch-chip" style="border-color:rgba(255,106,30,0.3); color:rgba(255,160,80,0.9);">adk web · /run_live</div>
+          <div class="arch-chip" style="border-color:rgba(255,106,30,0.3); color:rgba(255,160,80,0.9);">Gemini 2.5 Flash Native Audio</div>
+          <div class="arch-chip" style="border-color:rgba(255,106,30,0.3); color:rgba(255,160,80,0.9);">SkillToolset · 3 skills</div>
+          <div class="arch-chip" style="border-color:rgba(255,106,30,0.3); color:rgba(255,160,80,0.9);">6 Function Tools</div>
         </div>
       </div>
     </div>
 
-    <!-- arrows tier 3 → 4 -->
-    <div style="display:flex; justify-content:center; gap:12px; margin:0;">
-      <div class="arch-arrow-v" style="width:120px"></div>
-      <div class="arch-arrow-v" style="width:120px"></div>
-      <div class="arch-arrow-v" style="width:120px"></div>
-      <div class="arch-arrow-v" style="width:120px"></div>
+    <!-- Arrows down to external -->
+    <div style="display:flex; justify-content:center; gap:16px; margin: 0;">
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
+      <div class="arch-arrow-v" style="width:130px"></div>
     </div>
 
-    <!-- ── TIER 4: EXTERNAL SERVICES ── -->
-    <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+    <!-- External services -->
+    <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
 
-      <div class="arch-node arch-node-sm" style="border-color:rgba(255,106,30,0.35); background:rgba(255,106,30,0.07);">
-        <div class="arch-icon" style="font-size:20px">✨</div>
-        <div class="arch-title" style="color:#ffb060;">Gemini Live API</div>
-        <div class="arch-sub" style="color:rgba(255,180,100,0.7);">Bidi-stream · native audio<br>text-embedding-004</div>
+      <div class="arch-node arch-node-sm">
+        <div class="arch-icon" style="font-size:18px">✨</div>
+        <div class="arch-title" style="font-size:11px">Gemini API</div>
+        <div class="arch-sub">bidi-stream + embeddings</div>
       </div>
 
       <div class="arch-node arch-node-sm">
-        <div class="arch-icon" style="font-size:20px">🔍</div>
-        <div class="arch-title">Google Search</div>
-        <div class="arch-sub">Real-time grounding<br>error codes · bulletins</div>
+        <div class="arch-icon" style="font-size:18px">🔍</div>
+        <div class="arch-title" style="font-size:11px">Google Search</div>
+        <div class="arch-sub">Grounding · error codes</div>
       </div>
 
       <div class="arch-node arch-node-sm">
-        <div class="arch-icon" style="font-size:20px">▶️</div>
-        <div class="arch-title">YouTube</div>
-        <div class="arch-sub">Transcript extraction<br>repair video analysis</div>
+        <div class="arch-icon" style="font-size:18px">▶️</div>
+        <div class="arch-title" style="font-size:11px">YouTube</div>
+        <div class="arch-sub">Transcript extraction</div>
       </div>
 
       <div class="arch-node arch-node-sm">
-        <div class="arch-icon" style="font-size:20px">🗄️</div>
-        <div class="arch-title">Firestore</div>
-        <div class="arch-sub">Vector search · 3072-dim<br>semantic KB lookup</div>
+        <div class="arch-icon" style="font-size:18px">📄</div>
+        <div class="arch-title" style="font-size:11px">PDF Manuals</div>
+        <div class="arch-sub">pypdf + Gemini summary</div>
+      </div>
+
+      <div class="arch-node arch-node-sm">
+        <div class="arch-icon" style="font-size:18px">🗄️</div>
+        <div class="arch-title" style="font-size:11px">Firestore</div>
+        <div class="arch-sub">Vector search · 3072-dim</div>
       </div>
 
     </div>
@@ -824,18 +819,18 @@
 
 <style>
   .arch-node {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.14);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 16px 12px;
     text-align: center;
     transition: all 0.2s;
   }
-  .arch-node:hover { border-color: rgba(255,106,30,0.35); background: rgba(255,106,30,0.06); }
-  .arch-node-sm { width: 128px; }
+  .arch-node:hover { border-color: rgba(255,106,30,0.25); background: rgba(255,106,30,0.04); }
+  .arch-node-sm { width: 120px; }
   .arch-icon { font-size: 22px; margin-bottom: 8px; }
-  .arch-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; color: #f0f0f5; }
-  .arch-sub { font-size: 9.5px; color: rgba(240,240,245,0.55); line-height: 1.5; }
+  .arch-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+  .arch-sub { font-size: 9px; color: var(--muted); line-height: 1.4; }
   .arch-arrow-v {
     display: flex; justify-content: center; padding: 4px 0;
   }
@@ -844,65 +839,30 @@
     display: block;
     width: 1px;
     height: 28px;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.12), rgba(255,106,30,0.5));
-  }
-  .arch-arrow-purple::after {
-    background: linear-gradient(to bottom, rgba(160,100,255,0.15), rgba(160,100,255,0.5));
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,106,30,0.4));
   }
   .arch-block-wide {
-    width: 100%; max-width: 620px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.14);
+    width: 100%; max-width: 600px;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 20px 24px;
     text-align: center;
   }
   .arch-block-label {
     font-size: 10px; font-weight: 700; letter-spacing: 2px;
-    text-transform: uppercase; color: rgba(240,240,245,0.5);
+    text-transform: uppercase; color: rgba(255,255,255,0.4);
     margin-bottom: 14px;
   }
   .arch-chip {
     display: inline-flex;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: rgba(240,240,245,0.85);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
     font-size: 10px; font-weight: 600;
     padding: 4px 10px; border-radius: 20px;
   }
-  .arch-chip-bright {
-    background: rgba(255,255,255,0.09);
-    border-color: rgba(255,255,255,0.2);
-    color: rgba(240,240,245,0.95);
-  }
-  .arch-chip-orange {
-    background: rgba(255,106,30,0.12);
-    border-color: rgba(255,106,30,0.4);
-    color: rgba(255,170,90,0.95);
-    font-weight: 700;
-  }
-  .arch-chip-tool {
-    background: rgba(255,255,255,0.06);
-    border-color: rgba(255,106,30,0.2);
-    color: rgba(255,200,140,0.85);
-    font-size: 9.5px;
-  }
-  .arch-chip-skill {
-    background: rgba(140,80,240,0.1);
-    border-color: rgba(160,100,255,0.35);
-    color: rgba(200,160,255,0.9);
-    font-weight: 700;
-  }
 </style>
-
-<!-- DEMO VIDEO -->
-<div id="demo" class="blog-section" style="text-align:center">
-  <div class="blog-chip">Demo Video</div>
-  <h2 class="blog-title" style="margin-bottom:24px">See It In Action</h2>
-  <div style="max-width:720px;margin:0 auto;border-radius:16px;overflow:hidden;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);aspect-ratio:16/9;display:flex;align-items:center;justify-content:center">
-    <p style="color:rgba(240,240,245,0.4);font-size:14px">Demo video coming soon</p>
-  </div>
-</div>
 
 <!-- BLOG PREVIEW -->
 <div id="blog" class="blog-section">
@@ -911,7 +871,7 @@
   <p class="blog-excerpt">
     There are 15 million skilled trade workers in the US alone. Every day they face equipment they've never seen before, error codes with no obvious cause. The standard solution — manuals, tutorials, hotlines — all have the same flaw: they can't see what you see. Gemini Live changes that constraint.
   </p>
-  <a href="/blog.html" class="blog-read-more">Read the full post →</a>
+  <a href="#" class="blog-read-more">Read the full post →</a>
 </div>
 
 <!-- FOOTER -->
@@ -943,8 +903,8 @@
     </div>
   </a>
   <div class="footer-links">
-    <a href="https://github.com/dabra-labs/fixIt-genie" target="_blank">GitHub</a>
-    <a href="/blog.html" target="_blank">Blog</a>
+    <a href="https://github.com/dabra-labs/fixbuddy" target="_blank">GitHub</a>
+    <a href="#" target="_blank">Blog</a>
     <a href="#demo">Demo Video</a>
     <a href="https://ai.google.dev" target="_blank">Built with Google ADK</a>
   </div>
