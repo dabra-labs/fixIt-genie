@@ -180,7 +180,7 @@ class GlassesCameraManager @Inject constructor(
                 throw e  // let structured concurrency propagate normally
             } catch (e: Exception) {
                 Log.e(TAG, "Video stream terminated unexpectedly", e)
-                _connectionState.value = GlassesState.DISCONNECTED
+                _connectionState.value = GlassesState.ERROR
             }
         }
 
@@ -196,6 +196,7 @@ class GlassesCameraManager @Inject constructor(
                         StreamSessionState.STOPPING,
                         StreamSessionState.STOPPED,
                         StreamSessionState.CLOSED    -> GlassesState.DISCONNECTED
+                        else                         -> GlassesState.DISCONNECTED
                     }
                 }
             } catch (e: CancellationException) {
@@ -205,7 +206,7 @@ class GlassesCameraManager @Inject constructor(
                 // C4: stateJob failure must also stop the video stream to avoid
                 // orphaned videoJob pumping frames from a dead session
                 videoJob?.cancel()
-                _connectionState.value = GlassesState.DISCONNECTED
+                _connectionState.value = GlassesState.ERROR
             }
         }
     }
@@ -269,9 +270,8 @@ class GlassesCameraManager @Inject constructor(
             if (consecutiveConversionFailures >= MAX_CONSECUTIVE_CONVERSION_FAILURES) {
                 Log.e(TAG, "Frame conversion failed $consecutiveConversionFailures times in a row — " +
                     "stopping stream (possible SDK or hardware issue)", e)
-                // stopStream() sets state to DISCONNECTED and cancels all jobs — must be
-                // called on a background thread since we're already on Dispatchers.IO here
                 stopStream()
+                _connectionState.value = GlassesState.ERROR  // override the DISCONNECTED set by stopStream()
             } else {
                 Log.w(TAG, "Frame conversion failed (${consecutiveConversionFailures}/" +
                     "$MAX_CONSECUTIVE_CONVERSION_FAILURES) — skipping frame", e)
