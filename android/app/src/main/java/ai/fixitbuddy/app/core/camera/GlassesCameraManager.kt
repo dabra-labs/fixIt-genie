@@ -1,11 +1,14 @@
 package ai.fixitbuddy.app.core.camera
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.activity.result.ActivityResultLauncher
 import com.meta.wearable.dat.camera.StreamSession
 import com.meta.wearable.dat.camera.startStreamSession
@@ -128,6 +131,14 @@ class GlassesCameraManager @Inject constructor(
     fun startStream() {
         if (!initialized) {
             Log.e(TAG, "startStream called before initialize() — SDK not ready")
+            _connectionState.value = GlassesState.ERROR
+            return
+        }
+        // BLUETOOTH_CONNECT is a dangerous permission on API 31+ — must be granted at runtime.
+        // Without it Wearables.startStreamSession() throws SecurityException and crashes the app.
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "BLUETOOTH_CONNECT permission not granted — cannot start glasses stream")
             _connectionState.value = GlassesState.ERROR
             return
         }
