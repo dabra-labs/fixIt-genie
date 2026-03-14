@@ -121,7 +121,10 @@ class SessionViewModel @Inject constructor(
                         ConnectionState.CONNECTED -> current.copy(
                             sessionState = SessionState.Active,
                             agentState = "listening",
-                            errorMessage = null
+                            errorMessage = null,
+                            chatTurns = listOf(
+                                ChatTurn(ChatRole.GENIE, "✨ Hello! I'm FixIt Genie. Point your camera at whatever needs fixing and tell me what's wrong — I'll guide you through it step by step. What are we tackling today?")
+                            )
                         )
                         ConnectionState.ERROR -> {
                             genieIsSpeaking = false

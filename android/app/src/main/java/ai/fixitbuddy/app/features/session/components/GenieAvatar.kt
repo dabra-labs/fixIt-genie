@@ -80,10 +80,10 @@ fun GenieAvatar(
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(72.dp)
+            modifier = Modifier.size(96.dp)
         ) {
             // Golden aura — breathes behind the face
-            Canvas(modifier = Modifier.size(72.dp).scale(auraScale)) {
+            Canvas(modifier = Modifier.size(96.dp).scale(auraScale)) {
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(Color(0x46FF9100), Color.Transparent),
@@ -97,20 +97,20 @@ fun GenieAvatar(
             // Genie face — golden circle with emoji, floats up and down
             Box(
                 modifier = Modifier
-                    .size(56.dp)
+                    .size(74.dp)
                     .graphicsLayer { translationY = hoverOffset }
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
                             colors = listOf(Color(0xFFFFF8F0), Color(0xFFEF8C00)),
-                            center = Offset(21f, 18f),
-                            radius = 56f
+                            center = Offset(28f, 24f),
+                            radius = 74f
                         )
                     )
                     .border(2.dp, Color(0xCCFFC83C), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "🧞", fontSize = 26.sp)
+                Text(text = "🧞", fontSize = 36.sp)
             }
         }
 
@@ -134,27 +134,28 @@ fun GenieAvatar(
 
         // Ripple rings — only when session is active
         if (sessionState == SessionState.Active) {
-            val amplitude = (0.4f + audioLevel * 0.6f).coerceIn(0.4f, 1f)
-            Canvas(modifier = Modifier.size(56.dp)) {
+            val amplitude = (0.7f + audioLevel * 0.3f).coerceIn(0.7f, 1f)
+            Canvas(modifier = Modifier.size(140.dp)) {
                 val cx = size.width / 2
                 val cy = size.height / 2
-                val maxRadius = size.minDimension * 0.48f * amplitude
+                val maxRadius = size.minDimension * 0.75f
 
                 // 3 rings staggered by 1/3 phase each
                 listOf(0f, 0.333f, 0.667f).forEachIndexed { i, phaseOffset ->
                     val progress = (ringProgress + phaseOffset) % 1f
                     val radius = progress * maxRadius
-                    val alpha = (1f - progress) * amplitude
+                    // Keep alpha higher for longer — only fade in last 40%
+                    val alpha = (if (progress < 0.6f) 1f else (1f - progress) / 0.4f) * amplitude
                     val color = when (i) {
-                        0 -> Color(0xBFFF9100)
-                        1 -> Color(0x99CE93D8)
-                        else -> Color(0x807E57C2)
+                        0 -> Color(0xFFFF6A1E)
+                        1 -> Color(0xFFBB88FF)
+                        else -> Color(0xFF9060DD)
                     }
                     drawCircle(
                         color = color.copy(alpha = alpha),
                         radius = radius,
                         center = Offset(cx, cy),
-                        style = Stroke(width = 1.5.dp.toPx())
+                        style = Stroke(width = 3.dp.toPx())
                     )
                 }
             }

@@ -263,10 +263,21 @@ fun SessionScreen(
                 }
 
                 // Compact control strip — 52dp
+                // Hairline orange divider above the strip
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(Color.Transparent, Color(0x55FF6A1E), Color.Transparent)
+                            )
+                        )
+                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF080810))
+                        .background(Color(0xFF13131F))
                         .windowInsetsPadding(WindowInsets.navigationBars)
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
