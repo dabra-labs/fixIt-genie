@@ -9,8 +9,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -172,7 +175,7 @@ fun SessionScreen(
                 .padding(top = 56.dp)
         )
 
-        // Idle state guidance overlay
+        // Idle state guidance overlay — frosted dark card for legibility on any camera feed
         AnimatedVisibility(
             visible = uiState.sessionState == SessionState.Idle && uiState.errorMessage == null,
             enter = fadeIn(),
@@ -181,21 +184,32 @@ fun SessionScreen(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 48.dp)
+                modifier = Modifier
+                    .padding(horizontal = 32.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xCC080810))
+                    .border(1.dp, Color(0x33FF6A1E), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 28.dp, vertical = 20.dp)
             ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_genie_lamp),
+                    contentDescription = null,
+                    modifier = Modifier.size(52.dp)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = stringResource(R.string.session_idle_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFFFF6A1E)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = stringResource(R.string.session_idle_subtitle),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xCCF0F0F5),
                     textAlign = TextAlign.Center,
-                    lineHeight = 24.sp
+                    lineHeight = 22.sp
                 )
             }
         }
@@ -220,8 +234,8 @@ fun SessionScreen(
                             Brush.verticalGradient(
                                 colorStops = arrayOf(
                                     0f to Color.Transparent,
-                                    0.35f to Color(0xF7060310),
-                                    1f to Color(0xFF060310)
+                                    0.35f to Color(0xF7080810),
+                                    1f to Color(0xFF080810)
                                 )
                             )
                         )
@@ -252,7 +266,7 @@ fun SessionScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0x99000000))
+                        .background(Color(0xFF080810))
                         .windowInsetsPadding(WindowInsets.navigationBars)
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
