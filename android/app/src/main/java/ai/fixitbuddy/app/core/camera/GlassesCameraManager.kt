@@ -66,6 +66,8 @@ class GlassesCameraManager @Inject constructor(
     @Volatile private var initialized = false
     val isInitialized: Boolean get() = initialized
     private var consecutiveConversionFailures = 0
+    private var totalFramesEmitted = 0
+    private var sessionStartMs = 0L
 
     // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -92,7 +94,9 @@ class GlassesCameraManager @Inject constructor(
      * Call from an Activity context.
      */
     fun register(activity: Activity) {
+        Log.d(TAG, "Registering app with Meta Wearables SDK")
         Wearables.startRegistration(activity)
+        Log.d(TAG, "Registration dialog launched")
     }
 
     // ── Camera Permission ──────────────────────────────────────────────────────
@@ -104,7 +108,9 @@ class GlassesCameraManager @Inject constructor(
     suspend fun hasCameraPermission(): Boolean {
         val result = Wearables.checkPermissionStatus(Permission.CAMERA)
         result.onFailure { e -> Log.e(TAG, "Failed to check glasses camera permission", e) }
-        return result.getOrNull() == PermissionStatus.Granted
+        val granted = result.getOrNull() == PermissionStatus.Granted
+        Log.d(TAG, "Glasses camera permission: ${if (granted) "GRANTED" else "DENIED/UNKNOWN"}")
+        return granted
     }
 
     /**
@@ -138,8 +144,10 @@ class GlassesCameraManager @Inject constructor(
         }
         // BLUETOOTH_CONNECT is a dangerous permission on API 31+ — must be granted at runtime.
         // Without it Wearables.startStreamSession() throws SecurityException and crashes the app.
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
-            != PackageManager.PERMISSION_GRANTED) {
+        val btGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
+            PackageManager.PERMISSION_GRANTED
+        Log.d(TAG, "BLUETOOTH_CONNECT permission: ${if (btGranted) "GRANTED" else "DENIED"}")
+        if (!btGranted) {
             Log.e(TAG, "BLUETOOTH_CONNECT permission not granted — cannot start glasses stream")
             _connectionState.value = GlassesState.ERROR
             return
@@ -147,8 +155,10 @@ class GlassesCameraManager @Inject constructor(
 
         stopStream() // clean up any existing session
 
+        totalFramesEmitted = 0
+        sessionStartMs = System.currentTimeMillis()
         _connectionState.value = GlassesState.CONNECTING
-        Log.d(TAG, "Starting glasses stream")
+        Log.i(TAG, "Starting glasses stream — frameRate=2fps quality=MEDIUM")
 
         val session = try {
             Wearables.startStreamSession(
@@ -171,15 +181,25 @@ class GlassesCameraManager @Inject constructor(
                 session.videoStream.collect { frame ->
                     val jpeg = convertI420toJpeg(frame)
                     if (jpeg != null) {
+                        totalFramesEmitted++
+                        if (totalFramesEmitted == 1) {
+                            Log.i(TAG, "First frame received — ${frame.width}x${frame.height} " +
+                                "I420=${frame.buffer.remaining()}B → JPEG=${jpeg.size}B")
+                        } else if (totalFramesEmitted % 60 == 0) {
+                            // Heartbeat every ~30 seconds at 2fps
+                            val elapsedSec = (System.currentTimeMillis() - sessionStartMs) / 1000
+                            Log.d(TAG, "Frame heartbeat — $totalFramesEmitted frames in ${elapsedSec}s " +
+                                "(~${totalFramesEmitted / elapsedSec.coerceAtLeast(1)}fps) last=${jpeg.size}B")
+                        }
                         if (!_frames.tryEmit(jpeg)) {
-                            Log.w(TAG, "Frame buffer full — dropping frame (capacity=2)")
+                            Log.w(TAG, "Frame buffer full — dropping frame #$totalFramesEmitted (capacity=2)")
                         }
                     }
                 }
             } catch (e: CancellationException) {
                 throw e  // let structured concurrency propagate normally
             } catch (e: Exception) {
-                Log.e(TAG, "Video stream terminated unexpectedly", e)
+                Log.e(TAG, "Video stream terminated unexpectedly after $totalFramesEmitted frames", e)
                 _connectionState.value = GlassesState.ERROR
             }
         }
@@ -202,13 +222,14 @@ class GlassesCameraManager @Inject constructor(
             } catch (e: CancellationException) {
                 throw e  // let structured concurrency propagate normally
             } catch (e: Exception) {
-                Log.e(TAG, "State stream terminated unexpectedly", e)
+                Log.e(TAG, "State stream terminated unexpectedly after $totalFramesEmitted frames", e)
                 // C4: stateJob failure must also stop the video stream to avoid
                 // orphaned videoJob pumping frames from a dead session
                 videoJob?.cancel()
                 _connectionState.value = GlassesState.ERROR
             }
         }
+        Log.i(TAG, "Stream session started — videoJob and stateJob launched")
     }
 
     /**
@@ -216,20 +237,29 @@ class GlassesCameraManager @Inject constructor(
      */
     @Synchronized
     fun stopStream() {
+        if (streamSession == null && videoJob == null) {
+            Log.d(TAG, "stopStream() called — already stopped, nothing to do")
+            return
+        }
+        val elapsed = if (sessionStartMs > 0) (System.currentTimeMillis() - sessionStartMs) / 1000 else 0
+        Log.i(TAG, "Stopping glasses stream — $totalFramesEmitted frames in ${elapsed}s")
         videoJob?.cancel()
         videoJob = null
         stateJob?.cancel()
         stateJob = null
         try {
             streamSession?.close()
+            Log.d(TAG, "Stream session closed")
         } catch (e: Exception) {
             Log.w(TAG, "Error closing glasses stream session", e)
         } finally {
             streamSession = null
         }
         consecutiveConversionFailures = 0
+        totalFramesEmitted = 0
+        sessionStartMs = 0L
         _connectionState.value = GlassesState.DISCONNECTED
-        Log.d(TAG, "Glasses stream stopped")
+        Log.i(TAG, "Glasses stream stopped")
     }
 
     // ── Frame Conversion ───────────────────────────────────────────────────────
@@ -244,11 +274,17 @@ class GlassesCameraManager @Inject constructor(
      * StreamViewModel.convertI420toNV21() + handleVideoFrame()
      */
     private fun convertI420toJpeg(frame: VideoFrame): ByteArray? {
+        val width = frame.width
+        val height = frame.height
+        val dataSize = frame.buffer.remaining()
         return try {
             val buffer: ByteBuffer = frame.buffer
-            val width = frame.width
-            val height = frame.height
-            val dataSize = buffer.remaining()
+            val expectedSize = width * height * 3 / 2
+            if (dataSize < expectedSize) {
+                Log.w(TAG, "Frame buffer undersized — got ${dataSize}B expected ${expectedSize}B " +
+                    "for ${width}x${height} — skipping")
+                return null
+            }
 
             // Copy buffer without consuming it
             val bytes = ByteArray(dataSize)
@@ -267,14 +303,15 @@ class GlassesCameraManager @Inject constructor(
             }.also { consecutiveConversionFailures = 0 }
         } catch (e: Exception) {
             consecutiveConversionFailures++
+            val context = "${width}x${height} dataSize=${dataSize}B expected=${width * height * 3 / 2}B"
             if (consecutiveConversionFailures >= MAX_CONSECUTIVE_CONVERSION_FAILURES) {
-                Log.e(TAG, "Frame conversion failed $consecutiveConversionFailures times in a row — " +
-                    "stopping stream (possible SDK or hardware issue)", e)
+                Log.e(TAG, "Frame conversion failed $consecutiveConversionFailures times in a row " +
+                    "[$context] — stopping stream (possible SDK or hardware issue)", e)
                 stopStream()
                 _connectionState.value = GlassesState.ERROR  // override the DISCONNECTED set by stopStream()
             } else {
                 Log.w(TAG, "Frame conversion failed (${consecutiveConversionFailures}/" +
-                    "$MAX_CONSECUTIVE_CONVERSION_FAILURES) — skipping frame", e)
+                    "$MAX_CONSECUTIVE_CONVERSION_FAILURES) [$context] — skipping frame", e)
             }
             null
         }

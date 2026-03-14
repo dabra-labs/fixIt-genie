@@ -222,6 +222,7 @@ class SessionViewModel @Inject constructor(
     private fun observeGlassesState() {
         viewModelScope.launch {
             glassesCameraManager.connectionState.collect { state ->
+                Log.d(TAG, "Glasses state → $state")
                 _uiState.update { current ->
                     val errorMessage = if (state == GlassesState.ERROR)
                         "Glasses unavailable — SDK failed to initialize. Restart the app."
@@ -234,6 +235,8 @@ class SessionViewModel @Inject constructor(
     }
 
     fun switchCameraSource(source: CameraSource) {
+        val sessionActive = sessionJob != null
+        Log.i(TAG, "Switching camera source → $source (sessionActive=$sessionActive)")
         _uiState.update { it.copy(cameraSource = source) }
         if (source == CameraSource.GLASSES) {
             glassesCameraManager.startStream()
@@ -241,13 +244,15 @@ class SessionViewModel @Inject constructor(
             glassesCameraManager.stopStream()
         }
         // If a session is running, redirect the frame collection coroutine immediately
-        if (sessionJob != null) {
+        if (sessionActive) {
+            Log.d(TAG, "Session active — restarting frame forwarding for $source")
             startFrameForwarding(source)
         }
     }
 
     private fun startFrameForwarding(source: CameraSource) {
         frameForwardingJob?.cancel()
+        Log.d(TAG, "Starting frame forwarding — source=$source")
         frameForwardingJob = viewModelScope.launch(Dispatchers.IO) {
             val frameFlow = if (source == CameraSource.GLASSES)
                 glassesCameraManager.frames
@@ -258,7 +263,7 @@ class SessionViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e  // normal job cancellation — propagate
             } catch (e: Exception) {
-                Log.e(TAG, "Frame forwarding stopped unexpectedly", e)
+                Log.e(TAG, "Frame forwarding stopped unexpectedly (source=$source)", e)
                 frameForwardingJob = null
                 _uiState.update { it.copy(errorMessage = "Camera feed interrupted — agent can no longer see your camera.") }
             }
