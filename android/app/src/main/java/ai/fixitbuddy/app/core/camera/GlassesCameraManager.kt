@@ -203,6 +203,7 @@ class GlassesCameraManager @Inject constructor(
         } finally {
             streamSession = null
         }
+        consecutiveConversionFailures = 0
         _connectionState.value = GlassesState.DISCONNECTED
         Log.d(TAG, "Glasses stream stopped")
     }
@@ -244,8 +245,10 @@ class GlassesCameraManager @Inject constructor(
             consecutiveConversionFailures++
             if (consecutiveConversionFailures >= MAX_CONSECUTIVE_CONVERSION_FAILURES) {
                 Log.e(TAG, "Frame conversion failed $consecutiveConversionFailures times in a row — " +
-                    "possible SDK or hardware issue. Stopping stream.", e)
-                _connectionState.value = GlassesState.DISCONNECTED
+                    "stopping stream (possible SDK or hardware issue)", e)
+                // stopStream() sets state to DISCONNECTED and cancels all jobs — must be
+                // called on a background thread since we're already on Dispatchers.IO here
+                stopStream()
             } else {
                 Log.w(TAG, "Frame conversion failed (${consecutiveConversionFailures}/" +
                     "$MAX_CONSECUTIVE_CONVERSION_FAILURES) — skipping frame", e)
