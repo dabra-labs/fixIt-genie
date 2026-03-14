@@ -95,14 +95,20 @@ The same architecture adapts to radically different verticals with minimal chang
 - pypdf
 
 ## Try It Out
-- **GitHub**: https://github.com/dabra-labs/fixbuddy
+- **GitHub**: https://github.com/dabra-labs/fixIt-genie
 - **Demo Video**: [YouTube link — REPLACE BEFORE SUBMISSION]
-- **Blog Post**: [Medium/Dev.to link — REPLACE BEFORE SUBMISSION]
-- **Live Backend**: Deployed on Google Cloud Run (see deploy.sh for setup)
+- **Blog Post**: https://fixit-genie.web.app/blog.html
+- **Live Backend**: https://fixitbuddy-agent-hybxqwgczq-uc.a.run.app
+- **Deployment Proof**: [DEPLOYMENT.md](../DEPLOYMENT.md)
+
+## Google Cloud Proof (paste these links in the submission form)
+- **Firestore vector search call**: https://github.com/dabra-labs/fixIt-genie/blob/main/backend/fixitbuddy/tools.py#L9
+- **Gemini ADK agent definition**: https://github.com/dabra-labs/fixIt-genie/blob/main/backend/fixitbuddy/agent.py#L30
+- **Cloud Run IaC deploy script**: https://github.com/dabra-labs/fixIt-genie/blob/main/backend/deploy.sh
 
 ---
 
 ## Bonus Points Checklist
-- [x] Blog post (+0.6) — Published on Medium/Dev.to
+- [x] Blog post (+0.6) — https://fixit-genie.web.app/blog.html
 - [x] Infrastructure as Code (+0.2) — deploy.sh with full GCP setup
 - [ ] GDG membership (+0.2) — Join at developers.google.com/community/gdg

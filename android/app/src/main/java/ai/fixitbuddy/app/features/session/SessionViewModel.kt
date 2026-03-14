@@ -311,11 +311,12 @@ class SessionViewModel @Inject constructor(
             // Step 5: Forward camera frames — restartable via switchCameraSource()
             startFrameForwarding(_uiState.value.cameraSource)
 
-            // Step 6: Forward audio chunks — gated while agent is speaking to prevent
-            // AEC tail-end echo from triggering a second agent response
+            // Step 6: Forward audio chunks continuously — Gemini's native audio model
+            // has built-in VAD and AEC; always streaming lets the server detect when
+            // the user speaks mid-response and send `interrupted: true` to cut off playback.
             launch {
                 audioManager.audioChunks.collect { chunk ->
-                    if (!agentSpeaking) webSocket.sendAudioChunk(chunk)
+                    webSocket.sendAudioChunk(chunk)
                 }
             }
         }

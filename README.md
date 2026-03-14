@@ -1,29 +1,43 @@
 # FixIt Genie
 
-**See. Hear. Fix.** Point your phone camera at broken equipment, describe the problem, and get expert step-by-step voice guidance in real time. Your AI repair genie.
+**See. Hear. Fix.** Point your phone camera at broken equipment, describe the problem, and get expert step-by-step voice guidance in real time.
 
-Built with **Google ADK** + **Gemini Live API** for the [Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/).
-
-**[→ Live Demo Page](https://fixit-genie.web.app)** · **[→ Technical Blog](https://fixit-genie.web.app/blog.html)**
+Built with **Google ADK** + **Gemini 2.5 Flash Native Audio** for the [Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/).
 
 ---
+
+**[→ Live Demo Site](https://fixit-genie.web.app)** &nbsp;·&nbsp; **[→ Technical Blog](https://fixit-genie.web.app/blog.html)** &nbsp;·&nbsp; **[→ Live Backend on Cloud Run](https://fixitbuddy-agent-hybxqwgczq-uc.a.run.app)** &nbsp;·&nbsp; **[→ Cloud Deployment Proof](DEPLOYMENT.md)**
+
+---
+
+## Live Agent Capabilities
+
+FixIt Genie is built for the **Live Agent** category — here's what that means in practice:
+
+| Capability | How It Works |
+|-----------|-------------|
+| **Interrupt mid-speech** | Audio streams continuously to the server. Gemini's native VAD detects you speaking while the agent talks and sends `interrupted: true` — the app immediately clears the audio queue and listens. No button press needed. |
+| **Bidirectional streaming** | OkHttp WebSocket + ADK LiveRequest/LiveEvent protocol. Audio (16kHz PCM) and video (1 FPS JPEG) stream up; audio (24kHz PCM) and transcripts stream back — simultaneously, in real time. |
+| **Agent sees without being told** | Camera frames arrive continuously. The agent identifies equipment, reads error codes and gauges, and calls out what it notices — without you naming anything. |
+| **Natural pacing** | Gemini's native VAD handles turn detection automatically. No push-to-talk, no start/stop signals. Say "wait" or "hold on" mid-response and the agent stops. |
+| **Function calls mid-conversation** | The agent queries the knowledge base, searches the web, or fetches a YouTube transcript without pausing the conversation flow. |
 
 ## What It Does
 
 FixIt Genie is a multimodal AI agent that:
 
-1. **Sees** through your phone camera (or optionally through connected Ray-Ban Meta glasses) — identifies equipment, reads error codes, gauges, and labels
-2. **Listens** to you describe the problem — understands context and asks clarifying questions
-3. **Talks you through the fix** — step-by-step voice guidance with an animated genie avatar driven by audio level, confirming each step visually before moving on
+1. **Sees** through your phone camera (or Ray-Ban Meta glasses for hands-free) — identifies equipment, reads error codes, gauges, and labels in real time
+2. **Listens** to you describe the problem — understands context, asks clarifying questions
+3. **Talks you through the fix** — step-by-step voice guidance with an animated genie avatar, confirming each step visually before moving on
 4. **Keeps you safe** — always checks safety warnings before guiding any physical action
 
 ### Demo Scenarios
 
-- **Automotive**: Check oil, diagnose battery issues, assess coolant levels
-- **Electrical**: Reset tripped breakers, troubleshoot GFCI outlets
-- **Appliances**: Decode washing machine/dishwasher error codes, troubleshoot LG refrigerators
-
-Same architecture works for industrial equipment, HVAC, plumbing, and more.
+| Domain | Equipment | Coverage |
+|--------|-----------|----------|
+| Automotive | Engine oil, battery, cooling system | P0520-P0524, P0562-P0621, P0115-P0128 |
+| Electrical | Breaker panel, GFCI outlets | Visual diagnosis + safe reset procedures |
+| Appliances | Washing machine, dishwasher, LG fridge | E1-E4, F1-F21, UE, OE, Er IF-Er SS + 33 more |
 
 ---
 
@@ -75,133 +89,111 @@ flowchart TD
 
 | Layer | Technology |
 |-------|-----------|
-| Android App | Kotlin 2.3, Jetpack Compose (BOM 2025.04.01), Material 3, CameraX 1.4.1, Hilt 2.59.2 |
-| Glasses Integration | Meta DAT SDK v0.4.0 (`mwdat-core`, `mwdat-camera`), Ray-Ban Meta glasses |
-| Backend Agent | Google ADK (`adk web`), Gemini 2.5 Flash Native Audio Preview, Python 3.12 |
-| Knowledge Base | ADK SkillToolset (3 domain skills), Firestore vector search (gemini-embedding-001, 3072-dim) |
+| Android App | Kotlin 2.3, Jetpack Compose (Material 3), CameraX 1.4.1, Hilt 2.59.2 |
+| Glasses | Meta DAT SDK v0.4.0 (`mwdat-core`, `mwdat-camera`) |
+| Backend Agent | Google ADK (`adk web`), Gemini 2.5 Flash Native Audio, Python 3.12 |
+| Knowledge Base | ADK SkillToolset (3 domain skills), Firestore vector search (gemini-embedding-001, 3072-dim COSINE) |
 | Infrastructure | Google Cloud Run (2 vCPU, 2 GiB), IaC via `deploy.sh` |
 | Communication | OkHttp WebSocket, ADK bidi-streaming (LiveRequest/LiveEvent protocol) |
-| Backend Libraries | requests, pypdf, youtube-transcript-api |
+
+---
+
+## Quick Start
+
+### Option 1 — Talk to the Live Backend
+
+The backend is already deployed. Clone the repo, set your backend URL, and run the Android app against it.
+
+```bash
+git clone https://github.com/dabra-labs/fixIt-genie
+cd fixIt-genie/android
+
+# The live Cloud Run URL is pre-configured in gradle.properties
+./gradlew installDebug
+```
+
+### Option 2 — Run Everything Locally
+
+```bash
+git clone https://github.com/dabra-labs/fixIt-genie
+cd fixIt-genie
+
+# Install backend dependencies
+pip install -r backend/requirements.txt
+
+# Start backend + Android emulator in one command
+export GOOGLE_API_KEY=your-gemini-api-key
+./dev.sh --android
+```
+
+`dev.sh` handles: backend startup, emulator boot detection, APK build + install, and app launch. Run `./dev.sh --help` for options.
+
+### Option 3 — Deploy Your Own Cloud Run Backend
+
+```bash
+export GOOGLE_CLOUD_PROJECT=your-gcp-project-id
+export GOOGLE_API_KEY=your-gemini-api-key
+
+cd backend && ./deploy.sh
+```
+
+`deploy.sh` is full IaC — enables APIs, creates Artifact Registry, builds the container via Cloud Build, deploys to Cloud Run, and verifies the service is responding. Run with `DRY_RUN=1 ./deploy.sh` to preview without deploying.
+
+---
+
+## Agent Tools
+
+### Domain Skills (ADK SkillToolset)
+
+Three domain skills loaded on demand — the agent calls `list_skills` to discover them and `load_skill` to load instructions for the active domain. Keeps the context window lean until a domain is needed.
+
+| Skill | Domain | References |
+|-------|--------|-----------|
+| `automotive` | Engine oil, battery, cooling | `oil_system.md`, `battery_electrical.md`, `cooling_system.md` |
+| `electrical` | Breaker panel, GFCI | `breaker_panel.md`, `gfci_outlets.md` |
+| `appliances` | Washer, dishwasher, LG fridge | `washing_machine.md`, `dishwasher.md`, `lg_refrigerator.md` |
+
+### Function Tools
+
+| Tool | Purpose |
+|------|---------|
+| `lookup_equipment_knowledge` | Semantic vector search via Firestore `find_nearest()` + `gemini-embedding-001` (3072-dim COSINE). Fallback: keyword matching |
+| `get_safety_warnings` | Safety warnings before any physical action — non-negotiable in the system prompt |
+| `log_diagnostic_step` | Session transcript logging |
+| `google_search` | Real-time web search for unknown error codes and model-specific procedures |
+| `analyze_youtube_repair_video` | Fetches transcript via `youtube-transcript-api`, summarizes with Gemini — works for any captioned video |
+| `lookup_user_manual` | Grounded search for official manufacturer PDF + `pypdf` extraction |
 
 ---
 
 ## Project Structure
 
 ```
-fixitbuddy/
-├── android/                    # Native Android app
+fixitgenie/
+├── android/                    # Native Android app (Kotlin + Jetpack Compose)
 │   ├── app/src/main/java/ai/fixitbuddy/app/
-│   │   ├── core/               # Camera, Audio, WebSocket, Config, DI, GlassesCameraManager
+│   │   ├── core/               # Camera, Audio, WebSocket, DI, GlassesCameraManager
 │   │   ├── features/           # Session, History, Settings, Onboarding
-│   │   ├── navigation/         # Compose Navigation
-│   │   └── ui/                 # StatusIndicator, TranscriptOverlay, CameraViewfinder
-│   └── app/src/test/           # 109 unit tests + 10 glasses tests (5 instrumented, 5 unit)
+│   │   ├── navigation/         # Compose NavHost
+│   │   └── design/             # Material 3 theme (Safety Orange + Tool Blue)
+│   └── app/src/test/           # 119 unit tests
 ├── backend/
-│   ├── fixitbuddy/             # ADK agent directory
+│   ├── fixitbuddy/             # ADK agent package
 │   │   ├── agent.py            # Agent definition + SkillToolset
-│   │   ├── tools.py            # 6 custom tools + vector search KB + embedded fallback
+│   │   ├── tools.py            # 6 function tools + embedded KB fallback
 │   │   ├── config.py           # Environment config
-│   │   └── skills/             # ADK domain skills
-│   │       ├── automotive/     # SKILL.md + references/ (oil, battery, coolant)
-│   │       ├── electrical/     # SKILL.md + references/ (breaker panel, GFCI)
-│   │       └── appliances/     # SKILL.md + references/ (washer, dishwasher, fridge)
-│   ├── tests/                  # 115 unit tests
-│   ├── seed_knowledge.py       # Firestore seeder with gemini-embedding-001
-│   ├── firestore.indexes.json  # Vector index config (3072-dim COSINE)
-│   ├── Dockerfile              # Container (python:3.12-slim → adk web)
-│   └── deploy.sh               # IaC Cloud Run deployment
-└── docs/
-    ├── blog-post.md            # Published blog post
-    └── devpost-submission.md   # Submission template
+│   │   └── skills/             # automotive/, electrical/, appliances/
+│   ├── tests/                  # 115 backend tests
+│   ├── Dockerfile              # python:3.12-slim → adk web
+│   ├── deploy.sh               # IaC: Cloud Run deployment
+│   └── requirements.txt
+├── hosting/                    # Firebase Hosting (fixit-genie.web.app)
+│   └── public/
+│       ├── index.html          # Demo landing page
+│       └── blog.html           # Technical blog post
+├── dev.sh                      # Local dev: backend + Android emulator
+└── docs/                       # Architecture diagrams, screenshots, demo scripts
 ```
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Android Studio (latest)
-- Google Cloud project with Gemini API key
-- Python 3.12+
-- gcloud CLI
-
-### Backend Setup
-
-```bash
-cd backend
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Local development (Gemini API key, not Vertex AI)
-export GOOGLE_GENAI_USE_VERTEXAI=FALSE
-export GOOGLE_API_KEY=your-api-key-here
-adk web --port 8080 --host 0.0.0.0 .
-
-# Deploy to Cloud Run
-chmod +x deploy.sh
-GOOGLE_CLOUD_PROJECT=your-project-id GOOGLE_API_KEY=your-key ./deploy.sh
-```
-
-### Android Setup
-
-```bash
-cd android
-
-# Backend URL is configured in gradle.properties
-# For local dev: BACKEND_URL=http://10.0.2.2:8080
-# For production: BACKEND_URL=https://your-cloud-run-url.run.app
-
-./gradlew assembleDebug
-# Install APK on device or emulator
-```
-
----
-
-## Agent Tools
-
-### Domain Skills (via SkillToolset)
-
-Three ADK skills provide domain-specific behavioral context. The agent calls `list_skills` to discover them and `load_skill` to load instructions on demand — keeping the context window lean until a domain is needed.
-
-| Skill | Domain | References |
-|-------|--------|-----------|
-| `automotive` | Engine oil, battery, cooling | oil_system.md, battery_electrical.md, cooling_system.md |
-| `electrical` | Breaker panel, GFCI | breaker_panel.md, gfci_outlets.md |
-| `appliances` | Washer, dishwasher, LG fridge | washing_machine.md, dishwasher.md, lg_refrigerator.md |
-
-### Function Tools
-
-| Tool | Purpose |
-|------|---------|
-| `lookup_equipment_knowledge` | Semantic vector search via Firestore `find_nearest()` + gemini-embedding-001 (3072-dim COSINE). Fallback: keyword matching against embedded dict |
-| `get_safety_warnings` | Get safety warnings before any physical action (electrical, mechanical, fluid, heat, etc.) |
-| `log_diagnostic_step` | Record each diagnostic step for the session transcript |
-| `google_search` | Real-time web search for error codes, repair guides, and model-specific procedures (`GoogleSearchTool` with `bypass_multi_tools_limit=True`) |
-| `analyze_youtube_repair_video` | Fetch video transcript via youtube-transcript-api and summarize with Gemini; agent narrates the relevant steps verbally |
-| `lookup_user_manual` | Grounded search to find the official manufacturer PDF, extract text with pypdf, summarize error codes and troubleshooting steps |
-
----
-
-## Knowledge Base
-
-Knowledge is organized in two complementary layers:
-
-**ADK Skills** (`backend/fixitbuddy/skills/`) — domain behavioral instructions loaded on demand. Each skill's `references/` directory contains structured markdown with error code tables, diagnostic steps, visual cues, and safety notes.
-
-**Firestore Vector Search** — `gemini-embedding-001` embeddings (3072-dim) on 9 equipment documents, queried with `find_nearest()` using COSINE similarity. "Engine oil pressure alarm" semantically matches the oil system doc even without exact keyword overlap. The embedded Python dict serves as a last-resort fallback if Firestore is unavailable.
-
-**Coverage** (9 documents, 3 categories, 33+ error codes):
-- **Automotive**: Engine oil system (P0520-P0524), car battery/electrical (P0562-P0621), cooling system (P0115-P0128)
-- **Electrical**: Residential breaker panel, GFCI outlets
-- **Appliances**: Washing machine (E1-E4, F1-F21, UE, OE, LE, dE, IE), dishwasher (E1-E25, E15), LG refrigerator (Er IF-Er SS, CL, dH)
-
----
-
-## Safety First
-
-FixIt Genie always calls `get_safety_warnings()` before guiding any physical action. The agent will stop and recommend calling a professional if the situation appears dangerous. Safety categories include electrical, mechanical, fluid, pressure, heat, and chemical hazards.
 
 ---
 
@@ -211,20 +203,28 @@ FixIt Genie always calls `get_safety_warnings()` before guiding any physical act
 # Backend (115 tests)
 cd backend && python -m pytest tests/ -v
 
-# Android (109 tests)
+# Android (119 tests)
 cd android && ./gradlew testDebugUnitTest
 ```
 
 ---
 
-## License
+## Google Cloud Services Used
 
-MIT
+| Service | Purpose |
+|---------|---------|
+| **Cloud Run** | Hosts the ADK agent — persistent WebSocket, session affinity, auto-scaling |
+| **Cloud Build** | Builds the container image via `deploy.sh` |
+| **Artifact Registry** | Stores the Docker image |
+| **Cloud Firestore** | Vector search knowledge base (`gemini-embedding-001`, 3072-dim COSINE) |
+| **Vertex AI / Gemini API** | `gemini-2.5-flash-native-audio-latest` for bidi-streaming, `gemini-2.5-flash` for tools |
+
+Live backend: `https://fixitbuddy-agent-hybxqwgczq-uc.a.run.app`
 
 ---
 
-## Built For
+## License
 
-[Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/) — Google's hackathon for multimodal AI agents that see, hear, speak, and create.
+MIT — [Max Safari](https://github.com/dabra-labs)
 
-**Team**: Max Safari
+Built for the [Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/).

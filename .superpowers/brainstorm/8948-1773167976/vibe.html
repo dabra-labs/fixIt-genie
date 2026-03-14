@@ -1,0 +1,117 @@
+<style>
+  .vibe-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
+  .vibe-card { border-radius: 12px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+  .vibe-card:hover { transform: translateY(-3px); }
+  .vibe-card.selected { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.3); }
+  .vibe-preview { height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; position: relative; overflow: hidden; }
+  .vibe-label { padding: 14px 16px; background: var(--surface); }
+  .vibe-label h3 { margin: 0 0 4px; font-size: 15px; }
+  .vibe-label p { margin: 0; font-size: 12px; opacity: 0.6; }
+  .letter-badge { position: absolute; top: 10px; left: 10px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; }
+
+  /* Option A – Dark Tech */
+  .preview-dark { background: linear-gradient(135deg, #0a0a0f 0%, #12121e 100%); }
+  .dark-nav { position: absolute; top: 0; left: 0; right: 0; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,100,30,0.2); }
+  .dark-logo { font-size: 12px; font-weight: 700; color: #ff6a1e; letter-spacing: 2px; }
+  .dark-hero { text-align: center; }
+  .dark-title { font-size: 20px; font-weight: 800; color: #fff; line-height: 1.2; margin-bottom: 8px; }
+  .dark-title span { color: #ff6a1e; }
+  .dark-sub { font-size: 10px; color: rgba(255,255,255,0.5); margin-bottom: 12px; }
+  .dark-pill { display: inline-block; background: rgba(255,106,30,0.15); border: 1px solid rgba(255,106,30,0.4); color: #ff6a1e; font-size: 10px; padding: 4px 10px; border-radius: 20px; }
+  .dark-glow { position: absolute; width: 100px; height: 100px; background: radial-gradient(circle, rgba(255,106,30,0.2) 0%, transparent 70%); top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+
+  /* Option B – Clean Startup */
+  .preview-clean { background: #f8f9fc; }
+  .clean-badge { background: #ffe8d6; color: #c05200; font-size: 9px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin-bottom: 10px; display: inline-block; }
+  .clean-title { font-size: 18px; font-weight: 800; color: #111; line-height: 1.25; margin-bottom: 6px; text-align: center; }
+  .clean-sub { font-size: 10px; color: #666; text-align: center; margin-bottom: 12px; max-width: 180px; }
+  .clean-btns { display: flex; gap: 6px; }
+  .clean-btn-primary { background: #111; color: #fff; font-size: 10px; padding: 6px 12px; border-radius: 6px; font-weight: 600; }
+  .clean-btn-secondary { background: transparent; border: 1px solid #ddd; color: #333; font-size: 10px; padding: 6px 12px; border-radius: 6px; }
+  .clean-phone-thumb { position: absolute; right: 20px; bottom: -10px; width: 45px; height: 80px; background: #222; border-radius: 8px; border: 2px solid #444; overflow: hidden; }
+  .clean-phone-screen { background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); height: 100%; display: flex; align-items: center; justify-content: center; }
+  .clean-avatar-dot { width: 16px; height: 16px; border-radius: 50%; background: #ff6a1e; box-shadow: 0 0 10px #ff6a1e; }
+
+  /* Option C – Immersive */
+  .preview-immersive { background: linear-gradient(160deg, #0d1117 0%, #1a0a00 50%, #0d1117 100%); }
+  .immersive-video-bg { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.01) 2px, rgba(255,255,255,0.01) 4px); pointer-events: none; }
+  .immersive-content { text-align: center; position: relative; z-index: 1; }
+  .immersive-eyebrow { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,106,30,0.8); margin-bottom: 10px; }
+  .immersive-title { font-size: 22px; font-weight: 900; color: #fff; line-height: 1.1; margin-bottom: 8px; }
+  .immersive-title em { font-style: normal; -webkit-text-stroke: 1px rgba(255,106,30,0.8); color: transparent; }
+  .immersive-cta { display: inline-flex; align-items: center; gap: 6px; background: #ff6a1e; color: #fff; font-size: 10px; font-weight: 700; padding: 7px 14px; border-radius: 4px; }
+  .immersive-scroll { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 2px; }
+  .immersive-line { position: absolute; left: 50%; bottom: 28px; width: 1px; height: 16px; background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3)); }
+</style>
+
+<h2>What's the overall vibe?</h2>
+<p class="subtitle">Pick the design direction that feels right for the FixIt Genie demo page</p>
+
+<div class="vibe-cards">
+
+  <!-- A: Dark Tech -->
+  <div class="vibe-card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="vibe-preview preview-dark">
+      <div class="dark-glow"></div>
+      <div class="dark-nav">
+        <span class="dark-logo">FIXITGENIE</span>
+        <span style="font-size:9px;color:rgba(255,255,255,0.3)">Watch Demo ↗</span>
+      </div>
+      <div class="dark-hero">
+        <div class="dark-title">AI that <span>sees</span><br>what you see</div>
+        <div class="dark-sub">Real-time vision · Voice · Repair</div>
+        <div class="dark-pill">▶ Watch Demo</div>
+      </div>
+      <div class="letter-badge">A</div>
+    </div>
+    <div class="vibe-label">
+      <h3>Dark Tech</h3>
+      <p>Safety orange on black. Dramatic, tool-like. Feels powerful and serious.</p>
+    </div>
+  </div>
+
+  <!-- B: Clean Startup -->
+  <div class="vibe-card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="vibe-preview preview-clean">
+      <span class="clean-badge">Gemini Live Agent Challenge</span>
+      <div class="clean-title">The AI that stands<br>next to you</div>
+      <div class="clean-sub">Sees through your camera. Talks you through the fix.</div>
+      <div class="clean-btns">
+        <div class="clean-btn-primary">Watch Demo</div>
+        <div class="clean-btn-secondary">GitHub ↗</div>
+      </div>
+      <div class="clean-phone-thumb">
+        <div class="clean-phone-screen">
+          <div class="clean-avatar-dot"></div>
+        </div>
+      </div>
+      <div class="letter-badge" style="background:rgba(0,0,0,0.15);color:#333;">B</div>
+    </div>
+    <div class="vibe-label">
+      <h3>Clean Startup</h3>
+      <p>Light, bold, professional. Think Vercel/Linear. Trustworthy and sharp.</p>
+    </div>
+  </div>
+
+  <!-- C: Immersive -->
+  <div class="vibe-card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="vibe-preview preview-immersive">
+      <div class="immersive-video-bg"></div>
+      <div class="immersive-content">
+        <div class="immersive-eyebrow">Gemini Live · Google ADK</div>
+        <div class="immersive-title">Eyes.<br><em>Voice.</em><br>Wrench.</div>
+        <div class="immersive-cta">▶ See It Live</div>
+      </div>
+      <div class="immersive-line"></div>
+      <div class="immersive-scroll">SCROLL</div>
+      <div class="letter-badge">C</div>
+    </div>
+    <div class="vibe-label">
+      <h3>Immersive Story</h3>
+      <p>Cinematic scroll. Full-bleed sections. Blog + demo flow as one narrative.</p>
+    </div>
+  </div>
+
+</div>
+
+<p style="margin-top:20px;font-size:12px;opacity:0.5;text-align:center">Click to select · Or tell me in the terminal if you want a mix</p>
