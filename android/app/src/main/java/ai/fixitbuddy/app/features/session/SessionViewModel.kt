@@ -19,6 +19,7 @@ import ai.fixitbuddy.app.features.history.SessionHistoryStore
 import ai.fixitbuddy.app.features.history.SessionRecord
 import ai.fixitbuddy.app.features.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -252,7 +253,14 @@ class SessionViewModel @Inject constructor(
                 glassesCameraManager.frames
             else
                 cameraManager.frames
-            frameFlow.collect { frame -> webSocket.sendVideoFrame(frame) }
+            try {
+                frameFlow.collect { frame -> webSocket.sendVideoFrame(frame) }
+            } catch (e: CancellationException) {
+                throw e  // normal job cancellation — propagate
+            } catch (e: Exception) {
+                Log.e(TAG, "Frame forwarding stopped unexpectedly", e)
+                frameForwardingJob = null
+            }
         }
     }
 
