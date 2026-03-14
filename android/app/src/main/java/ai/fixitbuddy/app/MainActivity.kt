@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import ai.fixitbuddy.app.core.camera.GlassesCameraManager
 import ai.fixitbuddy.app.design.theme.FixItBuddyTheme
 import ai.fixitbuddy.app.navigation.FixItBuddyNavHost
+import android.util.Log
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -37,7 +38,15 @@ class MainActivity : ComponentActivity() {
         // registration dialog on every Activity recreation (e.g. screen rotation).
         glassesCameraManager.initialize()
         if (savedInstanceState == null && glassesCameraManager.isInitialized) {
-            glassesCameraManager.register(this)
+            try {
+                glassesCameraManager.register(this)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to register with Meta Wearables SDK — glasses unavailable", e)
+            }
         }
+    }
+
+    companion object {
+        private const val TAG = "MainActivity"
     }
 }
