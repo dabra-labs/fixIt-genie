@@ -137,14 +137,20 @@ class GlassesCameraManager @Inject constructor(
         _connectionState.value = GlassesState.CONNECTING
         Log.d(TAG, "Starting glasses stream")
 
-        val session = Wearables.startStreamSession(
-            context,
-            AutoDeviceSelector(),
-            StreamConfiguration(
-                videoQuality = VideoQuality.MEDIUM,
-                frameRate = 2  // minimum supported by SDK (valid values: 2, 7, 15, 24, 30)
-            )
-        ).also { streamSession = it }
+        val session = try {
+            Wearables.startStreamSession(
+                context,
+                AutoDeviceSelector(),
+                StreamConfiguration(
+                    videoQuality = VideoQuality.MEDIUM,
+                    frameRate = 2  // minimum supported by SDK (valid values: 2, 7, 15, 24, 30)
+                )
+            ).also { streamSession = it }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start glasses stream session", e)
+            _connectionState.value = GlassesState.ERROR
+            return
+        }
 
         // Collect video frames
         videoJob = scope.launch {
