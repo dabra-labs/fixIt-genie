@@ -816,7 +816,7 @@ agent = Agent(
 
   <h2>Lessons Learned</h2>
 
-  <p><strong>Bidi-streaming is the key differentiator.</strong> Most entries will use request-response patterns. Real-time bidi-streaming with audio feels qualitatively different — it's a conversation, not a chatbot. The Gemini native audio model handles VAD automatically, which makes the interaction feel natural without any engineering effort.</p>
+  <p><strong>Bidi-streaming is the key differentiator.</strong> Real-time bidi-streaming with audio feels qualitatively different from request-response patterns — it's a conversation, not a chatbot. The Gemini native audio model handles VAD automatically, which makes the interaction feel natural without any engineering effort.</p>
 
   <p><strong>True interruption requires always-on audio streaming.</strong> The obvious implementation gates the microphone while the agent is speaking — to prevent echo feedback from triggering a second response. But this kills bidi-streaming's most important property: the ability to interrupt. The correct approach is to stream audio continuously and let Gemini's native VAD and AEC handle it. When you speak mid-response, the server sends <code>interrupted: true</code>, the app immediately clears the audio queue, and the agent listens. Say "wait" or "hold on" naturally — the agent stops. This is what separates a live agent from a chatbot with a voice skin.</p>
 
