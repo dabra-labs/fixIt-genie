@@ -221,7 +221,13 @@ class SessionViewModel @Inject constructor(
     private fun observeGlassesState() {
         viewModelScope.launch {
             glassesCameraManager.connectionState.collect { state ->
-                _uiState.update { it.copy(glassesState = state) }
+                _uiState.update { current ->
+                    val errorMessage = if (state == GlassesState.ERROR)
+                        "Glasses unavailable — SDK failed to initialize. Restart the app."
+                    else
+                        current.errorMessage
+                    current.copy(glassesState = state, errorMessage = errorMessage)
+                }
             }
         }
     }

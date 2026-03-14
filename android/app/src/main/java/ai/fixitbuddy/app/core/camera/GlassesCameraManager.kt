@@ -76,7 +76,8 @@ class GlassesCameraManager @Inject constructor(
             Log.d(TAG, "Wearables SDK initialized")
         } catch (e: Exception) {
             Log.e(TAG, "Wearables SDK failed to initialize — glasses unavailable", e)
-            // initialized stays false; startStream() will log and return early
+            _connectionState.value = GlassesState.ERROR
+            // initialized stays false; startStream() will surface ERROR state
         }
     }
 
@@ -124,7 +125,8 @@ class GlassesCameraManager @Inject constructor(
      */
     fun startStream() {
         if (!initialized) {
-            Log.e(TAG, "startStream called before initialize()")
+            Log.e(TAG, "startStream called before initialize() — SDK not ready")
+            _connectionState.value = GlassesState.ERROR
             return
         }
 
@@ -268,5 +270,6 @@ class GlassesCameraManager @Inject constructor(
 enum class GlassesState {
     DISCONNECTED,
     CONNECTING,
-    STREAMING
+    STREAMING,
+    ERROR          // SDK failed to initialize or an unrecoverable error occurred
 }
