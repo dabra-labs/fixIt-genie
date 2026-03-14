@@ -13,6 +13,7 @@ import androidx.activity.result.ActivityResultLauncher
 import com.meta.wearable.dat.camera.StreamSession
 import com.meta.wearable.dat.camera.startStreamSession
 import com.meta.wearable.dat.camera.types.StreamConfiguration
+import com.meta.wearable.dat.camera.types.StreamSessionState
 import com.meta.wearable.dat.camera.types.VideoFrame
 import com.meta.wearable.dat.camera.types.VideoQuality
 import com.meta.wearable.dat.core.Wearables
@@ -188,10 +189,13 @@ class GlassesCameraManager @Inject constructor(
             try {
                 session.state.collect { state ->
                     Log.d(TAG, "Stream state: $state")
-                    _connectionState.value = when (state.name) {
-                        "STREAMING" -> GlassesState.STREAMING
-                        "STARTING"  -> GlassesState.CONNECTING
-                        else        -> GlassesState.DISCONNECTED
+                    _connectionState.value = when (state) {
+                        StreamSessionState.STARTING  -> GlassesState.CONNECTING
+                        StreamSessionState.STARTED   -> GlassesState.CONNECTING
+                        StreamSessionState.STREAMING -> GlassesState.STREAMING
+                        StreamSessionState.STOPPING,
+                        StreamSessionState.STOPPED,
+                        StreamSessionState.CLOSED    -> GlassesState.DISCONNECTED
                     }
                 }
             } catch (e: CancellationException) {
