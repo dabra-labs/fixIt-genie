@@ -480,49 +480,33 @@
 
 <div class="blog-content">
 
-  <h2>The Problem Is Bigger Than a Broken Dishwasher</h2>
+  <h2>The Problem With Every Repair Tool That Exists Today</h2>
 
-  <p>There are 15 million skilled trade workers in the United States alone. Electricians, mechanics, HVAC technicians, biomedical engineers, factory maintenance techs. Every single day, they face equipment they've never seen before, error codes with no obvious cause, and procedures that require three hands and a photographic memory.</p>
+  <p>Picture a maintenance technician on a factory floor, hands inside an electrical panel, Ray-Ban glasses on. An AI agent is watching through the glasses camera — seeing the exact wiring configuration, the exact components — talking them through the fault diagnosis step by step. Hands-free. No manual to flip through. Just a voice that sees what they see.</p>
 
-  <p>The tools they have? A PDF manual. A YouTube video that doesn't quite match their model. A colleague who might pick up the phone.</p>
+  <p>Every existing repair tool — manuals, YouTube tutorials, support hotlines — shares the same fundamental flaw: they're blind. They can't see what you're looking at. They can't adapt when your setup is different from the example. They can't tell you "the valve on your left, the one with the red handle" because they have no idea what's in front of you.</p>
 
-  <p>Now picture this: a maintenance technician on a factory floor, hands inside an electrical panel, Ray-Ban glasses on. An AI agent is watching through the glasses camera — seeing the exact wiring configuration, the exact components in front of them — and talking them through the fault diagnosis step by step. Hands-free. No phone to hold. No manual to flip through. Just a voice that sees what they see.</p>
-
-  <div class="callout">That's not a demo. That's what we built.</div>
-
-  <div class="pull-quote">People in skilled trades don't need more manuals. They need someone who can see what they're looking at and talk them through it. Gemini Live makes that possible.</div>
+  <div class="callout">Gemini Live changes this constraint. An AI that streams your camera, hears your voice, and talks back in real time isn't a better search engine — it's a different kind of tool entirely.</div>
 
   <hr>
 
-  <h2>A New Category of AI Tool</h2>
+  <h2>What Makes This Different From a Voice Assistant</h2>
 
-  <p>Most AI tools today are either blind (text chat) or passive (image upload → response). What Gemini Live enables is something qualitatively different: an AI that <strong>sees continuously, speaks naturally, and acts on domain knowledge</strong> — all at the same time, in real time.</p>
+  <p>The combination that makes FixIt Genie work isn't any single capability — it's all three running simultaneously: <strong>continuous vision</strong> (camera frames arriving at 1 FPS), <strong>bidirectional audio</strong> (you can speak and be heard at any moment, including mid-response), and <strong>domain knowledge retrieval</strong> (six tools firing mid-conversation without breaking the flow).</p>
 
-  <p>That combination defines a new class of tool. Not a chatbot. Not a vision API wrapper. Something that behaves more like a knowledgeable colleague standing next to you.</p>
-
-  <p>The pattern generalizes far beyond home repair:</p>
-
-  <ul>
-    <li><strong>Factory floor</strong> — A technician wears Ray-Ban glasses. The agent sees the machine, cross-references the OEM maintenance manual, and guides the lockout/tagout procedure before any panel opens.</li>
-    <li><strong>Insurance claims</strong> — A field adjuster points their phone at storm damage. The agent reads repair guides and local building codes in real time, then generates a structured damage report on the spot.</li>
-    <li><strong>Biomedical engineering</strong> — A technician servicing hospital imaging equipment gets an agent that cross-references FDA device databases, manufacturer service manuals, and facility service history — with the same safety-first discipline that warns about radiation interlocks and high-voltage components.</li>
-  </ul>
-
-  <p><strong>FixIt Genie is our proof of concept.</strong> It targets equipment repair for consumers and professionals — but the architecture is the platform.</p>
+  <p>Remove any one of these and the experience degrades. Vision without voice is just image search. Voice without vision is Siri. Knowledge without real-time delivery is a PDF. Together, they produce something that behaves like a knowledgeable colleague standing next to you — one who can say "I can see the corrosion on your terminal" and mean it.</p>
 
   <hr>
 
   <h2>What FixIt Genie Does</h2>
 
-  <p>FixIt Genie is a native Android app powered by Gemini 2.5 Flash Native Audio through the Google Agent Development Kit (ADK). You point your camera at whatever's broken, describe the problem out loud, and the AI agent sees what you see, understands what you're saying, and walks you through diagnosis and repair in natural conversation.</p>
+  <p>FixIt Genie is a native Android app. Point your camera at broken equipment, describe the problem out loud, and the agent identifies what it sees, queries its knowledge base, and walks you through the repair — one step at a time, confirming each step through the camera before giving the next one.</p>
 
-  <p><strong>Three core capabilities:</strong></p>
+  <p><strong>Visual understanding.</strong> Camera frames arrive at 1 FPS. The agent reads error codes on displays, checks gauge levels, identifies corrosion on battery terminals, and spots issues you haven't asked about. It describes what it sees out loud — "I can see white buildup on your positive terminal" — so you know it's actually looking, not guessing.</p>
 
-  <ol>
-    <li><strong>Visual Understanding</strong> — The agent processes camera frames at 1 FPS, identifying equipment types, reading error codes, checking gauge levels, and spotting issues you might miss.</li>
-    <li><strong>Conversational Guidance</strong> — Bidirectional audio streaming means you talk naturally. The agent asks clarifying questions, gives one step at a time, and confirms each step visually before moving on.</li>
-    <li><strong>Safety-First Design</strong> — Before guiding any physical action (breaker panel, hot coolant, battery terminals), the agent always retrieves and communicates relevant safety warnings. This isn't a feature — it's enforced in the system prompt.</li>
-  </ol>
+  <p><strong>Bidirectional conversation, not push-to-talk.</strong> Audio streams continuously in both directions. You can speak mid-response and the agent stops immediately. No button to hold, no turn indicator to wait for. The Gemini native audio model's VAD handles this automatically — say "wait" or "hold on" and it listens.</p>
+
+  <p><strong>Safety checks are not optional.</strong> The system prompt enforces a hard rule: <code>get_safety_warnings()</code> fires before any instruction involving physical action. The agent won't tell you to open a breaker panel without first warning about lethal voltages on the bus bars. It won't guide coolant system work without warning about pressurized steam. This is enforced in code, not just guidelines.</p>
 
   <h3>Ray-Ban Glasses: Hands-Free Repair</h3>
 
@@ -806,25 +790,23 @@ agent = Agent(
 
   <hr>
 
-  <h2>Design Decisions That Mattered</h2>
+  <h2>Design Decisions That Had Real Consequences</h2>
 
-  <p><strong>Why native Android instead of web?</strong> CameraX and AudioRecord give much lower latency than WebRTC in a browser. When you're talking someone through a repair, every millisecond of lag makes the conversation feel unnatural. Native also handles background audio properly and gives access to the real camera torch — genuinely useful when peering into dark engine bays.</p>
+  <p><strong>Native Android, not web.</strong> CameraX gives direct access to the camera sensor with no browser sandboxing overhead. <code>AudioRecord</code> with <code>VOICE_COMMUNICATION</code> mode activates hardware acoustic echo cancellation at the driver level — critical when the agent's voice and the user's microphone are in the same room. <code>AudioTrack</code> in <code>MODE_IN_COMMUNICATION</code> routes audio through the earpiece path, enabling AEC. None of this is available in a browser. The torch API also works — useful when pointing a phone into a dark engine bay.</p>
 
-  <p><strong>Why safety-first as a core design principle?</strong> Every tool call that could result in physical action requires a safety check before the agent gives any instruction. The agent won't tell you to "open the breaker panel" without first warning about lethal voltages. Responsible AI design isn't a compliance checkbox — for a repair guidance app, it's what makes the product trustworthy.</p>
+  <p><strong>Always-on audio streaming.</strong> The first implementation gated the microphone while the agent was speaking — a reasonable attempt to prevent echo feedback from triggering a second response. It also made interruption impossible, because the server never heard the user speaking. Removing the gate and letting Gemini's native VAD handle turn detection restored true bidi-streaming. The server sends <code>interrupted: true</code> when it detects the user speaking mid-response; the app clears the audio queue instantly. This is the difference between a live agent and a voice-skinned chatbot.</p>
+
+  <p><strong>1 FPS video, not a video stream.</strong> Equipment doesn't move fast. A JPEG frame once per second is sufficient to read an error code, check a fluid level, or identify a component — at a fraction of the bandwidth and cost of continuous video. The 768×768 resolution preserves enough detail to read small text on appliance displays without saturating the connection.</p>
+
+  <p><strong>Behavioral instructions separate from knowledge.</strong> The ADK skills (<code>SKILL.md</code> + reference docs) define how the agent diagnoses — what questions to ask, when to escalate, what safety checks to run for a given domain. The Firestore vector search holds what the agent knows about specific equipment. Mixing behavior and facts in a single prompt produces agents that are either too cautious (safety warnings for everything) or too aggressive (skips checks when confident). Separation keeps each layer tunable independently.</p>
 
   <hr>
 
-  <h2>Lessons Learned</h2>
+  <h2>Non-Obvious Things We Discovered</h2>
 
-  <p><strong>Bidi-streaming is the key differentiator.</strong> Real-time bidi-streaming with audio feels qualitatively different from request-response patterns — it's a conversation, not a chatbot. The Gemini native audio model handles VAD automatically, which makes the interaction feel natural without any engineering effort.</p>
+  <p><strong>The system prompt is load-bearing for multimodal trust.</strong> "Identify the equipment" produces an agent that gives answers. "Describe what you see out loud before identifying it" produces an agent users trust — because they can hear it noticing the same thing they're looking at. For a repair guidance app, trust is not a UX nice-to-have. A user who doubts the agent is seeing their equipment will not follow its instructions into a live electrical panel.</p>
 
-  <p><strong>True interruption requires always-on audio streaming.</strong> The obvious implementation gates the microphone while the agent is speaking — to prevent echo feedback from triggering a second response. But this kills bidi-streaming's most important property: the ability to interrupt. The correct approach is to stream audio continuously and let Gemini's native VAD and AEC handle it. When you speak mid-response, the server sends <code>interrupted: true</code>, the app immediately clears the audio queue, and the agent listens. Say "wait" or "hold on" naturally — the agent stops. This is what separates a live agent from a chatbot with a voice skin.</p>
-
-  <p><strong>1 FPS is plenty for equipment diagnosis.</strong> Equipment doesn't move fast. One frame per second at 768×768 JPEG is enough for reading gauges, error codes, and identifying components while keeping bandwidth and cost reasonable.</p>
-
-  <p><strong>System prompts matter enormously for multimodal agents.</strong> The difference between "identify the equipment" and "describe what you see to build trust, then identify the equipment" is the difference between a tool and an assistant. Users need to know the agent is actually seeing what they're showing it.</p>
-
-  <p><strong>Function calling during live streaming is powerful.</strong> The native audio model supports custom function calling alongside bidi-streaming. The user says "my washing machine shows E4" and the agent seamlessly queries the knowledge base mid-conversation — no interruption in the flow.</p>
+  <p><strong>Function calls during live audio streaming don't break the conversation.</strong> The native audio model supports custom function calling alongside bidi-streaming. The agent hears "my washing machine shows E4", calls <code>lookup_equipment_knowledge</code>, gets the result, and responds — all without the user experiencing a pause or a mode switch. The diagram below shows the full sequence.</p>
 
   <!-- DIAGRAM 3: Tool Call Sequence -->
   <div class="diag-wrap">
@@ -882,27 +864,17 @@ agent = Agent(
 
   <hr>
 
-  <h2>The Pattern Generalizes</h2>
+  <h2>The Architecture Is a Template</h2>
 
-  <p>FixIt Genie targets equipment repair, but the architecture is a template. The camera and audio pipeline, WebSocket protocol, ADK skills structure, safety-first design, and Ray-Ban glasses support are all reusable infrastructure. A new vertical means new tools and a new system prompt — the streaming core stays the same.</p>
+  <p>The camera and audio pipeline, WebSocket protocol, ADK skills structure, safety-first enforcement, and Ray-Ban glasses support are all reusable. A new vertical is a new set of tools and a new system prompt — the streaming core stays the same.</p>
 
   <ul>
-    <li><strong>Industrial maintenance</strong> — Ray-Ban glasses on the factory floor, agent sees through the glasses camera, guides lockout/tagout before any panel opens.</li>
-    <li><strong>Fleet and field service</strong> — Agent knows the vehicle VIN, pulls active service bulletins, guides roadside repair and escalates when outside safe scope.</li>
-    <li><strong>Healthcare equipment</strong> — Biomedical tech gets cross-referenced FDA databases, manufacturer manuals, and safety warnings for radiation interlocks and high-voltage components.</li>
+    <li><strong>Industrial maintenance</strong> — Technician wears Ray-Ban glasses, hands occupied inside machinery. Agent sees through the glasses, cross-references OEM service manuals, guides lockout/tagout before any panel opens.</li>
+    <li><strong>Fleet and field service</strong> — Agent reads the VIN from the camera, pulls active service bulletins for that chassis, guides the repair and escalates when it's outside safe DIY scope.</li>
+    <li><strong>Healthcare equipment</strong> — Biomedical tech gets cross-referenced FDA device databases, manufacturer service manuals, and safety warnings specific to radiation interlocks and high-voltage components.</li>
   </ul>
 
-  <div class="pull-quote">Swap the knowledge tools and system prompt. The streaming core delivers the same conversational, visually-grounded experience.</div>
-
-  <hr>
-
-  <h2>Close</h2>
-
-  <p>We started with a simple observation: the most dangerous moment in equipment repair is when someone who doesn't know what they're looking at has to make a decision. The standard solution — manuals, tutorials, hotlines — all have the same flaw. They can't see what you see.</p>
-
-  <p>Gemini Live changes that constraint. An AI that streams your camera, hears your voice, retrieves domain knowledge, and talks back in real time isn't a better search engine. It's a different kind of tool entirely.</p>
-
-  <p><strong>FixIt Genie is one application. The category is wide open.</strong></p>
+  <p>New vertical = new <code>SKILL.md</code> files + new function tools. The streaming infrastructure doesn't change.</p>
 
   <hr>
 
