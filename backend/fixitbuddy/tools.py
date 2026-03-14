@@ -208,7 +208,10 @@ _KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
 def lookup_equipment_knowledge(
     query: str, category: str = "", error_code: str = ""
 ) -> dict[str, Any]:
-    """Look up equipment knowledge from the curated database.
+    """Look up equipment knowledge using semantic vector search.
+
+    Searches the knowledge base by semantic similarity — "engine oil pressure
+    alarm" will match the oil system document even without exact keyword overlap.
 
     Args:
         query: Natural language description of what to look up
@@ -218,57 +221,78 @@ def lookup_equipment_knowledge(
     Returns:
         Relevant equipment knowledge including diagnostic steps and solutions
     """
+    # Build the search text: combine query, error code, and category for best embedding
+    search_text = query
+    if error_code:
+        search_text = f"{error_code} {query}"
+    if category:
+        search_text = f"{category} {search_text}"
+
     results: list[dict[str, Any]] = []
 
-    # Try Firestore first
+    # Primary: Firestore vector search (semantic similarity via text-embedding-004)
     db = _get_db()
     if db:
         try:
-            if error_code:
-                docs = db.collection("equipment").where(
-                    "error_codes", "array_contains", error_code.upper()
-                ).stream()
-                for doc in docs:
-                    results.append(doc.to_dict())
+            import requests as _requests
 
-            if category and not results:
-                docs = db.collection("equipment").where(
-                    "category", "==", category.lower()
-                ).stream()
-                for doc in docs:
-                    data = doc.to_dict()
-                    if any(kw in query.lower() for kw in data.get("keywords", [])):
-                        results.append(data)
+            _api_key = os.environ.get("GOOGLE_API_KEY", "")
+            _embed_model = "gemini-embedding-001"
+            _embed_url = f"https://generativelanguage.googleapis.com/v1beta/models/{_embed_model}:embedContent"
+            _embed_resp = _requests.post(
+                _embed_url,
+                json={"model": f"models/{_embed_model}", "content": {"parts": [{"text": search_text}]}},
+                params={"key": _api_key},
+                timeout=15,
+            )
+            _embed_resp.raise_for_status()
+            query_embedding = _embed_resp.json()["embedding"]["values"]
 
-            if not results and category:
-                doc = db.collection("equipment_overview").document(category.lower()).get()
-                if doc.exists:
-                    results.append(doc.to_dict())
+            collection = db.collection("equipment")
+            vector_results = collection.find_nearest(
+                vector_field="embedding",
+                query_vector=query_embedding,
+                distance_measure=firestore.DistanceMeasure.COSINE,
+                limit=3,
+            ).get()
+
+            for doc in vector_results:
+                data = doc.to_dict()
+                # Strip the embedding field — it's large and not useful to the agent
+                data.pop("embedding", None)
+                results.append(data)
+
         except Exception:
-            logger.warning("Firestore query failed — falling back to embedded KB", exc_info=True)
+            logger.warning("Vector search failed — falling back to embedded KB", exc_info=True)
 
-    # Fallback to embedded knowledge base
+    # Fallback: keyword matching against embedded knowledge base
     if not results:
-        query_lower = query.lower()
-        for _doc_id, data in _KNOWLEDGE_BASE.items():
-            # Match by error code
-            if error_code and error_code.upper() in data.get("error_codes", []):
-                results.append(data)
-                continue
-            # Match by category + keywords
-            if category and data.get("category") == category.lower():
-                if any(kw in query_lower for kw in data.get("keywords", [])):
-                    results.append(data)
-            # Match by keywords alone
-            elif any(kw in query_lower for kw in data.get("keywords", [])):
-                results.append(data)
+        results = _keyword_lookup(query, category, error_code)
 
     if results:
         return {"found": True, "results": results[:3]}
     return {
         "found": False,
-        "message": "No specific knowledge found. Use general expertise and google_search for specific model information."
+        "message": "No specific knowledge found. Use general expertise and google_search for specific model information.",
     }
+
+
+def _keyword_lookup(
+    query: str, category: str = "", error_code: str = ""
+) -> list[dict[str, Any]]:
+    """Keyword-based fallback lookup against the embedded knowledge base."""
+    results: list[dict[str, Any]] = []
+    query_lower = query.lower()
+    for _doc_id, data in _KNOWLEDGE_BASE.items():
+        if error_code and error_code.upper() in data.get("error_codes", []):
+            results.append(data)
+            continue
+        if category and data.get("category") == category.lower():
+            if any(kw in query_lower for kw in data.get("keywords", [])):
+                results.append(data)
+        elif any(kw in query_lower for kw in data.get("keywords", [])):
+            results.append(data)
+    return results
 
 
 def get_safety_warnings(
@@ -337,6 +361,157 @@ def get_safety_warnings(
     if equipment_category:
         response["equipment_category"] = equipment_category
     return response
+
+
+def analyze_youtube_repair_video(
+    youtube_url: str,
+    question: str = "Extract step-by-step repair instructions from this video transcript. Be concise and numbered.",
+) -> dict[str, Any]:
+    """Extract repair steps from a YouTube video.
+
+    Primary: fetches the video transcript via youtube-transcript-api (works for
+    any English-captioned video, fast, no Gemini token cost for the video).
+    Fallback: passes the URL to Gemini REST API (only works for videos Google
+    has indexed at scale — mostly viral/very popular content).
+
+    Args:
+        youtube_url: Full YouTube watch URL (https://www.youtube.com/watch?v=...)
+        question: What to extract from the video
+
+    Returns:
+        Dict with 'found' (bool), 'steps' (str), 'source' (url)
+    """
+    # Extract video ID from URL
+    import re
+    match = re.search(r"[?&]v=([A-Za-z0-9_-]{11})", youtube_url)
+    if not match:
+        return {"found": False, "error": "Could not parse video ID from URL", "source": youtube_url}
+    video_id = match.group(1)
+
+    transcript_text: str | None = None
+
+    # Strategy 1: transcript API (reliable for any English-captioned video)
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        api = YouTubeTranscriptApi()
+        transcript = api.fetch(video_id)
+        transcript_text = " ".join(s.text for s in transcript)
+    except Exception as e:
+        logger.info("Transcript API failed for %s: %s — trying Gemini URL fallback", video_id, e)
+
+    if transcript_text:
+        try:
+            from google import genai
+            client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
+            response = client.models.generate_content(
+                model=os.environ.get("AGENT_MODEL_TEXT", "gemini-2.5-flash"),
+                contents=f"{question}\n\nTranscript:\n{transcript_text[:12000]}",
+            )
+            return {"found": True, "steps": response.text, "source": youtube_url}
+        except Exception as e:
+            # Propagate rate limit errors — don't silently fall through
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                raise
+            logger.warning("Gemini summarization of transcript failed: %s", e)
+
+    # Strategy 2: Gemini native YouTube URL (works for Google-indexed popular videos)
+    try:
+        from google import genai
+        from google.genai import types as gtypes
+        client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
+        response = client.models.generate_content(
+            model=os.environ.get("AGENT_MODEL_TEXT", "gemini-2.5-flash"),
+            contents=[
+                gtypes.Part.from_uri(file_uri=youtube_url, mime_type="video/mp4"),
+                gtypes.Part.from_text(text=question),
+            ],
+        )
+        # Detect if model actually processed the video vs returned a refusal
+        if "cannot" not in response.text.lower()[:60] and "don't have" not in response.text.lower()[:60]:
+            return {"found": True, "steps": response.text, "source": youtube_url}
+    except Exception as e:
+        logger.warning("Gemini URL fallback failed: %s", e)
+
+    return {
+        "found": False,
+        "error": "Could not extract content from this video (no captions available and video not indexed by Gemini).",
+        "source": youtube_url,
+        "suggestion": "Share the video link with the user so they can watch it directly.",
+    }
+
+
+def lookup_user_manual(brand: str, model_number: str) -> dict[str, Any]:
+    """Find and extract content from a product user manual.
+
+    Uses Gemini grounded search to locate the official PDF, then fetches and
+    extracts troubleshooting steps, error codes, and key specs from it.
+
+    Args:
+        brand: Appliance brand (e.g., "LG", "Samsung", "Bosch")
+        model_number: Model number (e.g., "WM3900HWA", "WF45R6100AW")
+
+    Returns:
+        Dict with 'found' (bool), 'content' (extracted text), 'url' (source)
+    """
+    import io
+    import requests
+
+    try:
+        from google import genai
+        from google.genai import types as gtypes
+
+        client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
+
+        # Step 1: Use grounded search to find the official manual PDF URL
+        search_result = client.models.generate_content(
+            model=os.environ.get("AGENT_MODEL_TEXT", "gemini-2.5-flash"),
+            contents=(
+                f"Find the official PDF user manual download URL for {brand} model {model_number}. "
+                "Return only the direct URL to the PDF file, nothing else."
+            ),
+            config=gtypes.GenerateContentConfig(
+                tools=[gtypes.Tool(google_search=gtypes.GoogleSearch())]
+            ),
+        )
+        manual_url = search_result.text.strip()
+
+        # Step 2: Fetch and parse the PDF
+        if manual_url.startswith("http") and ".pdf" in manual_url.lower():
+            pdf_resp = requests.get(
+                manual_url, timeout=15, headers={"User-Agent": "Mozilla/5.0"}
+            )
+            if pdf_resp.status_code == 200:
+                from pypdf import PdfReader
+
+                reader = PdfReader(io.BytesIO(pdf_resp.content))
+                # First 20 pages covers intro, error codes, and troubleshooting
+                text = "\n".join(
+                    page.extract_text() or "" for page in reader.pages[:20]
+                )
+                summary = client.models.generate_content(
+                    model=os.environ.get("AGENT_MODEL_TEXT", "gemini-2.5-flash"),
+                    contents=(
+                        f"From this {brand} {model_number} user manual, extract: "
+                        "(1) all error codes and their meanings, "
+                        "(2) troubleshooting steps, "
+                        "(3) key specifications.\n\n" + text[:12000]
+                    ),
+                )
+                return {
+                    "found": True,
+                    "brand": brand,
+                    "model": model_number,
+                    "content": summary.text,
+                    "url": manual_url,
+                }
+    except Exception as e:
+        logger.warning("Manual lookup failed: %s", e)
+
+    return {
+        "found": False,
+        "message": f"Could not fetch manual for {brand} {model_number}.",
+        "search_hint": f"{brand} {model_number} user manual PDF",
+    }
 
 
 def log_diagnostic_step(

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Genie lamp — converted from fixit-genie.web.app SVG logo
+  ViewBox: -2 -4 94 62  → Android viewport 94×62 (coords shifted +2x, +4y)
+  Classic oil lamp: spout LEFT, handle RIGHT, purple smoke, stars
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="94dp"
+    android:height="62dp"
+    android:viewportWidth="94"
+    android:viewportHeight="62">
+
+    <!-- FOOT -->
+    <path
+        android:pathData="M40,56 A12,3 0 1 0 64,56 A12,3 0 1 0 40,56 Z"
+        android:fillColor="#9A4200"/>
+
+    <!-- SPOUT — exits body left, arcs up-left, drawn before body so body covers base -->
+    <path
+        android:pathData="M32,40 C26,37 18,31 12,25 C9,21 6,18 6,18 C3,16 2,19 3,21 C4,23 7,24 11,26 C17,29 25,35 32,48 Z"
+        android:fillColor="#E8860E"/>
+    <!-- spout underside shadow -->
+    <path
+        android:pathData="M32,48 C25,44 17,38 11,33 C7,30 4,28 3,28 L3,21 C4,23 7,24 11,26 C17,29 25,35 32,48 Z"
+        android:fillColor="#7A3000"
+        android:fillAlpha="0.35"/>
+    <!-- spout tip upturned lip -->
+    <path
+        android:pathData="M3,19 C5,16 9,15 11,18 C9,20 5,21 3,21 Z"
+        android:fillColor="#C06010"/>
+
+    <!-- BODY — flat oval 2:1 ratio -->
+    <path
+        android:pathData="M30,44 A22,12 0 1 0 74,44 A22,12 0 1 0 30,44 Z"
+        android:fillColor="#E8860E"/>
+    <!-- body shadow overlay -->
+    <path
+        android:pathData="M30,44 A22,12 0 1 0 74,44 A22,12 0 1 0 30,44 Z"
+        android:fillColor="#7A3000"
+        android:fillAlpha="0.22"/>
+
+    <!-- HIGHLIGHT on body -->
+    <group
+        android:pivotX="45"
+        android:pivotY="38"
+        android:rotation="-20">
+        <path
+            android:pathData="M37,38 A8,4 0 1 0 53,38 A8,4 0 1 0 37,38 Z"
+            android:fillColor="#FFFFDC"
+            android:fillAlpha="0.22"/>
+    </group>
+
+    <!-- LID NECK -->
+    <path
+        android:pathData="M45,29 Q45,29 45,30.5 L45,31.5 Q45,33 46.5,33 L57.5,33 Q59,33 59,31.5 L59,30.5 Q59,29 57.5,29 Z"
+        android:fillColor="#B85800"/>
+
+    <!-- LID base ring -->
+    <path
+        android:pathData="M42,27 A10,3.5 0 1 0 62,27 A10,3.5 0 1 0 42,27 Z"
+        android:fillColor="#FFE090"/>
+
+    <!-- LID dome -->
+    <path
+        android:pathData="M45,25 A7,2.8 0 1 0 59,25 A7,2.8 0 1 0 45,25 Z"
+        android:fillColor="#FFE880"/>
+
+    <!-- FINIAL — slim pointed top -->
+    <path
+        android:pathData="M49.5,25 C49.5,22 51,19 52,17 C53,19 54.5,22 54.5,25 Z"
+        android:fillColor="#FFD840"/>
+
+    <!-- HANDLE — open D-loop on RIGHT -->
+    <path
+        android:pathData="M72,36 C84,34 90,39 90,44 C90,49 84,54 72,53 L72,49 C82,49 86,46 86,44 C86,41 82,38 72,40 Z"
+        android:fillColor="#C06010"/>
+    <!-- handle highlight rim -->
+    <path
+        android:pathData="M72,37 C83,35 88,39.5 88,44 C88,48.5 83,52 72,51"
+        android:strokeColor="#FFC850"
+        android:strokeWidth="1.2"
+        android:strokeAlpha="0.2"
+        android:fillColor="#00000000"/>
+
+    <!-- SMOKE from spout tip -->
+    <path
+        android:pathData="M5,20 C3,16 6,12 4,8 C2,5 4,3 3,0"
+        android:strokeColor="#9060DD"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:strokeAlpha="0.9"/>
+    <path
+        android:pathData="M9,17 C7,14 9,10 7,7"
+        android:strokeColor="#9060DD"
+        android:strokeWidth="1.3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:strokeAlpha="0.45"/>
+
+    <!-- STARS — 4-point sparkles -->
+    <path
+        android:pathData="M18,8 L19.1,11 L22.1,12.1 L19.1,13.2 L18,16.2 L16.9,13.2 L13.9,12.1 L16.9,11 Z"
+        android:fillColor="#FFE840"/>
+    <path
+        android:pathData="M77,7 L77.8,9.4 L80.2,10.2 L77.8,11 L77,13.4 L76.2,11 L73.8,10.2 L76.2,9.4 Z"
+        android:fillColor="#FFDD33"
+        android:fillAlpha="0.85"/>
+    <path
+        android:pathData="M85,29 L85.5,30.8 L87.3,31.3 L85.5,31.8 L85,33.6 L84.5,31.8 L82.7,31.3 L84.5,30.8 Z"
+        android:fillColor="#FFCC22"
+        android:fillAlpha="0.7"/>
+
+</vector>

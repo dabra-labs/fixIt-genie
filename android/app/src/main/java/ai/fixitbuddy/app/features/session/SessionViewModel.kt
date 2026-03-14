@@ -35,10 +35,15 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
+/** A single spoken exchange in the session conversation. */
+data class ChatTurn(val role: ChatRole, val text: String)
+enum class ChatRole { USER, GENIE }
+
 /** Immutable snapshot of session UI state, consumed by [SessionScreen]. */
 data class SessionUiState(
     val sessionState: SessionState = SessionState.Idle,
     val transcript: String = "",
+    val chatTurns: List<ChatTurn> = emptyList(),
     val agentState: String = "idle",
     val lastToolCall: String? = null,
     val toolCallCount: Int = 0,
@@ -77,6 +82,9 @@ class SessionViewModel @Inject constructor(
     /** Track session start time for duration calculation */
     private var sessionStartMs: Long = 0L
 
+    /** True while accumulating the current genie turn (speaking start → next listening). */
+    @Volatile private var genieIsSpeaking = false
+
     /**
      * True while the agent is speaking (playing audio chunks).
      * Mic audio is suppressed during this window + 400ms after the last chunk
@@ -113,14 +121,21 @@ class SessionViewModel @Inject constructor(
                         ConnectionState.CONNECTED -> current.copy(
                             sessionState = SessionState.Active,
                             agentState = "listening",
-                            errorMessage = null
+                            errorMessage = null,
+                            chatTurns = listOf(
+                                ChatTurn(ChatRole.GENIE, "✨ Hello! I'm FixIt Genie. Point your camera at whatever needs fixing and tell me what's wrong — I'll guide you through it step by step. What are we tackling today?")
+                            )
                         )
-                        ConnectionState.ERROR -> current.copy(
-                            sessionState = SessionState.Error,
-                            errorMessage = "Connection failed. Check your network and backend URL."
-                        )
+                        ConnectionState.ERROR -> {
+                            genieIsSpeaking = false
+                            current.copy(
+                                sessionState = SessionState.Error,
+                                errorMessage = "Connection failed. Check your network and backend URL."
+                            )
+                        }
                         ConnectionState.DISCONNECTED -> {
                             if (current.sessionState != SessionState.Idle) {
+                                genieIsSpeaking = false
                                 current.copy(
                                     sessionState = SessionState.Idle,
                                     errorMessage = null
@@ -150,11 +165,29 @@ class SessionViewModel @Inject constructor(
                         }
                     }
                     is AgentMessage.Transcript -> {
-                        _uiState.update { it.copy(transcript = message.text) }
+                        val text = message.text
+                        _uiState.update { current ->
+                            val turns = current.chatTurns.toMutableList()
+                            if (!genieIsSpeaking || turns.isEmpty() || turns.last().role != ChatRole.GENIE) {
+                                genieIsSpeaking = true
+                                turns.add(ChatTurn(ChatRole.GENIE, text))
+                            } else {
+                                turns[turns.lastIndex] = ChatTurn(ChatRole.GENIE, text)
+                            }
+                            current.copy(transcript = text, chatTurns = turns)
+                        }
                     }
                     is AgentMessage.Status -> {
-                        _uiState.update { it.copy(agentState = message.state) }
-                        if (message.state == "listening") {
+                        val state = message.state
+                        _uiState.update { current ->
+                            val turns = current.chatTurns.toMutableList()
+                            if (state == "listening" && genieIsSpeaking) {
+                                genieIsSpeaking = false
+                                turns.add(ChatTurn(ChatRole.USER, ""))
+                            }
+                            current.copy(agentState = state, chatTurns = turns)
+                        }
+                        if (state == "listening") {
                             // Cancel the 1200ms fallback timer — we got the real turn-end signal.
                             // Hold mic mute for 400ms so AEC tail settles before unmuting.
                             turnEndJob?.cancel()
@@ -326,6 +359,7 @@ class SessionViewModel @Inject constructor(
         }
         sessionStartMs = 0L
         agentSpeaking = false
+        genieIsSpeaking = false
 
         audioManager.stopRecording()
         audioManager.stopPlayback()
@@ -334,6 +368,7 @@ class SessionViewModel @Inject constructor(
             it.copy(
                 sessionState = SessionState.Idle,
                 transcript = "",
+                chatTurns = emptyList(),
                 agentState = "idle",
                 lastToolCall = null,
                 toolCallCount = 0,

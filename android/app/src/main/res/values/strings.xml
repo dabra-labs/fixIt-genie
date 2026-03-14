@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FixIt Buddy</string>
-    <string name="session_title">FixIt Buddy</string>
+    <string name="app_name">FixIt Genie</string>
+    <string name="session_title">FixIt Genie</string>
 
     <!-- Session controls -->
     <string name="start_session">Start Session</string>
     <string name="stop_session">End Session</string>
     <string name="flashlight_toggle">Toggle Flashlight</string>
-    <string name="session_idle_title">FixIt Buddy</string>
+    <string name="session_idle_title">FixIt Genie</string>
     <string name="session_idle_subtitle">Point your camera at equipment\nand tap Start Session</string>
 
     <!-- Status indicators -->
@@ -25,10 +25,10 @@
 
     <!-- Permissions -->
     <string name="permission_camera_title">Camera Access</string>
-    <string name="permission_camera_body">FixIt Buddy needs camera access to see your equipment and guide you through repairs.</string>
+    <string name="permission_camera_body">FixIt Genie needs camera access to see your equipment and guide you through repairs.</string>
     <string name="permission_audio_title">Microphone Access</string>
-    <string name="permission_audio_body">FixIt Buddy needs microphone access so you can describe problems and hear voice guidance.</string>
-    <string name="permission_main_body">To help you diagnose and fix equipment, FixIt Buddy needs access to your camera and microphone.</string>
+    <string name="permission_audio_body">FixIt Genie needs microphone access so you can describe problems and hear voice guidance.</string>
+    <string name="permission_main_body">To help you diagnose and fix equipment, FixIt Genie needs access to your camera and microphone.</string>
     <string name="permission_grant">Grant Permissions</string>
 
     <!-- History -->
@@ -40,9 +40,9 @@
     <string name="settings_connection">Connection</string>
     <string name="settings_backend_url">Backend URL</string>
     <string name="settings_backend_hint">https://fixitbuddy-agent-xxx-uc.a.run.app</string>
-    <string name="settings_backend_helper">The Cloud Run URL where FixIt Buddy\'s ADK agent is deployed.</string>
+    <string name="settings_backend_helper">The Cloud Run URL where FixIt Genie\'s ADK agent is deployed.</string>
     <string name="settings_test_connection">Test Connection</string>
-    <string name="settings_about">About FixIt Buddy</string>
+    <string name="settings_about">About FixIt Genie</string>
     <string name="settings_app_name_label">App Name</string>
     <string name="settings_version">Version</string>
     <string name="settings_agent_model">Agent Model</string>
@@ -65,7 +65,7 @@
     <string name="onboarding_cta_1">See How It Works</string>
     <string name="onboarding_cta_2">What Can It Fix?</string>
     <string name="onboarding_cta_3">Let\'s Fix Something</string>
-    <string name="onboarding_tagline">Your AI repair expert.\nAlways in your pocket.</string>
+    <string name="onboarding_tagline">Your AI repair genie.\nAlways in your pocket.</string>
     <string name="onboarding_description">Point your camera at anything broken.\nDescribe what\'s wrong. Get step-by-step voice guidance.</string>
     <string name="onboarding_pill_voice">Voice Guided</string>
     <string name="onboarding_pill_camera">Live Camera</string>
@@ -74,7 +74,7 @@
     <string name="onboarding_how_title">See It. Say It. Fix It.</string>
     <string name="onboarding_how_subtitle">Three steps is all it takes.</string>
     <string name="onboarding_step1_title">Point Your Camera</string>
-    <string name="onboarding_step1_desc">Show FixIt Buddy the equipment. It sees what you see — gauges, error codes, damage, all of it.</string>
+    <string name="onboarding_step1_desc">Show FixIt Genie the equipment. It sees what you see — gauges, error codes, damage, all of it.</string>
     <string name="onboarding_step2_title">Describe the Problem</string>
     <string name="onboarding_step2_desc">Tell it what\'s happening. Weird noise? Won\'t start? Leaking? Just talk naturally.</string>
     <string name="onboarding_step3_title">Follow the Guidance</string>

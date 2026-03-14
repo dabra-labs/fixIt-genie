@@ -8,10 +8,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,8 +24,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,8 +42,6 @@ import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +57,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -70,9 +74,10 @@ import kotlinx.coroutines.delay
 import ai.fixitbuddy.app.R
 import ai.fixitbuddy.app.core.camera.GlassesState
 import ai.fixitbuddy.app.features.session.components.CameraViewfinder
+import ai.fixitbuddy.app.features.session.components.GenieAvatar
+import ai.fixitbuddy.app.features.session.components.GenieTranscript
 import ai.fixitbuddy.app.features.session.components.StatusIndicator
 import ai.fixitbuddy.app.features.session.components.ToolCallChip
-import ai.fixitbuddy.app.features.session.components.TranscriptOverlay
 
 @Composable
 fun SessionScreen(
@@ -170,7 +175,7 @@ fun SessionScreen(
                 .padding(top = 56.dp)
         )
 
-        // Idle state guidance overlay
+        // Idle state guidance overlay — frosted dark card for legibility on any camera feed
         AnimatedVisibility(
             visible = uiState.sessionState == SessionState.Idle && uiState.errorMessage == null,
             enter = fadeIn(),
@@ -179,210 +184,211 @@ fun SessionScreen(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 48.dp)
+                modifier = Modifier
+                    .padding(horizontal = 32.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xCC080810))
+                    .border(1.dp, Color(0x33FF6A1E), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 28.dp, vertical = 20.dp)
             ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_genie_lamp),
+                    contentDescription = null,
+                    modifier = Modifier.size(52.dp)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = stringResource(R.string.session_idle_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFFFF6A1E)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = stringResource(R.string.session_idle_subtitle),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xCCF0F0F5),
                     textAlign = TextAlign.Center,
-                    lineHeight = 24.sp
+                    lineHeight = 22.sp
                 )
             }
         }
 
-        // Transcript overlay (bottom area, above controls)
+        // Genie Panel — chat bubbles + compact controls (Active or Connecting)
         AnimatedVisibility(
-            visible = uiState.transcript.isNotBlank() && uiState.sessionState == SessionState.Active,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            visible = uiState.sessionState == SessionState.Active ||
+                      uiState.sessionState == SessionState.Connecting,
+            enter = fadeIn(tween(300)),
+            exit = fadeOut(tween(300)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 120.dp)
+                .fillMaxWidth()
         ) {
-            TranscriptOverlay(
-                transcript = uiState.transcript,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Chat panel — gradient fade from camera feed into conversation area
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0f to Color.Transparent,
+                                    0.35f to Color(0xF7080810),
+                                    1f to Color(0xFF080810)
+                                )
+                            )
+                        )
+                        .padding(horizontal = 14.dp)
+                        .padding(bottom = 10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        GenieAvatar(
+                            sessionState = uiState.sessionState,
+                            agentState = uiState.agentState,
+                            audioLevel = audioLevel,
+                            modifier = Modifier.padding(bottom = 4.dp, end = 10.dp)
+                        )
+                        GenieTranscript(
+                            chatTurns = uiState.chatTurns,
+                            isGenieStreaming = uiState.agentState == "speaking",
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(bottom = 4.dp)
+                        )
+                    }
+                }
+
+                // Compact control strip — 52dp
+                // Hairline orange divider above the strip
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(Color.Transparent, Color(0x55FF6A1E), Color.Transparent)
+                            )
+                        )
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF13131F))
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (uiState.hasTorch) {
+                            IconButton(
+                                onClick = {
+                                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                    viewModel.toggleFlashlight()
+                                },
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(
+                                        if (uiState.isTorchOn) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                        else Color.White.copy(alpha = 0.1f),
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = if (uiState.isTorchOn) Icons.Default.FlashlightOn else Icons.Default.FlashlightOff,
+                                    contentDescription = stringResource(R.string.flashlight_toggle),
+                                    tint = if (uiState.isTorchOn) MaterialTheme.colorScheme.primary else Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        val isGlasses = uiState.cameraSource == CameraSource.GLASSES
+                        val glassesIconTint = when {
+                            isGlasses && uiState.glassesState == GlassesState.STREAMING -> MaterialTheme.colorScheme.primary
+                            isGlasses -> MaterialTheme.colorScheme.secondary
+                            else -> Color.White
+                        }
+                        IconButton(
+                            onClick = {
+                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                viewModel.switchCameraSource(if (isGlasses) CameraSource.PHONE else CameraSource.GLASSES)
+                            },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(
+                                    if (isGlasses) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                    else Color.White.copy(alpha = 0.1f),
+                                    CircleShape
+                                )
+                        ) {
+                            Icon(
+                                imageVector = if (isGlasses) Icons.Default.Visibility else Icons.Default.Smartphone,
+                                contentDescription = stringResource(if (isGlasses) R.string.camera_source_glasses else R.string.camera_source_phone),
+                                tint = glassesIconTint,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    // End session pill
+                    Button(
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            viewModel.stopSession()
+                        },
+                        modifier = Modifier.height(34.dp).width(88.dp),
+                        shape = RoundedCornerShape(17.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C)),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp)
+                    ) {
+                        Icon(Icons.Default.MicOff, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.stop_session), style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
         }
 
-        // Bottom controls
-        Column(
+        // Start button — shown when Idle or Error
+        AnimatedVisibility(
+            visible = uiState.sessionState == SessionState.Idle || uiState.sessionState == SessionState.Error,
+            enter = fadeIn(),
+            exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(Color.Black.copy(alpha = 0.5f))
                 .systemBarsPadding()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.Center
             ) {
-                // Flashlight toggle
-                if (uiState.hasTorch) {
-                    IconButton(
-                        onClick = {
-                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                            viewModel.toggleFlashlight()
-                        },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(
-                                if (uiState.isTorchOn) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                                else Color.White.copy(alpha = 0.2f),
-                                CircleShape
-                            )
-                    ) {
-                        Icon(
-                            imageVector = if (uiState.isTorchOn) Icons.Default.FlashlightOn else Icons.Default.FlashlightOff,
-                            contentDescription = stringResource(R.string.flashlight_toggle),
-                            tint = if (uiState.isTorchOn) MaterialTheme.colorScheme.primary else Color.White
-                        )
-                    }
-                } else {
-                    Spacer(modifier = Modifier.size(48.dp))
-                }
-
-                // Main action button
-                when (uiState.sessionState) {
-                    SessionState.Idle, SessionState.Error -> {
-                        Button(
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                viewModel.startSession()
-                            },
-                            modifier = Modifier
-                                .height(56.dp)
-                                .width(200.dp),
-                            shape = RoundedCornerShape(28.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.start_session))
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                stringResource(R.string.start_session),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
-                    SessionState.Connecting -> {
-                        FilledTonalButton(
-                            onClick = {
-                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                viewModel.stopSession()
-                            },
-                            modifier = Modifier
-                                .height(56.dp)
-                                .width(200.dp),
-                            shape = RoundedCornerShape(28.dp)
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                stringResource(R.string.status_connecting),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
-                    SessionState.Active -> {
-                        // Animated ring that pulses with mic audio level
-                        val animatedLevel by animateFloatAsState(
-                            targetValue = audioLevel,
-                            animationSpec = tween(durationMillis = 100),
-                            label = "audioLevel"
-                        )
-                        val ringAlpha = (0.2f + animatedLevel * 0.6f).coerceIn(0f, 0.8f)
-                        val ringWidth = (1f + animatedLevel * 3f).dp
-
-                        Box(contentAlignment = Alignment.Center) {
-                            // Outer glow ring driven by audio level
-                            Box(
-                                modifier = Modifier
-                                    .height(56.dp + ringWidth * 2)
-                                    .width(200.dp + ringWidth * 2)
-                                    .border(
-                                        width = ringWidth,
-                                        color = MaterialTheme.colorScheme.error.copy(alpha = ringAlpha),
-                                        shape = RoundedCornerShape(28.dp + ringWidth)
-                                    )
-                            )
-                            Button(
-                                onClick = {
-                                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                    viewModel.stopSession()
-                                },
-                                modifier = Modifier
-                                    .height(56.dp)
-                                    .width(200.dp),
-                                shape = RoundedCornerShape(28.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Icon(Icons.Default.MicOff, contentDescription = stringResource(R.string.stop_session))
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    stringResource(R.string.stop_session),
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Glasses / Phone camera source toggle
-                val isGlasses = uiState.cameraSource == CameraSource.GLASSES
-                val glassesIconTint = when {
-                    isGlasses && uiState.glassesState == GlassesState.STREAMING ->
-                        MaterialTheme.colorScheme.primary
-                    isGlasses -> MaterialTheme.colorScheme.secondary
-                    else -> Color.White
-                }
-                IconButton(
+                Button(
                     onClick = {
                         view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                        viewModel.switchCameraSource(
-                            if (isGlasses) CameraSource.PHONE else CameraSource.GLASSES
-                        )
+                        viewModel.startSession()
                     },
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            if (isGlasses) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                            else Color.White.copy(alpha = 0.2f),
-                            CircleShape
-                        )
+                    modifier = Modifier.height(56.dp).width(200.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Icon(
-                        imageVector = if (isGlasses) Icons.Default.Visibility else Icons.Default.Smartphone,
-                        contentDescription = stringResource(
-                            if (isGlasses) R.string.camera_source_glasses else R.string.camera_source_phone
-                        ),
-                        tint = glassesIconTint
-                    )
+                    Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.start_session))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.start_session), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
 
         // Error snackbar with auto-dismiss
+        // Hoist padding calc above the let block so session state changes don't restart LaunchedEffect
+        val snackbarBottomPadding = if (uiState.sessionState == SessionState.Active ||
+            uiState.sessionState == SessionState.Connecting) 252.dp else 72.dp
         uiState.errorMessage?.let { error ->
             LaunchedEffect(error) {
                 delay(5000)
@@ -391,7 +397,8 @@ fun SessionScreen(
             Snackbar(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 180.dp)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(bottom = snackbarBottomPadding)
                     .padding(horizontal = 16.dp),
                 action = {
                     TextButton(onClick = { viewModel.dismissError() }) {
