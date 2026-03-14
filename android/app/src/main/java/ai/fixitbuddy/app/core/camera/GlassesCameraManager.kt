@@ -23,6 +23,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -151,9 +152,13 @@ class GlassesCameraManager @Inject constructor(
                 session.videoStream.collect { frame ->
                     val jpeg = convertI420toJpeg(frame)
                     if (jpeg != null) {
-                        _frames.tryEmit(jpeg)
+                        if (!_frames.tryEmit(jpeg)) {
+                            Log.w(TAG, "Frame buffer full — dropping frame (capacity=2)")
+                        }
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e  // let structured concurrency propagate normally
             } catch (e: Exception) {
                 Log.e(TAG, "Video stream terminated unexpectedly", e)
                 _connectionState.value = GlassesState.DISCONNECTED
@@ -171,8 +176,13 @@ class GlassesCameraManager @Inject constructor(
                         else        -> GlassesState.DISCONNECTED
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e  // let structured concurrency propagate normally
             } catch (e: Exception) {
                 Log.e(TAG, "State stream terminated unexpectedly", e)
+                // C4: stateJob failure must also stop the video stream to avoid
+                // orphaned videoJob pumping frames from a dead session
+                videoJob?.cancel()
                 _connectionState.value = GlassesState.DISCONNECTED
             }
         }
