@@ -21,8 +21,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        glassesCameraManager.initialize()
-        glassesCameraManager.register(this)
         enableEdgeToEdge()
         setContent {
             FixItBuddyTheme {
@@ -33,6 +31,13 @@ class MainActivity : ComponentActivity() {
                     FixItBuddyNavHost()
                 }
             }
+        }
+        // Initialize after window is set up so any SDK dialog has a valid window to attach to.
+        // register() is gated on savedInstanceState == null to avoid re-triggering the
+        // registration dialog on every Activity recreation (e.g. screen rotation).
+        glassesCameraManager.initialize()
+        if (savedInstanceState == null && glassesCameraManager.isInitialized) {
+            glassesCameraManager.register(this)
         }
     }
 }

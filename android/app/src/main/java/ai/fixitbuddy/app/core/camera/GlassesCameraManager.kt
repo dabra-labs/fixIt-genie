@@ -58,7 +58,8 @@ class GlassesCameraManager @Inject constructor(
     private var videoJob: Job? = null
     private var stateJob: Job? = null
 
-    private var initialized = false
+    @Volatile private var initialized = false
+    val isInitialized: Boolean get() = initialized
     private var consecutiveConversionFailures = 0
 
     // ── Lifecycle ──────────────────────────────────────────────────────────────
