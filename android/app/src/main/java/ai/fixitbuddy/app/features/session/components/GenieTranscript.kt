@@ -6,8 +6,10 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -49,7 +51,8 @@ fun GenieTranscript(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        contentPadding = PaddingValues(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         itemsIndexed(chatTurns) { index, turn ->
             val isLast = index == chatTurns.lastIndex
@@ -84,12 +87,13 @@ private fun UserBubble(text: String) {
         } else {
             Box(
                 modifier = Modifier
-                    .widthIn(max = 220.dp)
-                    .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 14.dp, bottomEnd = 3.dp))
-                    .background(Color.White.copy(alpha = 0.10f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .widthIn(max = 280.dp)
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp))
+                    .background(Color.White.copy(alpha = 0.14f))
+                    .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
-                Text(text = text, fontSize = 13.sp, color = Color.White.copy(alpha = 0.55f), lineHeight = 18.sp)
+                Text(text = text, fontSize = 15.sp, color = Color.White.copy(alpha = 0.82f), lineHeight = 21.sp)
             }
         }
     }
@@ -103,19 +107,20 @@ private fun GenieBubble(text: String, showCursor: Boolean) {
     ) {
         Box(
             modifier = Modifier
-                .widthIn(max = 230.dp)
-                .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 14.dp, bottomStart = 14.dp, bottomEnd = 14.dp))
-                .background(Color(0x467E57C2))
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .widthIn(max = 292.dp)
+                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp))
+                .background(Color(0x667E57C2))
+                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             if (showCursor) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = text, fontSize = 13.sp, color = Color.White.copy(alpha = 0.92f), lineHeight = 18.sp)
+                    Text(text = text, fontSize = 15.sp, color = Color.White.copy(alpha = 0.96f), lineHeight = 21.sp)
                     Spacer(modifier = Modifier.size(width = 3.dp, height = 0.dp))
                     TypingCursor()
                 }
             } else {
-                Text(text = text, fontSize = 13.sp, color = Color.White.copy(alpha = 0.92f), lineHeight = 18.sp)
+                Text(text = text, fontSize = 15.sp, color = Color.White.copy(alpha = 0.96f), lineHeight = 21.sp)
             }
         }
     }
@@ -135,8 +140,8 @@ private fun TypingCursor() {
     )
     Box(
         modifier = Modifier
-            .size(width = 6.dp, height = 11.dp)
-            .background(Color(0xFFCE93D8).copy(alpha = alpha))
+            .size(width = 7.dp, height = 13.dp)
+            .background(Color(0xFFFFB36B).copy(alpha = alpha))
     )
 }
 
