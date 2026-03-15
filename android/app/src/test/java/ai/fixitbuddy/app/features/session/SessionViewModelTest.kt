@@ -1,8 +1,5 @@
 package ai.fixitbuddy.app.features.session
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.emptyPreferences
 import ai.fixitbuddy.app.core.audio.AudioStreamManager
 import ai.fixitbuddy.app.core.camera.CameraManager
 import ai.fixitbuddy.app.core.camera.GlassesCameraManager
@@ -16,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -43,7 +39,6 @@ class SessionViewModelTest {
     private lateinit var glassesCameraManager: GlassesCameraManager
     private lateinit var audioManager: AudioStreamManager
     private lateinit var webSocket: AgentWebSocket
-    private lateinit var dataStore: DataStore<Preferences>
     private lateinit var okHttpClient: OkHttpClient
     private lateinit var historyStore: ai.fixitbuddy.app.features.history.SessionHistoryStore
 
@@ -58,7 +53,6 @@ class SessionViewModelTest {
         glassesCameraManager = mockk(relaxed = true)
         audioManager = mockk(relaxed = true)
         webSocket = mockk(relaxed = true)
-        dataStore = mockk(relaxed = true)
         okHttpClient = mockk(relaxed = true)
         historyStore = mockk(relaxed = true)
 
@@ -69,7 +63,6 @@ class SessionViewModelTest {
         every { glassesCameraManager.connectionState } returns MutableStateFlow(GlassesState.DISCONNECTED)
         every { audioManager.audioChunks } returns MutableSharedFlow()
         every { audioManager.audioLevel } returns MutableStateFlow(0f)
-        every { dataStore.data } returns flowOf(emptyPreferences())
     }
 
     @After
@@ -78,7 +71,7 @@ class SessionViewModelTest {
     }
 
     private fun createViewModel(): SessionViewModel {
-        return SessionViewModel(cameraManager, glassesCameraManager, audioManager, webSocket, dataStore, okHttpClient, historyStore)
+        return SessionViewModel(cameraManager, glassesCameraManager, audioManager, webSocket, okHttpClient, historyStore)
     }
 
     private fun mockSuccessfulSessionCreation(sessionId: String = "session-123") {
