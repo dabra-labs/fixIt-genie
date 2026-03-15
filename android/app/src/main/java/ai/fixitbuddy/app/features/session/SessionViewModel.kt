@@ -172,7 +172,7 @@ class SessionViewModel @Inject constructor(
                             audioManager.stopPlayback()
                             agentSpeaking = false
                             bargeInAudioGate.reset()
-                            if (manualStopInProgress) {
+                            if (manualStopInProgress || current.sessionState == SessionState.Idle) {
                                 manualStopInProgress = false
                                 current.copy(
                                     sessionState = SessionState.Idle,

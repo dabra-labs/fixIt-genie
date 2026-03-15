@@ -136,6 +136,8 @@ class SessionViewModelTest {
     @Test
     fun `connection state ERROR updates UI with error message`() = runTest {
         val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTING
+        testDispatcher.scheduler.advanceUntilIdle()
         connectionStateFlow.value = ConnectionState.ERROR
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -441,6 +443,8 @@ class SessionViewModelTest {
     @Test
     fun `stopSession clears error message`() = runTest {
         val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTING
+        testDispatcher.scheduler.advanceUntilIdle()
         connectionStateFlow.value = ConnectionState.ERROR
         testDispatcher.scheduler.advanceUntilIdle()
         assertNotNull(vm.uiState.value.errorMessage)
@@ -482,8 +486,26 @@ class SessionViewModelTest {
     }
 
     @Test
+    fun `stopSession ignores late error after disconnect callback`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.stopSession()
+        connectionStateFlow.value = ConnectionState.DISCONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+        connectionStateFlow.value = ConnectionState.ERROR
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
+        assertNull(vm.uiState.value.errorMessage)
+    }
+
+    @Test
     fun `dismissError clears error message`() = runTest {
         val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTING
+        testDispatcher.scheduler.advanceUntilIdle()
         connectionStateFlow.value = ConnectionState.ERROR
         testDispatcher.scheduler.advanceUntilIdle()
         assertNotNull(vm.uiState.value.errorMessage)
@@ -582,6 +604,8 @@ class SessionViewModelTest {
     @Test
     fun `error message from connection error contains helpful text`() = runTest {
         val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTING
+        testDispatcher.scheduler.advanceUntilIdle()
         connectionStateFlow.value = ConnectionState.ERROR
         testDispatcher.scheduler.advanceUntilIdle()
 

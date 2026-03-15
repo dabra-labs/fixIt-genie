@@ -72,6 +72,7 @@ class AgentWebSocket @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) {
     private var webSocket: WebSocket? = null
+    @Volatile private var intentionalDisconnect = false
     val sessionId: String = UUID.randomUUID().toString()
     val userId: String = "fixitbuddy_user"
 
@@ -93,11 +94,13 @@ class AgentWebSocket @Inject constructor(
         disconnect()  // Clean up any existing connection
 
         val request = Request.Builder().url(url).build()
+        intentionalDisconnect = false
         _connectionState.value = ConnectionState.CONNECTING
 
         webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 Log.d(TAG, "WebSocket connected")
+                intentionalDisconnect = false
                 _connectionState.value = ConnectionState.CONNECTED
             }
 
@@ -111,8 +114,13 @@ class AgentWebSocket @Inject constructor(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                Log.e(TAG, "WebSocket failure: ${t.message}", t)
-                _connectionState.value = ConnectionState.ERROR
+                if (intentionalDisconnect) {
+                    Log.d(TAG, "Ignoring WebSocket failure after intentional disconnect: ${t.message}")
+                    _connectionState.value = ConnectionState.DISCONNECTED
+                } else {
+                    Log.e(TAG, "WebSocket failure: ${t.message}", t)
+                    _connectionState.value = ConnectionState.ERROR
+                }
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -287,6 +295,7 @@ class AgentWebSocket @Inject constructor(
     }
 
     fun disconnect() {
+        intentionalDisconnect = true
         try {
             webSocket?.close(1000, "User disconnected")
         } catch (e: Exception) {
