@@ -136,6 +136,32 @@ class AgentWebSocketParsingTest {
             val transcript = awaitItem() as AgentMessage.Transcript
             assertEquals("Final answer.", transcript.text)
             assertTrue(transcript.isFinal)
+            assertEquals(TranscriptSpeaker.GENIE, transcript.speaker)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `outputTranscription emits genie transcript`() = runTest {
+        agentWebSocket.incomingMessages.test {
+            parse("""{"author":"fixitbuddy","outputTranscription":{"text":"Display says OFF.","finished":false}}""")
+            val transcript = awaitItem() as AgentMessage.Transcript
+            assertEquals("Display says OFF.", transcript.text)
+            assertFalse(transcript.isFinal)
+            assertEquals(TranscriptSpeaker.GENIE, transcript.speaker)
+            assertEquals(AgentMessage.Status("speaking"), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `inputTranscription emits user transcript`() = runTest {
+        agentWebSocket.incomingMessages.test {
+            parse("""{"author":"fixitbuddy","inputTranscription":{"text":"my fridge is not cooling","finished":true}}""")
+            val transcript = awaitItem() as AgentMessage.Transcript
+            assertEquals("my fridge is not cooling", transcript.text)
+            assertTrue(transcript.isFinal)
+            assertEquals(TranscriptSpeaker.USER, transcript.speaker)
             cancelAndIgnoreRemainingEvents()
         }
     }
