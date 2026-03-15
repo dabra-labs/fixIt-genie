@@ -229,18 +229,19 @@ fun SessionScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(232.dp)
                         .background(
                             Brush.verticalGradient(
                                 colorStops = arrayOf(
                                     0f to Color.Transparent,
-                                    0.35f to Color(0xF7080810),
+                                    0.28f to Color(0xE6080810),
+                                    0.55f to Color(0xFB080810),
                                     1f to Color(0xFF080810)
                                 )
                             )
                         )
-                        .padding(horizontal = 14.dp)
-                        .padding(bottom = 10.dp)
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxSize(),
@@ -250,15 +251,25 @@ fun SessionScreen(
                             sessionState = uiState.sessionState,
                             agentState = uiState.agentState,
                             audioLevel = audioLevel,
-                            modifier = Modifier.padding(bottom = 4.dp, end = 10.dp)
+                            modifier = Modifier.padding(bottom = 8.dp, end = 12.dp)
                         )
-                        GenieTranscript(
-                            chatTurns = uiState.chatTurns,
-                            isGenieStreaming = uiState.agentState == "speaking",
+                        Box(
                             modifier = Modifier
                                 .weight(1f)
+                                .fillMaxSize()
                                 .padding(bottom = 4.dp)
-                        )
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color(0x40121624))
+                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
+                        ) {
+                            GenieTranscript(
+                                chatTurns = uiState.chatTurns,
+                                isGenieStreaming = uiState.agentState == "speaking",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                            )
+                        }
                     }
                 }
 
