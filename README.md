@@ -92,7 +92,7 @@ flowchart TD
 | Android App | Kotlin 2.3, Jetpack Compose (Material 3), CameraX 1.4.1, Hilt 2.59.2 |
 | Glasses | Meta DAT SDK v0.4.0 (`mwdat-core`, `mwdat-camera`) |
 | Backend Agent | Google ADK (`adk web`), Gemini 2.5 Flash Native Audio, Python 3.12 |
-| Knowledge Base | ADK SkillToolset (3 domain skills), Firestore vector search (gemini-embedding-001, 3072-dim COSINE) |
+| Knowledge Base | ADK SkillToolset (3 domain skills), Firestore vector search (gemini-embedding-001, 1536-dim COSINE) |
 | Infrastructure | Google Cloud Run (2 vCPU, 2 GiB), IaC via `deploy.sh` |
 | Communication | OkHttp WebSocket, ADK bidi-streaming (LiveRequest/LiveEvent protocol) |
 
@@ -157,7 +157,7 @@ Three domain skills loaded on demand — the agent calls `list_skills` to discov
 
 | Tool | Purpose |
 |------|---------|
-| `lookup_equipment_knowledge` | Semantic vector search via Firestore `find_nearest()` + `gemini-embedding-001` (3072-dim COSINE). Fallback: keyword matching |
+| `lookup_equipment_knowledge` | Semantic vector search via Firestore `find_nearest()` + `gemini-embedding-001` (1536-dim COSINE). Fallback: keyword matching |
 | `get_safety_warnings` | Safety warnings before any physical action — non-negotiable in the system prompt |
 | `log_diagnostic_step` | Session transcript logging |
 | `google_search` | Real-time web search for unknown error codes and model-specific procedures |
