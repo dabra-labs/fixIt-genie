@@ -15,9 +15,11 @@ import androidx.annotation.RequiresPermission
 import dagger.hilt.android.qualifiers.ApplicationContext
 import ai.fixitbuddy.app.core.config.AppConfig
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -320,10 +322,24 @@ class AudioStreamManager @Inject constructor(
 
     private fun startPlaybackLoop(channel: Channel<ByteArray>) {
         playbackJob = playbackScope.launch {
-            while (true) {
-                val firstChunk = channel.receiveCatching().getOrNull() ?: break
-                val batchedChunk = collectPlaybackBatch(firstChunk, channel)
-                writeFullyToTrack(batchedChunk)
+            try {
+                while (isActive) {
+                    val firstChunk = channel.receiveCatching().getOrNull() ?: break
+                    val batchedChunk = collectPlaybackBatch(firstChunk, channel)
+                    writeFullyToTrack(batchedChunk)
+                }
+            } catch (_: CancellationException) {
+                // Normal shutdown path.
+            } catch (t: Throwable) {
+                Log.e(TAG, "Playback loop aborted after audio pipeline failure", t)
+                synchronized(audioTrackLock) {
+                    try {
+                        audioTrack?.pause()
+                        audioTrack?.flush()
+                    } catch (trackError: IllegalStateException) {
+                        Log.w(TAG, "AudioTrack cleanup failed after playback loop abort", trackError)
+                    }
+                }
             }
         }
     }
@@ -381,8 +397,8 @@ class AudioStreamManager @Inject constructor(
                         data.size - offset,
                         AudioTrack.WRITE_BLOCKING
                     )
-                } catch (e: IllegalStateException) {
-                    Log.w(TAG, "AudioTrack.write() aborted because the track became invalid", e)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "AudioTrack.write() aborted because the track became invalid", t)
                     break
                 }
                 when {

@@ -8,6 +8,7 @@ import re
 from typing import Any
 
 from google.cloud import firestore
+from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
 from google.cloud.firestore_v1.types import StructuredQuery
 
 logger = logging.getLogger(__name__)
@@ -262,7 +263,7 @@ def lookup_equipment_knowledge(
             vector_results = collection.find_nearest(
                 vector_field="embedding",
                 query_vector=query_embedding,
-                distance_measure=StructuredQuery.FindNearest.DistanceMeasure.COSINE,
+                distance_measure=DistanceMeasure.COSINE,
                 limit=3,
             ).get()
 
@@ -284,7 +285,7 @@ def lookup_equipment_knowledge(
         return {"found": True, "results": ranked_results[:3]}
     return {
         "found": False,
-        "message": "No specific knowledge found. Use general expertise and google_search for specific model information.",
+        "message": "No specific knowledge found. Ask for the exact model number or a clearer view of the display before escalating.",
     }
 
 
