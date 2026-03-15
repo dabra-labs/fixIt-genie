@@ -11,7 +11,7 @@
 | IE / E4 | Water supply issue — not filling | Check supply valves are open; check inlet hose for kinks; clean inlet filter screens |
 | OE | Drain issue — not draining | Check drain hose for kinks; clean drain pump filter (bottom front); check standpipe height |
 | UE | Unbalanced load | Redistribute clothes evenly; reduce load size; check machine is level |
-| dE / dE1 | Door not latched | Clean door gasket; check for obstructions; door switch may need replacement |
+| dE / dE1 | Door not latched | Push door closed firmly until it clicks; remove any clothing or debris from the gasket; if still shown, press Power once and retry |
 | LE | Motor overload | Reduce load; unplug 30 min and retry; if persistent, motor/rotor sensor issue |
 | PE | Water level sensor | Power cycle; if persists, pressure hose or sensor needs replacement |
 | tE | Water temperature sensor | Power cycle; check heater element |
@@ -41,11 +41,11 @@
 1. **Note the error code** displayed on the panel
    - *Camera cue: Error code appears on digital display — may be letters + numbers, or flashing lights*
 
-2. **Power cycle first** — unplug for 60 seconds, then plug back in
-   - Clears many temporary control board errors
-
-3. **Check door/lid** — must be fully closed and latched
+2. **Check the door/lid first** — must be fully closed and latched
    - *Camera cue: Front loader: check gasket for debris. Top loader: lid switch tab must engage*
+
+3. **Only if the visible first check did not fix it, power cycle** — unplug for 60 seconds, then plug back in
+   - Clears many temporary control board errors
 
 4. **Check water supply valves** behind the machine — both fully open
    - *Camera cue: Handles should be parallel to hose (open position)*
