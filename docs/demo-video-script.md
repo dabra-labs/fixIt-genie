@@ -14,8 +14,9 @@
 | Onboarding | 0:20 | 20s |
 | Fridge demo | 0:40 | 90s |
 | Electrical panel | 2:10 | 60s |
-| Architecture proof | 3:10 | 30s |
-| Close | 3:40 | 20s |
+| LG washing machine | 3:10 | 30s |
+| Architecture proof | 3:40 | 30s |
+| Close | 4:10 | 15s |
 
 ---
 
@@ -145,7 +146,52 @@ Text card: *"Different problem. Different room."*
 
 ---
 
-## 3:10–3:40 — ARCHITECTURE PROOF
+## 3:10–3:40 — SCENE 3: LG WASHING MACHINE DOOR ERROR
+
+**Setup:** LG washing machine with door slightly ajar. Display showing DE1 error. Session running.
+
+---
+
+**[YOU SAY]**
+> *"New problem. My LG washer is throwing an error and won't start."*
+
+*[Point camera at the control panel display showing DE1. Hold 2 seconds.]*
+
+---
+
+**[AGENT RESPONDS — will read the error code visually. Tool call fires: knowledge base lookup.]*
+
+---
+
+**[YOU SAY]**
+> *"The door is slightly open — could that be it?"*
+
+*[Pan camera to show the door slightly ajar — make it visible.]*
+
+---
+
+**[AGENT RESPONDS — confirms DE1 = door error, will ask you to check the latch and seal]**
+
+---
+
+**[YOU SAY]**
+> *"What am I looking for exactly?"*
+
+*[Open door fully, point camera at the door latch and rubber gasket seal.]*
+
+---
+
+**[AGENT RESPONDS — visually guides you through checking the latch mechanism and seal for obstructions]**
+
+---
+
+**[CUT at 3:40]**
+
+Text card: *"Three problems. Three rooms. One conversation."*
+
+---
+
+## 3:40–4:10 — ARCHITECTURE PROOF
 
 **[Screen share: show architecture diagram from README or Cloud Run console with green status]**
 
