@@ -193,10 +193,10 @@ fun SessionScreen(
                     .border(1.dp, Color(0x40FF6A1E), RoundedCornerShape(28.dp))
                     .padding(horizontal = 28.dp, vertical = 24.dp)
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FeaturePill(text = "Live Camera")
-                    FeaturePill(text = "Voice Help")
-                    FeaturePill(text = "Interrupt Anytime")
+                    FeaturePill(text = "Voice Guide")
+                    FeaturePill(text = "Interrupt")
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Image(
@@ -241,11 +241,11 @@ fun SessionScreen(
                 .fillMaxWidth()
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // Chat panel — gradient fade from camera feed into conversation area
+                // Chat panel — full-width transcript with the genie floating above it
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(272.dp)
+                        .height(288.dp)
                         .background(
                             Brush.verticalGradient(
                                 colorStops = arrayOf(
@@ -259,70 +259,68 @@ fun SessionScreen(
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        GenieAvatar(
-                            sessionState = uiState.sessionState,
-                            agentState = uiState.agentState,
-                            audioLevel = audioLevel,
-                            modifier = Modifier.padding(bottom = 8.dp, end = 12.dp)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .padding(bottom = 4.dp)
-                                .clip(RoundedCornerShape(26.dp))
-                                .background(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(Color(0xE6141824), Color(0xF60D1018))
-                                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 54.dp)
+                            .clip(RoundedCornerShape(26.dp))
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color(0xE6141824), Color(0xF60D1018))
                                 )
-                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(26.dp))
-                        ) {
-                            Column(modifier = Modifier.fillMaxSize()) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(start = 14.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                            )
+                            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(26.dp))
+                    ) {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 14.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.transcript_header),
+                                    color = Color.White.copy(alpha = 0.78f),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(999.dp),
+                                    color = sessionTone(uiState.agentState).copy(alpha = 0.16f),
+                                    modifier = Modifier.border(
+                                        1.dp,
+                                        sessionTone(uiState.agentState).copy(alpha = 0.28f),
+                                        RoundedCornerShape(999.dp)
+                                    )
                                 ) {
                                     Text(
-                                        text = stringResource(R.string.transcript_header),
-                                        color = Color.White.copy(alpha = 0.78f),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        letterSpacing = 0.5.sp
+                                        text = uiState.agentState.replaceFirstChar { it.uppercase() },
+                                        color = Color.White.copy(alpha = 0.92f),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                                     )
-                                    Surface(
-                                        shape = RoundedCornerShape(999.dp),
-                                        color = sessionTone(uiState.agentState).copy(alpha = 0.16f),
-                                        modifier = Modifier.border(
-                                            1.dp,
-                                            sessionTone(uiState.agentState).copy(alpha = 0.28f),
-                                            RoundedCornerShape(999.dp)
-                                        )
-                                    ) {
-                                        Text(
-                                            text = uiState.agentState.replaceFirstChar { it.uppercase() },
-                                            color = Color.White.copy(alpha = 0.92f),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                                        )
-                                    }
                                 }
-                                GenieTranscript(
-                                    chatTurns = uiState.chatTurns,
-                                    isGenieStreaming = uiState.agentState == "speaking",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 10.dp, vertical = 8.dp)
-                                )
                             }
+                            GenieTranscript(
+                                chatTurns = uiState.chatTurns,
+                                isGenieStreaming = uiState.agentState == "speaking",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            )
                         }
                     }
+                    GenieAvatar(
+                        sessionState = uiState.sessionState,
+                        agentState = uiState.agentState,
+                        audioLevel = audioLevel,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = 6.dp)
+                    )
                 }
 
                 // Compact control strip — 52dp
@@ -503,7 +501,9 @@ private fun FeaturePill(text: String) {
             text = text,
             color = Color.White.copy(alpha = 0.82f),
             style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
         )
     }
 }
