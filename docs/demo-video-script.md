@@ -58,9 +58,9 @@
 
 ---
 
-## 1:00–2:00 — DEMO 1: FRIDGE NOT COOLING
+## 1:00–2:00 — DEMO 1: LG FRIDGE NOT COOLING
 
-**Setup:** Fridge door open, interior visible. Session already running — genie avatar pulsing.
+**Setup:** LG fridge door open, interior visible. Session already running — genie avatar pulsing.
 
 ---
 
@@ -76,7 +76,7 @@
 ---
 
 **[YOU SAY]**
-> *"It's a Samsung. The freezer is totally fine — just the fridge section is warm."*
+> *"It's an LG. The freezer is totally fine — just the fridge section is warm."*
 
 *[Watch for tool call chip flashing on screen — hold still so judges see it.]*
 
