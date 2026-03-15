@@ -141,11 +141,14 @@ fun SessionScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Status indicator
-            StatusIndicator(
-                sessionState = uiState.sessionState,
-                agentState = uiState.agentState
-            )
+            if (uiState.sessionState != SessionState.Idle || uiState.errorMessage != null) {
+                StatusIndicator(
+                    sessionState = uiState.sessionState,
+                    agentState = uiState.agentState
+                )
+            } else {
+                Spacer(modifier = Modifier.width(1.dp))
+            }
 
             Row {
                 IconButton(onClick = onNavigateToHistory) {
