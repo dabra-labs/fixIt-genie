@@ -9,6 +9,9 @@
     <string name="flashlight_toggle">Toggle Flashlight</string>
     <string name="session_idle_title">FixIt Genie</string>
     <string name="session_idle_subtitle">Point your camera at equipment\nand tap Start Session</string>
+    <string name="session_idle_hint">Best results: hold the camera steady and interrupt naturally when needed.</string>
+    <string name="start_session_hint">Show the problem, then let FixIt Genie talk you through the fix.</string>
+    <string name="transcript_header">LIVE CONVERSATION</string>
 
     <!-- Status indicators -->
     <string name="status_idle">Ready</string>

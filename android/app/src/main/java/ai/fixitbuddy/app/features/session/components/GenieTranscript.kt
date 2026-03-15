@@ -9,10 +9,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -27,7 +29,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.fixitbuddy.app.features.session.ChatRole
@@ -72,28 +76,50 @@ private fun UserBubble(text: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End
     ) {
-        if (text.isBlank()) {
-            // Listening indicator — 3 animated dots
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 14.dp, bottomEnd = 3.dp))
-                    .background(Color.White.copy(alpha = 0.08f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                repeat(3) { i -> ListeningDot(delayMs = i * 150) }
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp))
-                    .background(Color.White.copy(alpha = 0.14f))
-                    .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-            ) {
-                Text(text = text, fontSize = 15.sp, color = Color.White.copy(alpha = 0.82f), lineHeight = 21.sp)
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "YOU",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.44f)
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            if (text.isBlank()) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp))
+                        .background(Color(0xFF1F2634))
+                        .border(
+                            1.dp,
+                            Color.White.copy(alpha = 0.06f),
+                            RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    repeat(3) { i -> ListeningDot(delayMs = i * 150) }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .widthIn(max = 312.dp)
+                        .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp))
+                        .background(Color(0xFF1B2331))
+                        .border(
+                            1.dp,
+                            Color.White.copy(alpha = 0.06f),
+                            RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp)
+                        )
+                        .padding(horizontal = 15.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        text = text,
+                        fontSize = 16.sp,
+                        color = Color(0xFFE9EEF8),
+                        lineHeight = 22.sp
+                    )
+                }
             }
         }
     }
@@ -105,22 +131,39 @@ private fun GenieBubble(text: String, showCursor: Boolean) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start
     ) {
-        Box(
-            modifier = Modifier
-                .widthIn(max = 292.dp)
-                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp))
-                .background(Color(0x667E57C2))
-                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-        ) {
-            if (showCursor) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = text, fontSize = 15.sp, color = Color.White.copy(alpha = 0.96f), lineHeight = 21.sp)
-                    Spacer(modifier = Modifier.size(width = 3.dp, height = 0.dp))
-                    TypingCursor()
+        Column(horizontalAlignment = Alignment.Start) {
+            Text(
+                text = "GENIE",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFFFFB36B)
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 324.dp)
+                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color(0xCC7A2D0E), Color(0xE6411A0A))
+                        )
+                    )
+                    .border(
+                        1.dp,
+                        Color(0x55FFB36B),
+                        RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
+                    )
+                    .padding(horizontal = 15.dp, vertical = 12.dp)
+            ) {
+                if (showCursor) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = text, fontSize = 16.sp, color = Color.White.copy(alpha = 0.96f), lineHeight = 22.sp)
+                        Spacer(modifier = Modifier.size(width = 4.dp, height = 0.dp))
+                        TypingCursor()
+                    }
+                } else {
+                    Text(text = text, fontSize = 16.sp, color = Color.White.copy(alpha = 0.96f), lineHeight = 22.sp)
                 }
-            } else {
-                Text(text = text, fontSize = 15.sp, color = Color.White.copy(alpha = 0.96f), lineHeight = 21.sp)
             }
         }
     }
