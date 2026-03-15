@@ -108,7 +108,10 @@ class SessionViewModel @Inject constructor(
     private var sessionJob: Job? = null
     private var frameForwardingJob: Job? = null
     private var audioForwardingJob: Job? = null
+    private var autoCloseJob: Job? = null
     private val bargeInAudioGate = BargeInAudioGate()
+    @Volatile private var pendingAutoClose = false
+    @Volatile private var manualStopInProgress = false
 
     private fun hasRunningSessionJob(): Boolean = sessionJob?.isActive == true
 
@@ -119,6 +122,22 @@ class SessionViewModel @Inject constructor(
         audioForwardingJob = null
         sessionJob?.cancel()
         sessionJob = null
+    }
+
+    private fun cancelAutoClose() {
+        pendingAutoClose = false
+        autoCloseJob?.cancel()
+        autoCloseJob = null
+    }
+
+    private fun scheduleAutoCloseAfterGoodbye() {
+        autoCloseJob?.cancel()
+        autoCloseJob = viewModelScope.launch {
+            delay(AUTO_CLOSE_AFTER_GOODBYE_MS)
+            if (pendingAutoClose && _uiState.value.sessionState == SessionState.Active) {
+                stopSession()
+            }
+        }
     }
 
     init {
@@ -136,34 +155,50 @@ class SessionViewModel @Inject constructor(
                             sessionState = SessionState.Connecting,
                             errorMessage = null
                         )
-                        ConnectionState.CONNECTED -> current.copy(
-                            sessionState = SessionState.Active,
-                            agentState = "listening",
-                            errorMessage = null,
-                            chatTurns = emptyList()
-                        )
+                        ConnectionState.CONNECTED -> {
+                            manualStopInProgress = false
+                            current.copy(
+                                sessionState = SessionState.Active,
+                                agentState = "listening",
+                                errorMessage = null,
+                                chatTurns = emptyList()
+                            )
+                        }
                         ConnectionState.ERROR -> {
                             genieIsSpeaking = false
                             cancelStreamingJobs()
+                            cancelAutoClose()
                             audioManager.stopRecording()
                             audioManager.stopPlayback()
                             agentSpeaking = false
                             bargeInAudioGate.reset()
-                            current.copy(
-                                sessionState = SessionState.Error,
-                                errorMessage = "Connection failed. Check your network and backend URL."
-                            )
+                            if (manualStopInProgress) {
+                                manualStopInProgress = false
+                                current.copy(
+                                    sessionState = SessionState.Idle,
+                                    agentState = "idle",
+                                    errorMessage = null
+                                )
+                            } else {
+                                current.copy(
+                                    sessionState = SessionState.Error,
+                                    errorMessage = "Connection failed. Check your network and backend URL."
+                                )
+                            }
                         }
                         ConnectionState.DISCONNECTED -> {
-                            if (current.sessionState != SessionState.Idle) {
+                            if (current.sessionState != SessionState.Idle || manualStopInProgress) {
                                 genieIsSpeaking = false
                                 cancelStreamingJobs()
+                                cancelAutoClose()
                                 audioManager.stopRecording()
                                 audioManager.stopPlayback()
                                 agentSpeaking = false
                                 bargeInAudioGate.reset()
+                                manualStopInProgress = false
                                 current.copy(
                                     sessionState = SessionState.Idle,
+                                    agentState = "idle",
                                     errorMessage = null
                                 )
                             } else {
@@ -209,6 +244,7 @@ class SessionViewModel @Inject constructor(
                                 )
                             }
                         } else {
+                            cancelAutoClose()
                             _uiState.update { current ->
                                 val turns = current.chatTurns.toMutableList()
                                 if (turns.isEmpty() || turns.last().role != ChatRole.USER) {
@@ -229,7 +265,13 @@ class SessionViewModel @Inject constructor(
                             if (state == "listening" && genieIsSpeaking) {
                                 genieIsSpeaking = false
                             }
-                            current.copy(agentState = state)
+                            current.copy(
+                                agentState = if (state == "listening" && pendingAutoClose) {
+                                    "wrapping up"
+                                } else {
+                                    state
+                                }
+                            )
                         }
                         if (state == "listening") {
                             // Cancel the 1200ms fallback timer — we got the real turn-end signal.
@@ -240,10 +282,14 @@ class SessionViewModel @Inject constructor(
                                 agentSpeaking = false
                                 bargeInAudioGate.reset()
                             }
+                            if (pendingAutoClose) {
+                                scheduleAutoCloseAfterGoodbye()
+                            }
                         }
                     }
                     is AgentMessage.Interrupted -> {
                         turnEndJob?.cancel()
+                        cancelAutoClose()
                         audioManager.interrupt()
                         agentSpeaking = false
                         bargeInAudioGate.reset()
@@ -251,11 +297,18 @@ class SessionViewModel @Inject constructor(
                     is AgentMessage.ToolCall -> {
                         // Tool calls are handled server-side; we display them via chip + status
                         // Increment toolCallCount so the chip retriggers even for repeated tool names
+                        if (message.toolName == "complete_session") {
+                            pendingAutoClose = true
+                        }
                         _uiState.update {
                             it.copy(
                                 lastToolCall = message.toolName,
                                 toolCallCount = it.toolCallCount + 1,
-                                agentState = "using ${message.toolName}"
+                                agentState = if (message.toolName == "complete_session") {
+                                    "wrapping up"
+                                } else {
+                                    "using ${message.toolName}"
+                                }
                             )
                         }
                     }
@@ -326,6 +379,8 @@ class SessionViewModel @Inject constructor(
         }
 
         sessionStartMs = System.currentTimeMillis()
+        manualStopInProgress = false
+        cancelAutoClose()
         _uiState.update {
             it.copy(
                 sessionState = SessionState.Connecting,
@@ -427,9 +482,11 @@ class SessionViewModel @Inject constructor(
                 Log.w(TAG, "Failed to create ADK session", e)
                 null
             }
-        }
+    }
 
     fun stopSession() {
+        manualStopInProgress = true
+        cancelAutoClose()
         // Cancel streaming forwarding jobs
         cancelStreamingJobs()
         glassesCameraManager.stopStream()
@@ -492,6 +549,7 @@ class SessionViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "SessionViewModel"
+        private const val AUTO_CLOSE_AFTER_GOODBYE_MS = 1500L
     }
 }
 

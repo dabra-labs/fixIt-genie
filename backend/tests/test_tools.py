@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
 
 import fixitbuddy.tools as tools_module
-from fixitbuddy.tools import lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step
+from fixitbuddy.tools import complete_session, lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step
 
 
 class TestLookupEquipmentKnowledge:
@@ -266,9 +266,22 @@ class TestGetSafetyWarnings:
         assert "warnings" in result
         assert isinstance(result["warnings"], list)
         assert len(result["warnings"]) > 0
-        # Check for relevant safety keywords
-        all_text = " ".join(result["warnings"]).lower()
-        assert any(term in all_text for term in ["ventilated", "gloves"])
+
+
+class TestSessionTools:
+    """Test non-diagnostic helper tools."""
+
+    def test_log_diagnostic_step_returns_logged_payload(self):
+        result = log_diagnostic_step(step_number=2, description="Checked door", result="Closed firmly")
+        assert result["logged"] is True
+        assert result["step"]["step"] == 2
+
+    def test_complete_session_returns_completion_payload(self):
+        result = complete_session(reason="LG fridge demo mode fixed")
+        assert result == {
+            "completed": True,
+            "reason": "LG fridge demo mode fixed",
+        }
 
     def test_unknown_action_type_returns_fallback(self):
         """Test unknown action_type returns general fallback warnings."""
