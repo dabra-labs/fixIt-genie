@@ -3,8 +3,6 @@ package ai.fixitbuddy.app.features.session
 import android.Manifest
 import android.util.Log
 import androidx.annotation.RequiresPermission
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ai.fixitbuddy.app.core.audio.AudioStreamManager
@@ -18,7 +16,6 @@ import ai.fixitbuddy.app.core.websocket.ConnectionState
 import ai.fixitbuddy.app.core.websocket.TranscriptSpeaker
 import ai.fixitbuddy.app.features.history.SessionHistoryStore
 import ai.fixitbuddy.app.features.history.SessionRecord
-import ai.fixitbuddy.app.features.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -28,8 +25,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -81,7 +76,6 @@ class SessionViewModel @Inject constructor(
     val glassesCameraManager: GlassesCameraManager,
     private val audioManager: AudioStreamManager,
     private val webSocket: AgentWebSocket,
-    private val dataStore: DataStore<Preferences>,
     private val okHttpClient: OkHttpClient,
     private val historyStore: SessionHistoryStore
 ) : ViewModel() {
@@ -402,9 +396,7 @@ class SessionViewModel @Inject constructor(
         }
 
         val job = viewModelScope.launch(Dispatchers.IO) {
-            val baseUrl = dataStore.data.map { prefs ->
-                prefs[SettingsViewModel.BACKEND_URL_KEY] ?: AppConfig.BACKEND_URL
-            }.first()
+            val baseUrl = AppConfig.BACKEND_URL
 
             // Step 1: Create ADK session via REST
             val sessionId = createAdkSession(baseUrl, webSocket.userId)

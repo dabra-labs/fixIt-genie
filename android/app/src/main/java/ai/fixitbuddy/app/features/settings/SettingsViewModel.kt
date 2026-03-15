@@ -10,10 +10,7 @@ import ai.fixitbuddy.app.core.config.AppConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -30,9 +27,7 @@ class SettingsViewModel @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) : ViewModel() {
 
-    val backendUrl = dataStore.data
-        .map { prefs -> prefs[BACKEND_URL_KEY] ?: AppConfig.BACKEND_URL }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, AppConfig.BACKEND_URL)
+    val backendUrl: StateFlow<String> = MutableStateFlow(AppConfig.BACKEND_URL)
 
     private val _connectionTestState = MutableStateFlow(ConnectionTestState.Idle)
     val connectionTestState: StateFlow<ConnectionTestState> = _connectionTestState
@@ -40,9 +35,9 @@ class SettingsViewModel @Inject constructor(
     private val _connectionTestMessage = MutableStateFlow("")
     val connectionTestMessage: StateFlow<String> = _connectionTestMessage
 
-    fun saveBackendUrl(url: String) {
+    init {
         viewModelScope.launch {
-            dataStore.edit { prefs -> prefs[BACKEND_URL_KEY] = url }
+            dataStore.edit { prefs -> prefs.remove(BACKEND_URL_KEY) }
         }
     }
 
@@ -78,6 +73,6 @@ class SettingsViewModel @Inject constructor(
     }
 
     companion object {
-        val BACKEND_URL_KEY = stringPreferencesKey("backend_url")
+        private val BACKEND_URL_KEY = stringPreferencesKey("backend_url")
     }
 }

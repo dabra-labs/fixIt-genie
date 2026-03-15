@@ -43,7 +43,7 @@
     <string name="settings_connection">Connection</string>
     <string name="settings_backend_url">Backend URL</string>
     <string name="settings_backend_hint">https://fixitbuddy-agent-xxx-uc.a.run.app</string>
-    <string name="settings_backend_helper">The Cloud Run URL where FixIt Genie\'s ADK agent is deployed.</string>
+    <string name="settings_backend_helper">This demo build always uses the built-in Cloud Run backend URL.</string>
     <string name="settings_test_connection">Test Connection</string>
     <string name="settings_about">About FixIt Genie</string>
     <string name="settings_app_name_label">App Name</string>
