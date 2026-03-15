@@ -24,10 +24,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FixItBuddy">
 
-        <!-- Meta DAT SDK — APPLICATION_ID=0 works for Mock Device Kit / Developer Mode -->
+        <!-- Meta DAT SDK — FixITGenie project credentials from Wearables Developer Center -->
         <meta-data
             android:name="com.meta.wearable.mwdat.APPLICATION_ID"
-            android:value="0" />
+            android:value="2111221006361867" />
+        <meta-data
+            android:name="com.meta.wearable.mwdat.CLIENT_TOKEN"
+            android:value="AR|2111221006361867|5d1a89365ab58f816f39cbf4c2da102e" />
         <meta-data
             android:name="com.meta.wearable.mwdat.ANALYTICS_OPT_OUT"
             android:value="true" />
