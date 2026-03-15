@@ -155,37 +155,17 @@ private fun GenieBubble(text: String, showCursor: Boolean) {
                     )
                     .padding(horizontal = 15.dp, vertical = 12.dp)
             ) {
-                if (showCursor) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = text, fontSize = 16.sp, color = Color.White.copy(alpha = 0.96f), lineHeight = 22.sp)
-                        Spacer(modifier = Modifier.size(width = 4.dp, height = 0.dp))
-                        TypingCursor()
-                    }
-                } else {
-                    Text(text = text, fontSize = 16.sp, color = Color.White.copy(alpha = 0.96f), lineHeight = 22.sp)
-                }
+                MarkdownText(
+                    markdown = text,
+                    color = Color.White.copy(alpha = 0.96f),
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp,
+                    accentColor = Color(0xFFFFB36B),
+                    showCursor = showCursor
+                )
             }
         }
     }
-}
-
-@Composable
-private fun TypingCursor() {
-    val infiniteTransition = rememberInfiniteTransition(label = "cursor")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 500),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "cursorAlpha"
-    )
-    Box(
-        modifier = Modifier
-            .size(width = 7.dp, height = 13.dp)
-            .background(Color(0xFFFFB36B).copy(alpha = alpha))
-    )
 }
 
 @Composable
