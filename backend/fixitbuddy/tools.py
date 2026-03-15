@@ -12,6 +12,9 @@ from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
 from google.cloud.firestore_v1.types import StructuredQuery
 
 logger = logging.getLogger(__name__)
+_VECTOR_EMBED_TIMEOUT_SECONDS = float(
+    os.environ.get("VECTOR_EMBED_TIMEOUT_SECONDS", "3.0")
+)
 
 # ---------------------------------------------------------------------------
 # Firestore client (lazy singleton)
@@ -244,37 +247,45 @@ def lookup_equipment_knowledge(
     # Primary: Firestore vector search (semantic similarity via text-embedding-004)
     db = _get_db()
     if db:
-        try:
-            import requests as _requests
-
-            _api_key = os.environ.get("GOOGLE_API_KEY", "")
-            _embed_model = "gemini-embedding-001"
-            _embed_url = f"https://generativelanguage.googleapis.com/v1beta/models/{_embed_model}:embedContent"
-            _embed_resp = _requests.post(
-                _embed_url,
-                json={"model": f"models/{_embed_model}", "content": {"parts": [{"text": search_text}]}},
-                params={"key": _api_key},
-                timeout=15,
+        _api_key = os.environ.get("GOOGLE_API_KEY", "")
+        if not _api_key:
+            logger.info(
+                "GOOGLE_API_KEY missing — skipping vector search and using embedded KB"
             )
-            _embed_resp.raise_for_status()
-            query_embedding = _embed_resp.json()["embedding"]["values"]
+        else:
+            try:
+                import requests as _requests
 
-            collection = db.collection("equipment")
-            vector_results = collection.find_nearest(
-                vector_field="embedding",
-                query_vector=query_embedding,
-                distance_measure=DistanceMeasure.COSINE,
-                limit=3,
-            ).get()
+                _embed_model = "gemini-embedding-001"
+                _embed_url = f"https://generativelanguage.googleapis.com/v1beta/models/{_embed_model}:embedContent"
+                _embed_resp = _requests.post(
+                    _embed_url,
+                    json={"model": f"models/{_embed_model}", "content": {"parts": [{"text": search_text}]}},
+                    params={"key": _api_key},
+                    timeout=_VECTOR_EMBED_TIMEOUT_SECONDS,
+                )
+                _embed_resp.raise_for_status()
+                query_embedding = _embed_resp.json()["embedding"]["values"]
 
-            for doc in vector_results:
-                data = doc.to_dict()
-                # Strip the embedding field — it's large and not useful to the agent
-                data.pop("embedding", None)
-                results.append(data)
+                collection = db.collection("equipment")
+                vector_results = collection.find_nearest(
+                    vector_field="embedding",
+                    query_vector=query_embedding,
+                    distance_measure=DistanceMeasure.COSINE,
+                    limit=3,
+                ).get()
 
-        except Exception:
-            logger.warning("Vector search failed — falling back to embedded KB", exc_info=True)
+                for doc in vector_results:
+                    data = doc.to_dict()
+                    # Strip the embedding field — it's large and not useful to the agent
+                    data.pop("embedding", None)
+                    results.append(data)
+
+            except Exception:
+                logger.warning(
+                    "Vector search failed — falling back to embedded KB",
+                    exc_info=True,
+                )
 
     # Fallback: keyword matching against embedded knowledge base
     if not results:

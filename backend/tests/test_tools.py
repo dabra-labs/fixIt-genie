@@ -204,6 +204,7 @@ class TestLookupEquipmentKnowledge:
             return FakeEmbedResponse()
 
         monkeypatch.setattr(tools_module, "_get_db", lambda: FakeDb())
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
         monkeypatch.setattr("requests.post", fake_post)
 
         result = lookup_equipment_knowledge(
@@ -213,6 +214,27 @@ class TestLookupEquipmentKnowledge:
 
         assert captured["distance_measure"] == DistanceMeasure.COSINE
         assert result["found"] is True
+
+    def test_vector_search_is_skipped_without_google_api_key(self, monkeypatch):
+        """Missing API key should fall back immediately to the embedded KB."""
+        class FakeDb:
+            def collection(self, name):
+                raise AssertionError("Firestore vector lookup should be skipped without an API key")
+
+        def fail_post(*args, **kwargs):
+            raise AssertionError("Embedding request should not run without GOOGLE_API_KEY")
+
+        monkeypatch.setattr(tools_module, "_get_db", lambda: FakeDb())
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        monkeypatch.setattr("requests.post", fail_post)
+
+        result = lookup_equipment_knowledge(
+            query="LG fridge display says OFF and it is not cooling",
+            category="appliance",
+        )
+
+        assert result["found"] is True
+        assert result["results"][0]["name"] == "LG Refrigerator"
 
 
 class TestGetSafetyWarnings:

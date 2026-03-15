@@ -23,21 +23,29 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import javax.inject.Inject
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.coroutines.resume
 import kotlin.math.sqrt
 
 /** A single spoken exchange in the session conversation. */
@@ -409,6 +417,7 @@ class SessionViewModel @Inject constructor(
                 }
                 return@launch
             }
+            currentCoroutineContext().ensureActive()
 
             // Step 2: Build WebSocket URL with required ADK query params
             val wsBase = baseUrl
@@ -422,10 +431,12 @@ class SessionViewModel @Inject constructor(
 
             // Step 3: Connect WebSocket
             webSocket.connect(wsUrl)
+            currentCoroutineContext().ensureActive()
 
             // Step 4: Init audio — done here (inside coroutine, after session is confirmed)
             // so the mic is never left running if createAdkSession() failed above.
             withContext(Dispatchers.Main) { audioManager.initPlayback() }
+            currentCoroutineContext().ensureActive()
             audioManager.startRecording()
 
             // Step 5: Forward camera frames — restartable via switchCameraSource()
@@ -458,31 +469,56 @@ class SessionViewModel @Inject constructor(
      * Returns the session ID on success, null on failure.
      */
     private suspend fun createAdkSession(baseUrl: String, userId: String): String? =
-        withContext(Dispatchers.IO) {
+        suspendCancellableCoroutine { continuation ->
             try {
                 val url = "$baseUrl/apps/fixitbuddy/users/$userId/sessions"
                 val request = Request.Builder()
                     .url(url)
                     .post("{}".toRequestBody("application/json".toMediaType()))
                     .build()
-                okHttpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        Log.w(TAG, "ADK session creation failed: HTTP ${response.code}")
-                        return@withContext null
-                    }
-                    val body = response.body?.string() ?: run {
-                        Log.w(TAG, "ADK session creation failed: empty response body")
-                        return@withContext null
-                    }
-                    // Parse {"id":"..."} from response
-                    val match = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(body)
-                    match?.groupValues?.get(1)
+                val call = okHttpClient.newCall(request)
+
+                continuation.invokeOnCancellation {
+                    call.cancel()
                 }
+
+                call.enqueue(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        if (!continuation.isActive) return
+                        Log.w(TAG, "Failed to create ADK session", e)
+                        continuation.resume(null)
+                    }
+
+                    override fun onResponse(call: Call, response: Response) {
+                        response.use { httpResponse ->
+                            val sessionId = if (!httpResponse.isSuccessful) {
+                                Log.w(TAG, "ADK session creation failed: HTTP ${httpResponse.code}")
+                                null
+                            } else {
+                                val body = httpResponse.body?.string()
+                                if (body.isNullOrBlank()) {
+                                    Log.w(TAG, "ADK session creation failed: empty response body")
+                                    null
+                                } else {
+                                    Regex("\"id\"\\s*:\\s*\"([^\"]+)\"")
+                                        .find(body)
+                                        ?.groupValues
+                                        ?.get(1)
+                                }
+                            }
+                            if (continuation.isActive) {
+                                continuation.resume(sessionId)
+                            }
+                        }
+                    }
+                })
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to create ADK session", e)
-                null
+                if (continuation.isActive) {
+                    Log.w(TAG, "Failed to create ADK session", e)
+                    continuation.resume(null)
+                }
             }
-    }
+        }
 
     fun stopSession() {
         manualStopInProgress = true

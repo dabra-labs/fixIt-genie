@@ -91,7 +91,7 @@ class AgentWebSocket @Inject constructor(
      * SessionViewModel is responsible for creating the session via REST before calling connect().
      */
     fun connect(url: String) {
-        disconnect()  // Clean up any existing connection
+        disconnectInternal(updateState = false)  // Clean up any existing connection
 
         val request = Request.Builder().url(url).build()
         intentionalDisconnect = false
@@ -99,6 +99,10 @@ class AgentWebSocket @Inject constructor(
 
         webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                if (!isCurrentSocket(webSocket)) {
+                    Log.d(TAG, "Ignoring stale onOpen callback")
+                    return
+                }
                 Log.d(TAG, "WebSocket connected")
                 intentionalDisconnect = false
                 _connectionState.value = ConnectionState.CONNECTED
@@ -114,6 +118,10 @@ class AgentWebSocket @Inject constructor(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                if (!isCurrentSocket(webSocket)) {
+                    Log.d(TAG, "Ignoring stale WebSocket failure: ${t.message}")
+                    return
+                }
                 if (intentionalDisconnect) {
                     Log.d(TAG, "Ignoring WebSocket failure after intentional disconnect: ${t.message}")
                     _connectionState.value = ConnectionState.DISCONNECTED
@@ -124,12 +132,20 @@ class AgentWebSocket @Inject constructor(
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                if (!isCurrentSocket(webSocket)) {
+                    Log.d(TAG, "Ignoring stale onClosing callback: code=$code")
+                    return
+                }
                 Log.d(TAG, "WebSocket closing: code=$code reason=$reason")
                 _connectionState.value = ConnectionState.DISCONNECTED
                 webSocket.close(1000, null)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                if (!isCurrentSocket(webSocket)) {
+                    Log.d(TAG, "Ignoring stale onClosed callback: code=$code")
+                    return
+                }
                 Log.d(TAG, "WebSocket closed: code=$code reason=$reason")
                 _connectionState.value = ConnectionState.DISCONNECTED
             }
@@ -295,15 +311,24 @@ class AgentWebSocket @Inject constructor(
     }
 
     fun disconnect() {
+        disconnectInternal(updateState = true)
+    }
+
+    private fun disconnectInternal(updateState: Boolean) {
+        val currentSocket = webSocket
         intentionalDisconnect = true
         try {
-            webSocket?.close(1000, "User disconnected")
+            webSocket = null
+            currentSocket?.close(1000, "User disconnected")
         } catch (e: Exception) {
             Log.w(TAG, "Error closing WebSocket", e)
         }
-        webSocket = null
-        _connectionState.value = ConnectionState.DISCONNECTED
+        if (updateState) {
+            _connectionState.value = ConnectionState.DISCONNECTED
+        }
     }
+
+    private fun isCurrentSocket(socket: WebSocket): Boolean = webSocket === socket
 
     val isConnected: Boolean
         get() = _connectionState.value == ConnectionState.CONNECTED
