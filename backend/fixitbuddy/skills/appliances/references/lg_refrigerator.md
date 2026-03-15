@@ -7,9 +7,10 @@
 
 | Code | Meaning | Fix |
 |------|---------|-----|
-| OFF | Likely demo/showroom mode | Say the display text first. Explain that the fridge may be in demo mode, which leaves the display on but disables cooling. If the exact model is known, look up the model-specific exit sequence before giving button instructions |
+| OFF / 0FF | Likely demo/showroom mode | Say the display text first. Explain that the fridge may be in demo mode, which leaves the display on but disables cooling. If the exact model is known, look up the model-specific exit sequence before giving button instructions |
+| FF only (partial read) | Ambiguous partial display | Do not guess. Ask for a tighter, steadier shot of the full water-dispenser/control panel to distinguish OFF/0FF from Er FF |
 | Er IF | Ice maker fan blocked or frozen | Remove all ice from ice maker; power cycle; if persists, fan motor needs replacement |
-| Er FF | Freezer evaporator fan failure | Power cycle; defrost manually (hold both temp buttons 3–5 sec) to unblock; if persists, fan replacement |
+| Er FF | Freezer evaporator fan failure | If it clearly shows Er FF, defrost manually (hold both temp buttons 3–5 sec) to unblock the fan; if it persists, fan replacement |
 | Er CF | Condenser fan blocked or failed | Clean condenser area at back/bottom; check fan blade for debris; power cycle |
 | Er dF | Defrost heater or sensor failure | Run manual defrost (hold both temp buttons 3–5 sec); if error returns, defrost heater replacement needed |
 | Er rF | Fan speed sensor | Power cycle; if persists, professional service |
@@ -23,9 +24,9 @@
 ## Diagnostic Steps
 
 1. **Check temperature display first**
-   - *Camera cue: Display panel on front door or inside at top. If the panel says `OFF`, treat that as a likely demo/showroom mode clue before deeper cooling troubleshooting*
+   - *Camera cue: Display panel on front door or inside at top. If the panel says `OFF` or `0FF`, treat that as a likely demo/showroom mode clue before deeper cooling troubleshooting. If you can only make out `FF`, ask for a closer view before deciding what it means*
 
-2. **If the panel does not say `OFF`, listen for the compressor** — should cycle on and off
+2. **If the panel does not say `OFF` or `0FF`, listen for the compressor** — should cycle on and off
    - *Camera cue: Compressor is at back bottom — humming sound means it's running*
 
 3. **Check condenser coils** on back or bottom
@@ -44,7 +45,8 @@
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Display says `OFF` and fridge is not cooling | Likely demo/showroom mode | Call out the `OFF` text first. Explain that the fridge may be in demo mode. If the model number is available, use it to look up the exact exit button sequence before guessing |
+| Display says `OFF` or `0FF` and fridge is not cooling | Likely demo/showroom mode | Call out the display text first. Explain that the fridge may be in demo mode. If the model number is available, use it to look up the exact exit button sequence before guessing |
+| Display shows only `FF` | Ambiguous read | Ask for a closer shot of the full control panel. A partial `FF` can actually be `OFF`/`0FF` or part of `Er FF` |
 | Fridge not cooling, freezer fine | Evaporator fan blocked or failed, damper stuck | Hold door button to test if fan runs. Ice on back wall = defrost issue; run manual defrost |
 | Neither fridge nor freezer cooling | Compressor not running or refrigerant leak | Check start relay (small box on compressor side) — rattle when shaken = replace (~$10 part) |
 | Ice maker not making ice | Freezer too warm, water supply issue, or arm in UP position | Check freezer is 0°F. Check water line isn't kinked. Check ice maker arm is DOWN. Replace filter if >6 months old |

@@ -10,17 +10,36 @@ class SessionAudioGateTest {
 
     @Test
     fun `quiet chunk is blocked while agent is speaking`() {
-        assertFalse(shouldForwardMicChunk(pcmChunk(80, 480), agentSpeaking = true))
+        assertFalse(shouldForwardMicChunk(pcmChunk(50, 480), agentSpeaking = true))
     }
 
     @Test
-    fun `loud chunk is forwarded while agent is speaking`() {
-        assertTrue(shouldForwardMicChunk(pcmChunk(9000, 480), agentSpeaking = true))
+    fun `speech chunk is forwarded while agent is speaking`() {
+        assertTrue(shouldForwardMicChunk(pcmChunk(150, 480), agentSpeaking = true))
     }
 
     @Test
     fun `all chunks are forwarded when agent is not speaking`() {
         assertTrue(shouldForwardMicChunk(pcmChunk(50, 480), agentSpeaking = false))
+    }
+
+    @Test
+    fun `barge in gate keeps forwarding follow up chunks after trigger`() {
+        val gate = BargeInAudioGate(triggerLevel = 0.10f, holdChunks = 3)
+
+        assertTrue(gate.shouldForward(pcmChunk(150, 480), agentSpeaking = true))
+        assertTrue(gate.shouldForward(pcmChunk(50, 480), agentSpeaking = true))
+        assertTrue(gate.shouldForward(pcmChunk(50, 480), agentSpeaking = true))
+        assertFalse(gate.shouldForward(pcmChunk(50, 480), agentSpeaking = true))
+    }
+
+    @Test
+    fun `barge in gate resets when agent stops speaking`() {
+        val gate = BargeInAudioGate(triggerLevel = 0.10f, holdChunks = 3)
+
+        assertTrue(gate.shouldForward(pcmChunk(150, 480), agentSpeaking = true))
+        assertTrue(gate.shouldForward(pcmChunk(50, 480), agentSpeaking = false))
+        assertFalse(gate.shouldForward(pcmChunk(50, 480), agentSpeaking = true))
     }
 
     private fun pcmChunk(amplitude: Short, samples: Int): ByteArray {
