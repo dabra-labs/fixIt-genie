@@ -1,138 +1,200 @@
-# FixIt Buddy — Demo Video Script (4 minutes max)
+# FixIt Genie — Demo Video Script
 
-> Maps directly to judging criteria:
-> - Innovation & Multimodal UX (40%)
-> - Technical Implementation (30%)
-> - Demo & Presentation (30%)
+**Target:** Under 4 minutes · Live audio · No mockups · No AI voiceover needed
 
----
-
-## 0:00–0:20 — Hook + Problem Statement (20 sec)
-
-**Visual**: Split screen — person scrolling YouTube frustratedly on one side, person with phone pointed at equipment on the other.
-
-**Narration**:
-"Something breaks. You stand there scrolling through YouTube, trying to find a video that matches your exact situation. But tutorials can't see what YOU're looking at. What if you had a knowledgeable friend standing right there with you? That's FixIt Buddy."
-
-**Show**: App icon + tagline "See. Hear. Fix."
+> Judging weights: Innovation & Multimodal UX (40%) · Technical (30%) · Demo (30%)
 
 ---
 
-## 0:20–0:45 — App Walkthrough + Onboarding (25 sec)
+## TIMING OVERVIEW
 
-**Visual**: Screen recording of the app.
-
-**Show the onboarding flow** — "See It. Say It. Fix It." pages. This is beautiful and shows polish.
-
-**Narration**:
-"FixIt Buddy is a native Android app powered by Google's Gemini Live API through the Agent Development Kit. Open the app, and a clean onboarding explains the three modes: see through your camera, say what's wrong, and the AI walks you through fixing it."
-
-**Hit**: Show the "Let's Fix Something" button tap → transition to session screen.
-
----
-
-## 0:45–1:45 — Demo Scenario 1: Car Engine (60 sec)
-
-> This is the strongest visual demo. Do this one first.
-
-**Visual**: Phone pointed at an open car hood (or a close-up of engine components).
-
-**Show**:
-1. Tap "Start Session" — status changes to "Listening"
-2. Agent greets: "Hey! I'm FixIt Buddy. Point your camera at whatever needs fixing."
-3. User says: "I think my oil is low, the oil light came on."
-4. **Agent describes what it sees**: "I can see the engine bay. Let me look for the dipstick..."
-   - THIS IS THE KEY MOMENT — the agent proving it's actually seeing through the camera (Innovation 40%)
-5. Agent calls `get_safety_warnings` (show the status indicator change to "Using get_safety_warnings")
-6. Agent says: "Before we check — the engine might be hot. Make sure it's been off for at least 10 minutes."
-7. Agent calls `lookup_equipment_knowledge` — walks through the dipstick procedure
-8. Agent says: "Pull the dipstick out, wipe it clean, reinsert, and pull out again. Tell me what you see."
-9. User responds, agent confirms visually: "I can see the oil level — it's below the minimum mark."
-
-**Narration callout**: "Notice how the agent describes what it sees, checks safety first, then guides one step at a time — confirming visually before moving on."
+| Segment | Time | Duration |
+|---------|------|----------|
+| Hook + Intro | 0:00 | 20s |
+| Onboarding | 0:20 | 20s |
+| Fridge demo | 0:40 | 90s |
+| Electrical panel | 2:10 | 60s |
+| Architecture proof | 3:10 | 30s |
+| Close | 3:40 | 20s |
 
 ---
 
-## 1:45–2:30 — Demo Scenario 2: Electrical Breaker Panel (45 sec)
+## 0:00–0:20 — HOOK
 
-**Visual**: Phone pointed at a home breaker panel.
+**[No talking. Text overlays on black screen.]**
 
-**Show**:
-1. User says: "My living room lost power."
-2. Agent: "I can see the breaker panel. Let me look for any breakers in the middle position..."
-3. Safety warning fires: "Never touch anything inside the panel with wet hands. Don't remove the panel cover."
-4. Agent identifies a tripped breaker: "I can see one breaker that's not aligned — third row down on the left."
-5. Walks through reset procedure: "Push it fully to OFF first, then flip to ON."
-6. Agent: "If it trips again immediately, don't keep resetting — that means there's a fault on the circuit."
+> *"What if AI could see what you see?"*
+> *"And talk you through fixing it — in real time."*
 
-**Narration callout**: "The agent handles a completely different equipment category with the same natural conversation — automotive to electrical, zero reconfiguration."
+Cut to: app launch screen, genie lamp glowing.
+
+**[YOU SAY — direct to camera, 10 seconds]**
+> *"Most repair guides can't see what you're looking at. FixIt Genie can. It watches through your camera, listens to you, and guides you through the fix — step by step, hands-free. Built with Gemini Live API and Google ADK. Here's a real session."*
 
 ---
 
-## 2:30–3:00 — Demo Scenario 3: Washing Machine Error Code (30 sec)
+## 0:20–0:40 — ONBOARDING (screen recording)
 
-**Visual**: Phone pointed at washing machine display showing an error code.
+Swipe through all 3 onboarding pages quickly. No narration needed — the screens speak for themselves.
 
-**Show**:
-1. User says: "My washing machine is showing E4."
-2. Agent calls `lookup_equipment_knowledge` with error code E4
-3. Agent: "E4 is a water supply issue. Let me walk you through it — first, check that both supply valves behind the machine are fully open."
-4. Agent calls `log_diagnostic_step` (show status indicator)
-
-**Narration callout**: "33 error codes across automotive, electrical, and appliance categories. The knowledge base includes visual cues so the agent knows what to look for through the camera."
+End on: tap **"Let's Fix Something"** → session idle screen appears.
 
 ---
 
-## 3:00–3:30 — Architecture + Technical Deep Dive (30 sec)
+## 0:40–2:10 — SCENE 1: FRIDGE NOT COOLING
 
-**Visual**: Architecture diagram (clean version from README).
-
-**Narration**:
-"Under the hood: a Kotlin Android app streams camera frames at 1 FPS and bidirectional 16kHz audio over a single WebSocket connection. The backend runs Google ADK on Cloud Run, using `gemini-2.5-flash-native-audio-preview` for real-time bidi-streaming with three custom function calling tools. Everything is deployed with a single IaC script."
-
-**Flash**: Show the deploy.sh running, Cloud Run console, or `gcloud run deploy` output as proof of deployment.
+**Setup:** Fridge door open, interior visible. Session running, genie avatar pulsing.
 
 ---
 
-## 3:30–3:50 — Safety + Responsible AI (20 sec)
+**[YOU SAY]**
+> *"My fridge has been warm for two days. Food's starting to go bad. Let me show you what I'm dealing with."*
 
-**Visual**: Quick montage of safety warnings appearing in different scenarios.
-
-**Narration**:
-"Safety is non-negotiable. The agent always calls `get_safety_warnings` before guiding any physical action — electrical hazards, hot surfaces, chemical exposure. If the situation looks dangerous, it stops and recommends calling a professional. This is enforced in the system prompt and validated by unit tests."
+*[Point camera inside the fridge. Hold 2-3 seconds — show interior, back vents, any display panel.]*
 
 ---
 
-## 3:50–4:00 — Closing (10 sec)
-
-**Visual**: App screen with the tagline.
-
-**Narration**:
-"FixIt Buddy. See. Hear. Fix. People don't need more repair manuals — they need someone who can see what they're looking at and talk them through it."
-
-**Show**: GitHub URL, team name.
+**[AGENT RESPONDS — will identify the situation visually. Let it finish.]**
 
 ---
 
-## Production Notes
+**[YOU SAY]**
+> *"It's a Samsung. The weird thing is — the freezer is totally fine. Just the fridge section is warm."*
 
-- **Record on a real Android device** (not emulator) — camera quality matters for the visual demos
-- **Pre-configure the backend URL** so there's no setup time in the video
-- **Have good lighting** for the equipment demos — the agent needs to see clearly
-- **Show the status indicator** changing states (Listening → Thinking → Speaking) — this proves real-time processing
-- **Include the tool call indicators** in the UI — judges need to see function calling happening live
-- **Record audio from the phone speaker** if possible — hearing the agent's voice is more compelling than narration alone
-- **Keep transitions fast** — 4 minutes goes quickly, don't waste time on screen transitions
-- **Backup**: If live audio doesn't work well in recording, add narration over screen recording + show the transcript overlay as proof
+*[Watch for the tool call indicator — "Using lookup_equipment_knowledge" or "Using google_search" will flash on screen. Let it show. This is a judging moment.]*
 
-## Timing Breakdown
-| Segment | Duration | Judging Criteria |
-|---------|----------|-----------------|
-| Hook + Problem | 20 sec | Demo & Presentation (30%) |
-| Onboarding | 25 sec | Innovation & Multimodal UX (40%) |
-| Car engine demo | 60 sec | Innovation (40%) + Technical (30%) |
-| Breaker panel demo | 45 sec | Innovation (40%) |
-| Washing machine demo | 30 sec | Technical (30%) |
-| Architecture | 30 sec | Technical (30%) |
-| Safety + closing | 30 sec | Innovation (40%) + Demo (30%) |
-| **Total** | **4:00** | |
+---
+
+**[AGENT RESPONDS — will diagnose evaporator fan issue. Let it speak.]**
+
+---
+
+**[YOU SAY — interrupt mid-response]**
+> *"Wait — actually, can you back up? What's causing this exactly?"*
+
+*[This demonstrates live interruption. The agent stops immediately and responds to your question. This is the #1 Live Agent judging criteria — don't skip this moment.]*
+
+---
+
+**[AGENT RESPONDS — resumes explanation after interruption]**
+
+---
+
+**[YOU SAY]**
+> *"How do I check the fan? Show me what to look for."*
+
+*[Point camera at the back wall vents inside the fridge compartment.]*
+
+---
+
+**[AGENT RESPONDS — gives step-by-step, visually confirms what it sees]**
+
+---
+
+**[CUT at 2:10]**
+
+Text card: *"Different problem. Different room."*
+
+---
+
+## 2:10–3:10 — SCENE 2: TRIPPED BREAKER
+
+**Setup:** Breaker panel door open. One breaker visibly tripped (middle position). Phone pointed at panel.
+
+---
+
+**[YOU SAY]**
+> *"Half the outlets in my kitchen stopped working. Found this panel — something looks off."*
+
+*[Point camera at the full panel. Hold 2 seconds. Let agent scan.]*
+
+---
+
+**[AGENT RESPONDS — safety warning fires immediately. Do NOT cut this. Let it run fully. It's a feature.]*
+
+---
+
+**[YOU SAY]**
+> *"Understood. Now — can you see anything wrong from here?"*
+
+*[Hold camera steady on the panel.]*
+
+---
+
+**[AGENT RESPONDS — identifies the tripped breaker by position]**
+
+---
+
+**[YOU SAY]**
+> *"That one? What do I do?"*
+
+*[Point camera directly at the tripped breaker.]*
+
+---
+
+**[AGENT RESPONDS — gives reset procedure: OFF first, then ON]**
+
+---
+
+**[YOU SAY — optional, sells the moment]**
+> *"That worked. Kitchen's back."*
+
+---
+
+**[CUT at 3:10]**
+
+---
+
+## 3:10–3:40 — ARCHITECTURE PROOF
+
+**[Screen share: show architecture diagram from README or Cloud Run console with green status]**
+
+**[YOU SAY — keep it tight]**
+> *"Under the hood: Android app streams live camera frames at 1 FPS and two-way audio over a single WebSocket. The backend is Google ADK running on Cloud Run — Gemini 2.5 Flash Native Audio for the live session, six custom tools for knowledge lookup, web search, and YouTube. One IaC script deploys the whole backend."*
+
+*[Flash: Cloud Run console showing service is Ready. 2 seconds is enough.]*
+
+---
+
+## 3:40–4:00 — CLOSE
+
+**[Return to app. Genie avatar on screen.]**
+
+**[YOU SAY]**
+> *"See it. Say it. Fix it. FixIt Genie — because people don't need more repair manuals. They need someone who can see what they're looking at."*
+
+*[Hold on app screen. Fade out.]*
+
+---
+
+## PRODUCTION CHECKLIST
+
+### Before you film
+- [ ] Backend URL set in app Settings — test it connects before rolling
+- [ ] Wi-Fi only, not mobile data — WebSocket needs stable low latency
+- [ ] AirPods or earphones in — prevents echo going back into the mic
+- [ ] One breaker pre-flipped to tripped position
+- [ ] Fridge door accessible and interior visible
+- [ ] Genie session running before you walk to each scene (don't film the "Start Session" tap each time)
+- [ ] Second device or screen recorder ready to capture phone screen
+
+### While filming
+- **Pause 2 seconds after pointing the camera** — give Gemini time to process the frame before speaking
+- **Talk naturally** — casual tone, like texting a knowledgeable friend
+- **Don't rush the safety warning** — let it play fully, it's a judging-relevant feature
+- **Show the tool call chip** — when "Using lookup_equipment_knowledge" flashes, hold still for 1 second so judges see it
+- **Do the interruption** — mid-fridge-response, say "wait — can you back up?" — this proves bidi-streaming works live
+
+### The 3 moments judges will rewatch
+1. Agent identifies "freezer fine, fridge warm" → evaporator fan diagnosis **without you naming it**
+2. You interrupt mid-sentence → agent stops immediately
+3. Safety warning fires automatically on the electrical panel
+
+---
+
+## IF SOMETHING GOES WRONG
+
+- **Agent doesn't respond:** Say "can you continue?" — natural recovery, keep rolling
+- **Wrong diagnosis:** Say "let me show you more" and move the camera — the agent will course-correct
+- **Connection drops:** Cut the clip, reconnect off-camera, resume — edit it out later
+- **Agent talks too long:** Interrupt it — that's actually a better demo moment than waiting
