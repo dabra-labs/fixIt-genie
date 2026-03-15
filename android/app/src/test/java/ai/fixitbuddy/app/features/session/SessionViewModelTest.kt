@@ -2,6 +2,7 @@ package ai.fixitbuddy.app.features.session
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import ai.fixitbuddy.app.core.audio.AudioStreamManager
 import ai.fixitbuddy.app.core.camera.CameraManager
 import ai.fixitbuddy.app.core.camera.GlassesCameraManager
@@ -20,7 +21,13 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import okhttp3.Call
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
+import okhttp3.MediaType.Companion.toMediaType
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -60,7 +67,7 @@ class SessionViewModelTest {
         every { glassesCameraManager.connectionState } returns MutableStateFlow(GlassesState.DISCONNECTED)
         every { audioManager.audioChunks } returns MutableSharedFlow()
         every { audioManager.audioLevel } returns MutableStateFlow(0f)
-        every { dataStore.data } returns flowOf(mockk(relaxed = true))
+        every { dataStore.data } returns flowOf(emptyPreferences())
     }
 
     @After
@@ -70,6 +77,19 @@ class SessionViewModelTest {
 
     private fun createViewModel(): SessionViewModel {
         return SessionViewModel(cameraManager, glassesCameraManager, audioManager, webSocket, dataStore, okHttpClient, historyStore)
+    }
+
+    private fun mockSuccessfulSessionCreation(sessionId: String = "session-123") {
+        val call = mockk<Call>()
+        every { webSocket.userId } returns "fixitbuddy_user"
+        every { okHttpClient.newCall(any()) } returns call
+        every { call.execute() } returns Response.Builder()
+            .request(Request.Builder().url("https://example.com").build())
+            .protocol(Protocol.HTTP_1_1)
+            .code(200)
+            .message("OK")
+            .body("""{"id":"$sessionId"}""".toResponseBody("application/json".toMediaType()))
+            .build()
     }
 
     @Test
@@ -149,6 +169,38 @@ class SessionViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
+    }
+
+    @Test
+    fun `startSession immediately updates UI to Connecting`() = runTest {
+        mockSuccessfulSessionCreation()
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.startSession()
+
+        assertEquals(SessionState.Connecting, vm.uiState.value.sessionState)
+        assertEquals("connecting", vm.uiState.value.agentState)
+        assertNull(vm.uiState.value.errorMessage)
+        verify(timeout = 1000, exactly = 1) { okHttpClient.newCall(any()) }
+
+        vm.stopSession()
+    }
+
+    @Test
+    fun `startSession ignores repeated taps while connecting`() = runTest {
+        mockSuccessfulSessionCreation()
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.startSession()
+        vm.startSession()
+
+        assertEquals(SessionState.Connecting, vm.uiState.value.sessionState)
+        verify(timeout = 1000, exactly = 1) { okHttpClient.newCall(any()) }
+        verify(timeout = 1000, exactly = 1) { webSocket.connect(any()) }
+
+        vm.stopSession()
     }
 
     @Test
