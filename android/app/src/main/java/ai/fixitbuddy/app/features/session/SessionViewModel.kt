@@ -15,6 +15,7 @@ import ai.fixitbuddy.app.core.config.AppConfig
 import ai.fixitbuddy.app.core.websocket.AgentMessage
 import ai.fixitbuddy.app.core.websocket.AgentWebSocket
 import ai.fixitbuddy.app.core.websocket.ConnectionState
+import ai.fixitbuddy.app.core.websocket.TranscriptSpeaker
 import ai.fixitbuddy.app.features.history.SessionHistoryStore
 import ai.fixitbuddy.app.features.history.SessionRecord
 import ai.fixitbuddy.app.features.settings.SettingsViewModel
@@ -126,9 +127,7 @@ class SessionViewModel @Inject constructor(
                             sessionState = SessionState.Active,
                             agentState = "listening",
                             errorMessage = null,
-                            chatTurns = listOf(
-                                ChatTurn(ChatRole.GENIE, "✨ Hello! I'm FixIt Genie. Point your camera at whatever needs fixing and tell me what's wrong — I'll guide you through it step by step. What are we tackling today?")
-                            )
+                            chatTurns = emptyList()
                         )
                         ConnectionState.ERROR -> {
                             genieIsSpeaking = false
@@ -169,27 +168,44 @@ class SessionViewModel @Inject constructor(
                         }
                     }
                     is AgentMessage.Transcript -> {
-                        val text = message.text
-                        _uiState.update { current ->
-                            val turns = current.chatTurns.toMutableList()
-                            if (!genieIsSpeaking || turns.isEmpty() || turns.last().role != ChatRole.GENIE) {
-                                genieIsSpeaking = true
-                                turns.add(ChatTurn(ChatRole.GENIE, text))
-                            } else {
-                                turns[turns.lastIndex] = ChatTurn(ChatRole.GENIE, text)
+                        if (message.speaker == TranscriptSpeaker.GENIE) {
+                            val text = message.text
+                            _uiState.update { current ->
+                                val turns = current.chatTurns.toMutableList()
+                                if (!genieIsSpeaking || turns.isEmpty() || turns.last().role != ChatRole.GENIE) {
+                                    genieIsSpeaking = true
+                                    turns.add(ChatTurn(ChatRole.GENIE, text))
+                                } else {
+                                    turns[turns.lastIndex] = ChatTurn(ChatRole.GENIE, text)
+                                }
+                                current.copy(
+                                    transcript = text,
+                                    chatTurns = turns,
+                                    agentState = if (current.agentState == "thinking") "speaking" else current.agentState
+                                )
                             }
-                            current.copy(transcript = text, chatTurns = turns)
+                        } else {
+                            _uiState.update { current ->
+                                val turns = current.chatTurns.toMutableList()
+                                if (turns.isEmpty() || turns.last().role != ChatRole.USER) {
+                                    turns.add(ChatTurn(ChatRole.USER, message.text))
+                                } else {
+                                    turns[turns.lastIndex] = ChatTurn(ChatRole.USER, message.text)
+                                }
+                                current.copy(
+                                    chatTurns = turns,
+                                    agentState = if (message.isFinal) "thinking" else current.agentState
+                                )
+                            }
                         }
                     }
                     is AgentMessage.Status -> {
                         val state = message.state
                         _uiState.update { current ->
-                            val turns = current.chatTurns.toMutableList()
                             if (state == "listening" && genieIsSpeaking) {
                                 genieIsSpeaking = false
-                                turns.add(ChatTurn(ChatRole.USER, ""))
                             }
-                            current.copy(agentState = state, chatTurns = turns)
+                            current.copy(agentState = state)
                         }
                         if (state == "listening") {
                             // Cancel the 1200ms fallback timer — we got the real turn-end signal.

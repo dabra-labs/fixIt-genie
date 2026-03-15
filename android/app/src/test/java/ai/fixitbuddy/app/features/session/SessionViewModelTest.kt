@@ -9,6 +9,7 @@ import ai.fixitbuddy.app.core.camera.GlassesState
 import ai.fixitbuddy.app.core.websocket.AgentMessage
 import ai.fixitbuddy.app.core.websocket.AgentWebSocket
 import ai.fixitbuddy.app.core.websocket.ConnectionState
+import ai.fixitbuddy.app.core.websocket.TranscriptSpeaker
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -243,6 +244,16 @@ class SessionViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         val audioData = byteArrayOf(1, 2, 3, 4)
+        incomingMessagesFlow.emit(
+            AgentMessage.Transcript(
+                "my fridge is not cooling",
+                true,
+                TranscriptSpeaker.USER
+            )
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("thinking", vm.uiState.value.agentState)
+
         incomingMessagesFlow.emit(AgentMessage.ToolCall("google_search_agent", """{"query":"lg fridge off"}"""))
         incomingMessagesFlow.emit(AgentMessage.Transcript("I can see OFF on the display.", false))
         incomingMessagesFlow.emit(AgentMessage.Audio(audioData))
@@ -255,9 +266,8 @@ class SessionViewModelTest {
         assertEquals(1, state.toolCallCount)
         assertEquals("I can see OFF on the display.", state.transcript)
         assertEquals("listening", state.agentState)
+        assertTrue(state.chatTurns.any { it.role == ChatRole.USER && it.text == "my fridge is not cooling" })
         assertTrue(state.chatTurns.any { it.role == ChatRole.GENIE && it.text.contains("OFF on the display") })
-        assertTrue(state.chatTurns.last().role == ChatRole.USER)
-        assertEquals("", state.chatTurns.last().text)
         verify { audioManager.playAudioChunk(audioData) }
     }
 

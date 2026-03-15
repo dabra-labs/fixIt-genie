@@ -29,7 +29,11 @@ enum class ConnectionState {
 
 /** Sealed hierarchy of messages received from the ADK agent. */
 sealed class AgentMessage {
-    data class Transcript(val text: String, val isFinal: Boolean) : AgentMessage()
+    data class Transcript(
+        val text: String,
+        val isFinal: Boolean,
+        val speaker: TranscriptSpeaker = TranscriptSpeaker.GENIE
+    ) : AgentMessage()
     data class Audio(val data: ByteArray) : AgentMessage() {
         override fun equals(other: Any?) = other is Audio && data.contentEquals(other.data)
         override fun hashCode() = data.contentHashCode()
@@ -39,6 +43,8 @@ sealed class AgentMessage {
     /** Server interrupted the current response (VAD detected user speaking mid-playback). */
     data object Interrupted : AgentMessage()
 }
+
+enum class TranscriptSpeaker { USER, GENIE }
 
 // ADK LiveRequest format — sent from client to server
 @Serializable
@@ -154,6 +160,10 @@ class AgentWebSocket @Inject constructor(
             }
 
             val author = obj["author"]?.jsonPrimitive?.content ?: ""
+            val inputTranscript = parseTranscription(obj, "inputTranscription", TranscriptSpeaker.USER)
+            val outputTranscript = parseTranscription(obj, "outputTranscription", TranscriptSpeaker.GENIE)
+            inputTranscript?.let(::emit)
+            outputTranscript?.let(::emit)
 
             // ADK turn-complete event: {"turnComplete": true} — no content field.
             // This is the definitive end-of-turn signal from the server; open mic gate.
@@ -163,18 +173,32 @@ class AgentWebSocket @Inject constructor(
                 return
             }
 
-            val content = obj["content"]?.jsonObject ?: return
+            val content = obj["content"]?.jsonObject
+            if (content == null) {
+                if (author == "fixitbuddy" && outputTranscript?.isFinal == false) {
+                    emit(AgentMessage.Status("speaking"))
+                }
+                return
+            }
             val parts = content["parts"]?.jsonArray ?: return
             val isPartial = obj["partial"]?.jsonPrimitive?.content == "true"
 
             var hasAudio = false
+            var emittedGenieText = outputTranscript != null
             for (part in parts) {
                 val partObj = part.jsonObject
 
                 // Text response
                 partObj["text"]?.jsonPrimitive?.content?.let { txt ->
-                    if (txt.isNotBlank()) {
-                        emit(AgentMessage.Transcript(txt, isFinal = !isPartial))
+                    if (txt.isNotBlank() && !emittedGenieText) {
+                        emit(
+                            AgentMessage.Transcript(
+                                txt,
+                                isFinal = !isPartial,
+                                speaker = TranscriptSpeaker.GENIE
+                            )
+                        )
+                        emittedGenieText = true
                     }
                 }
 
@@ -203,12 +227,25 @@ class AgentWebSocket @Inject constructor(
             // data is present. The !hasAudio guard is load-bearing: emitting on audio frames
             // would open the mic gate mid-response. isPartial is an additional heuristic to
             // avoid emitting on final non-audio echo frames at the end of a turn.
-            if (author == "fixitbuddy" && isPartial && !hasAudio) {
+            val hasStreamingTranscript = outputTranscript?.isFinal == false
+            if (author == "fixitbuddy" && !hasAudio && (isPartial || hasStreamingTranscript)) {
                 emit(AgentMessage.Status("speaking"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse ADK event: ${text.take(200)}", e)
         }
+    }
+
+    private fun parseTranscription(
+        obj: kotlinx.serialization.json.JsonObject,
+        fieldName: String,
+        speaker: TranscriptSpeaker
+    ): AgentMessage.Transcript? {
+        val transcription = obj[fieldName]?.jsonObject ?: return null
+        val text = transcription["text"]?.jsonPrimitive?.content ?: return null
+        if (text.isBlank()) return null
+        val finished = transcription["finished"]?.jsonPrimitive?.content == "true"
+        return AgentMessage.Transcript(text = text, isFinal = finished, speaker = speaker)
     }
 
     /**

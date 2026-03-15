@@ -10,6 +10,7 @@ import threading
 import time
 from typing import Any
 
+from google.genai import types
 from google.adk.agents.context import Context as CallbackContext
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
@@ -24,6 +25,9 @@ _lock = threading.Lock()
 _active_invocations: dict[str, "InvocationMetrics"] = {}
 _active_model_calls: dict[str, int] = {}
 _active_tool_calls: dict[str, int] = {}
+
+_LIVE_PREFIX_PADDING_MS = 120
+_LIVE_SILENCE_DURATION_MS = 220
 
 
 @dataclass
@@ -90,6 +94,58 @@ def _extract_text_from_content(content: Any) -> list[str]:
         if text:
             texts.append(_truncate_text(text))
     return texts
+
+
+def _summarize_live_config(live_config: types.LiveConnectConfig) -> dict[str, Any]:
+    aad = live_config.realtime_input_config
+    auto = aad.automatic_activity_detection if aad else None
+    return {
+        "response_modalities": live_config.response_modalities,
+        "media_resolution": str(live_config.media_resolution) if live_config.media_resolution else None,
+        "input_audio_transcription": live_config.input_audio_transcription is not None,
+        "output_audio_transcription": live_config.output_audio_transcription is not None,
+        "activity_handling": str(aad.activity_handling) if aad and aad.activity_handling else None,
+        "start_sensitivity": str(auto.start_of_speech_sensitivity) if auto and auto.start_of_speech_sensitivity else None,
+        "end_sensitivity": str(auto.end_of_speech_sensitivity) if auto and auto.end_of_speech_sensitivity else None,
+        "prefix_padding_ms": auto.prefix_padding_ms if auto else None,
+        "silence_duration_ms": auto.silence_duration_ms if auto else None,
+    }
+
+
+def _configure_live_connect(llm_request: LlmRequest) -> None:
+    live_config = llm_request.live_connect_config
+    response_modalities = live_config.response_modalities or []
+    if "AUDIO" not in response_modalities:
+        return
+
+    if not live_config.output_audio_transcription:
+        live_config.output_audio_transcription = types.AudioTranscriptionConfig()
+    if not live_config.input_audio_transcription:
+        live_config.input_audio_transcription = types.AudioTranscriptionConfig()
+    if not live_config.realtime_input_config:
+        live_config.realtime_input_config = types.RealtimeInputConfig()
+
+    if not live_config.realtime_input_config.activity_handling:
+        live_config.realtime_input_config.activity_handling = (
+            types.ActivityHandling.START_OF_ACTIVITY_INTERRUPTS
+        )
+
+    auto = live_config.realtime_input_config.automatic_activity_detection
+    if auto is None:
+        auto = types.AutomaticActivityDetection()
+        live_config.realtime_input_config.automatic_activity_detection = auto
+
+    if auto.start_of_speech_sensitivity is None:
+        auto.start_of_speech_sensitivity = types.StartSensitivity.START_SENSITIVITY_HIGH
+    if auto.end_of_speech_sensitivity is None:
+        auto.end_of_speech_sensitivity = types.EndSensitivity.END_SENSITIVITY_HIGH
+    if auto.prefix_padding_ms is None:
+        auto.prefix_padding_ms = _LIVE_PREFIX_PADDING_MS
+    if auto.silence_duration_ms is None:
+        auto.silence_duration_ms = _LIVE_SILENCE_DURATION_MS
+
+    if not live_config.media_resolution:
+        live_config.media_resolution = types.MediaResolution.MEDIA_RESOLUTION_HIGH
 
 
 def _log_event(event_type: str, context: CallbackContext, **fields: Any) -> None:
@@ -159,6 +215,7 @@ def before_model_callback(
     callback_context: CallbackContext,
     llm_request: LlmRequest,
 ) -> None:
+    _configure_live_connect(llm_request)
     with _lock:
         _active_model_calls[callback_context.invocation_id] = time.perf_counter_ns()
     _log_event(
@@ -167,6 +224,7 @@ def before_model_callback(
         model=llm_request.model,
         content_count=len(llm_request.contents),
         tool_count=len(llm_request.tools_dict),
+        live_config=_summarize_live_config(llm_request.live_connect_config),
     )
     return None
 
