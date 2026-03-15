@@ -7,6 +7,7 @@
 
 | Code | Meaning | Fix |
 |------|---------|-----|
+| OFF | Likely demo/showroom mode | Say the display text first. Explain that the fridge may be in demo mode, which leaves the display on but disables cooling. If the exact model is known, look up the model-specific exit sequence before giving button instructions |
 | Er IF | Ice maker fan blocked or frozen | Remove all ice from ice maker; power cycle; if persists, fan motor needs replacement |
 | Er FF | Freezer evaporator fan failure | Power cycle; defrost manually (hold both temp buttons 3–5 sec) to unblock; if persists, fan replacement |
 | Er CF | Condenser fan blocked or failed | Clean condenser area at back/bottom; check fan blade for debris; power cycle |
@@ -21,10 +22,10 @@
 
 ## Diagnostic Steps
 
-1. **Check temperature display** — fridge: 37°F (3°C), freezer: 0°F (−18°C)
-   - *Camera cue: Display panel on front door or inside at top. If temperatures are flashing, the fridge has been without power*
+1. **Check temperature display first**
+   - *Camera cue: Display panel on front door or inside at top. If the panel says `OFF`, treat that as a likely demo/showroom mode clue before deeper cooling troubleshooting*
 
-2. **Listen for the compressor** — should cycle on and off
+2. **If the panel does not say `OFF`, listen for the compressor** — should cycle on and off
    - *Camera cue: Compressor is at back bottom — humming sound means it's running*
 
 3. **Check condenser coils** on back or bottom
@@ -43,6 +44,7 @@
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| Display says `OFF` and fridge is not cooling | Likely demo/showroom mode | Call out the `OFF` text first. Explain that the fridge may be in demo mode. If the model number is available, use it to look up the exact exit button sequence before guessing |
 | Fridge not cooling, freezer fine | Evaporator fan blocked or failed, damper stuck | Hold door button to test if fan runs. Ice on back wall = defrost issue; run manual defrost |
 | Neither fridge nor freezer cooling | Compressor not running or refrigerant leak | Check start relay (small box on compressor side) — rattle when shaken = replace (~$10 part) |
 | Ice maker not making ice | Freezer too warm, water supply issue, or arm in UP position | Check freezer is 0°F. Check water line isn't kinked. Check ice maker arm is DOWN. Replace filter if >6 months old |

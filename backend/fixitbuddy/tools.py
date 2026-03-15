@@ -7,6 +7,7 @@ import os
 from typing import Any
 
 from google.cloud import firestore
+from google.cloud.firestore_v1.types import StructuredQuery
 
 logger = logging.getLogger(__name__)
 
@@ -134,12 +135,12 @@ _KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         "category": "appliance",
         "name": "Washing Machine",
         "description": "Common washing machine error codes and troubleshooting across major brands",
-        "error_codes": ["E1", "E2", "E3", "E4", "F1", "F2", "F21", "UE", "OE", "LE", "dE", "IE"],
+        "error_codes": ["E1", "E2", "E3", "E4", "F1", "F2", "F21", "UE", "OE", "LE", "dE", "dE1", "IE"],
         "keywords": ["washing machine", "washer", "laundry", "won't drain", "won't spin", "error code", "leak", "vibration"],
         "diagnostic_steps": [
             {"step": 1, "instruction": "Note the error code displayed", "visual_cue": "Error code appears on the display panel — may be letters + numbers"},
-            {"step": 2, "instruction": "Try power cycling: unplug for 60 seconds, then plug back in", "visual_cue": "This resets the control board and clears many temporary errors"},
-            {"step": 3, "instruction": "Check the door/lid — make sure it's fully closed and latched", "visual_cue": "Many errors are caused by the door not being detected as closed"},
+            {"step": 2, "instruction": "Check the door/lid first — make sure it's fully closed and latched", "visual_cue": "Many errors are caused by the door not being detected as closed"},
+            {"step": 3, "instruction": "Only if the simple visible check did not fix it, try power cycling: unplug for 60 seconds, then plug back in", "visual_cue": "This resets the control board and clears many temporary errors"},
             {"step": 4, "instruction": "Check water supply valves behind the machine — both should be fully open", "visual_cue": "Hot and cold valves, handles should be parallel to the hose (open)"},
             {"step": 5, "instruction": "Check the drain hose — shouldn't be kinked or inserted too far into the drain pipe", "visual_cue": "Drain hose should only go 6-8 inches into the standpipe"}
         ],
@@ -147,7 +148,7 @@ _KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             {"issue": "Error E4 or IE (Water supply issue)", "cause": "Water not reaching the machine", "fix": "Check that supply valves are fully open. Check inlet hose for kinks. Clean inlet filter screens"},
             {"issue": "Error UE (Unbalanced load)", "cause": "Clothes bunched to one side during spin", "fix": "Redistribute clothes evenly in the drum. Don't overload. Check that machine is level"},
             {"issue": "Error OE or F21 (Drain issue)", "cause": "Water not draining properly", "fix": "Check drain hose for kinks. Clean the drain pump filter (small door at bottom front). Remove any debris"},
-            {"issue": "Error dE (Door issue)", "cause": "Door/lid not properly closed or latch malfunction", "fix": "Clean the door seal/gasket. Check for obstructions preventing door from closing"},
+            {"issue": "Error dE or dE1 (Door issue)", "cause": "Door/lid not properly closed or latch malfunction", "fix": "Push the door fully closed until it clicks. Remove any clothing or debris from the gasket area. If the code remains, press Power once and retry the cycle"},
             {"issue": "Error LE (Motor issue)", "cause": "Motor overloaded or rotor position sensor issue", "fix": "Reduce load size. Unplug for 30 min and retry. If persistent, motor may need professional service"}
         ],
         "safety_notes": ["Always unplug before inspecting internal components", "Water + electricity = danger — mop up any water before working near outlets", "The drain pump filter may release water when opened — have towels ready"]
@@ -157,15 +158,16 @@ _KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         "name": "LG Refrigerator",
         "description": "LG refrigerator troubleshooting — cooling issues, error codes, ice maker, water dispenser",
         "error_codes": ["Er IF", "Er FF", "Er CF", "Er dF", "Er rF", "Er CO", "Er FS", "Er IS", "Er SS", "Er 1F", "Er FF", "CL", "dH"],
-        "keywords": ["refrigerator", "fridge", "not cooling", "not cold", "lg", "freezer", "ice maker", "ice", "water dispenser", "compressor", "temperature", "warm", "er if", "er ff", "er cf"],
+        "keywords": ["refrigerator", "fridge", "not cooling", "not cold", "lg", "freezer", "ice maker", "ice", "water dispenser", "compressor", "temperature", "warm", "demo mode", "showroom mode", "display says off", "off display", "er if", "er ff", "er cf"],
         "diagnostic_steps": [
-            {"step": 1, "instruction": "Check the temperature display — fridge should be 37°F (3°C), freezer 0°F (-18°C)", "visual_cue": "Display panel is usually on the front of the door or inside at the top"},
-            {"step": 2, "instruction": "Check if the condenser coils on the back/bottom are dusty", "visual_cue": "Dusty coils look grey/brown and restrict airflow — clean with a vacuum brush attachment"},
+            {"step": 1, "instruction": "Check the temperature display first — if the panel says OFF on an LG fridge, treat that as a likely demo/showroom mode clue before deeper cooling diagnostics", "visual_cue": "Display panel is usually on the front door or inside at the top; OFF on the panel means the unit may not be actively cooling"},
+            {"step": 2, "instruction": "If the display is not showing OFF, check if the condenser coils on the back/bottom are dusty", "visual_cue": "Dusty coils look grey/brown and restrict airflow — clean with a vacuum brush attachment"},
             {"step": 3, "instruction": "Check the door seals all around — they should be airtight", "visual_cue": "Close a piece of paper in the door — if it slides out easily, the seal is weak"},
             {"step": 4, "instruction": "Check that the door vents inside aren't blocked by food containers", "visual_cue": "Cold air vents are usually on the back wall inside — leave a few inches of clearance"},
             {"step": 5, "instruction": "Listen for the compressor — it should cycle on and off", "visual_cue": "Compressor is at the back bottom — a humming sound means it's running"}
         ],
         "common_issues": [
+            {"issue": "Display shows OFF / demo mode", "cause": "The refrigerator is likely in showroom or demo mode, which leaves lights and display on but disables normal cooling", "fix": "Call out the OFF display first. Tell the user this likely indicates demo mode. If the exact model is known, look up the specific exit sequence before giving a button combo"},
             {"issue": "Fridge not cooling but freezer works", "cause": "Evaporator fan blocked or failed, or damper stuck closed", "fix": "Check if fan runs when door is open (hold door switch). Ice buildup on back wall means defrost issue — run manual defrost"},
             {"issue": "Neither fridge nor freezer cooling", "cause": "Compressor not running, refrigerant leak, or start relay failure", "fix": "Listen for compressor — if silent, check start relay (small box on compressor side). Shake it — a rattle means it needs replacement (~$10 part)"},
             {"issue": "Error Er IF (Ice maker fan)", "cause": "Ice maker fan is blocked or frozen", "fix": "Remove all ice from ice maker. Power cycle the fridge. If error persists, ice maker fan motor may need replacement"},
@@ -229,6 +231,12 @@ def lookup_equipment_knowledge(
         search_text = f"{category} {search_text}"
 
     results: list[dict[str, Any]] = []
+    logger.info(
+        "lookup_equipment_knowledge called: category=%s error_code=%s query=%s",
+        category,
+        error_code,
+        query[:120],
+    )
 
     # Primary: Firestore vector search (semantic similarity via text-embedding-004)
     db = _get_db()
@@ -252,7 +260,7 @@ def lookup_equipment_knowledge(
             vector_results = collection.find_nearest(
                 vector_field="embedding",
                 query_vector=query_embedding,
-                distance_measure=firestore.DistanceMeasure.COSINE,
+                distance_measure=StructuredQuery.FindNearest.DistanceMeasure.COSINE,
                 limit=3,
             ).get()
 

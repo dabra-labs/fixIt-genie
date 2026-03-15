@@ -61,6 +61,18 @@ class TestLookupEquipmentKnowledge:
         assert len(result["results"]) > 0
         assert any(doc["name"] == "Dishwasher" for doc in result["results"])
 
+    def test_search_lg_fridge_off_demo_mode(self):
+        """Test LG fridge OFF / demo-mode wording returns refrigerator knowledge."""
+        result = lookup_equipment_knowledge(
+            query="LG fridge display says OFF and it is not cooling",
+            category="appliance",
+        )
+        assert result["found"] is True
+        assert len(result["results"]) > 0
+        fridge = next(doc for doc in result["results"] if doc["name"] == "LG Refrigerator")
+        issue_text = " ".join(issue["issue"] for issue in fridge["common_issues"])
+        assert "OFF" in issue_text
+
     def test_search_by_error_code_p0520(self):
         """Test search by error code 'P0520' returns oil system."""
         result = lookup_equipment_knowledge(query="", error_code="P0520")
