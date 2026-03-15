@@ -6,6 +6,9 @@ import os
 # Add parent directory to path to import tools
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
+
+import fixitbuddy.tools as tools_module
 from fixitbuddy.tools import lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step
 
 
@@ -149,6 +152,7 @@ class TestLookupEquipmentKnowledge:
         """Test search with unknown query returns found=False."""
         result = lookup_equipment_knowledge(query="xyzabc123notarealthing")
         assert result["found"] is False
+        assert "google_search" not in result["message"]
 
     def test_search_with_unknown_error_code(self):
         """Test search with unknown error code returns found=False."""
@@ -170,6 +174,45 @@ class TestLookupEquipmentKnowledge:
         required_keys = {"category", "name", "diagnostic_steps", "safety_notes"}
         for doc in result["results"]:
             assert required_keys.issubset(doc.keys()), f"Missing keys in {doc}"
+
+    def test_vector_search_uses_firestore_distance_measure_enum(self, monkeypatch):
+        """Firestore vector lookup should use the SDK DistanceMeasure enum, not protobuf enums."""
+        captured: dict[str, object] = {}
+
+        class FakeEmbedResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"embedding": {"values": [0.1, 0.2, 0.3]}}
+
+        class FakeVectorQuery:
+            def get(self):
+                return []
+
+        class FakeCollection:
+            def find_nearest(self, **kwargs):
+                captured.update(kwargs)
+                return FakeVectorQuery()
+
+        class FakeDb:
+            def collection(self, name):
+                assert name == "equipment"
+                return FakeCollection()
+
+        def fake_post(*args, **kwargs):
+            return FakeEmbedResponse()
+
+        monkeypatch.setattr(tools_module, "_get_db", lambda: FakeDb())
+        monkeypatch.setattr("requests.post", fake_post)
+
+        result = lookup_equipment_knowledge(
+            query="LG fridge display says OFF and it is not cooling",
+            category="appliance",
+        )
+
+        assert captured["distance_measure"] == DistanceMeasure.COSINE
+        assert result["found"] is True
 
 
 class TestGetSafetyWarnings:

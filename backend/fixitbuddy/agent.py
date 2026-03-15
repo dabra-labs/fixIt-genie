@@ -1,4 +1,5 @@
 """FixIt Genie — ADK Agent Definition."""
+import logging
 import os
 
 from google.adk.agents import Agent
@@ -41,6 +42,7 @@ except ImportError:
 #   AGENT_MODEL=gemini-2.5-flash
 _DEFAULT_MODEL = "gemini-2.5-flash-native-audio-latest"
 _MODEL = os.environ.get("AGENT_MODEL", _DEFAULT_MODEL)
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_INSTRUCTION = """You are FixIt Genie, an expert equipment diagnosis and repair assistant.
@@ -152,3 +154,9 @@ agent = Agent(
 
 # Export as root_agent for ADK
 root_agent = agent
+
+logger.info(
+    "FixIt Genie agent configured with model=%s tools=%s",
+    _MODEL,
+    [getattr(tool, "__name__", type(tool).__name__) for tool in agent.tools],
+)
