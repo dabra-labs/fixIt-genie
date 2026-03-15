@@ -10,11 +10,31 @@ try:
         get_safety_warnings,
         log_diagnostic_step,
     )
+    from telemetry import (
+        after_agent_callback,
+        after_model_callback,
+        after_tool_callback,
+        before_agent_callback,
+        before_model_callback,
+        before_tool_callback,
+        on_model_error_callback,
+        on_tool_error_callback,
+    )
 except ImportError:
     from .tools import (
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
+    )
+    from .telemetry import (
+        after_agent_callback,
+        after_model_callback,
+        after_tool_callback,
+        before_agent_callback,
+        before_model_callback,
+        before_tool_callback,
+        on_model_error_callback,
+        on_tool_error_callback,
     )
 
 # Default to the native audio model for live streaming (bidiGenerateContent).
@@ -106,6 +126,14 @@ agent = Agent(
         log_diagnostic_step,
         _google_search,
     ],
+    before_agent_callback=before_agent_callback,
+    after_agent_callback=after_agent_callback,
+    before_model_callback=before_model_callback,
+    after_model_callback=after_model_callback,
+    on_model_error_callback=on_model_error_callback,
+    before_tool_callback=before_tool_callback,
+    after_tool_callback=after_tool_callback,
+    on_tool_error_callback=on_tool_error_callback,
 )
 
 # Export as root_agent for ADK

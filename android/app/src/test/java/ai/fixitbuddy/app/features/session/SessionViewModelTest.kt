@@ -237,6 +237,31 @@ class SessionViewModelTest {
     }
 
     @Test
+    fun `live turn flow tracks tool usage transcript audio and turn completion`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val audioData = byteArrayOf(1, 2, 3, 4)
+        incomingMessagesFlow.emit(AgentMessage.ToolCall("google_search_agent", """{"query":"lg fridge off"}"""))
+        incomingMessagesFlow.emit(AgentMessage.Transcript("I can see OFF on the display.", false))
+        incomingMessagesFlow.emit(AgentMessage.Audio(audioData))
+        incomingMessagesFlow.emit(AgentMessage.Status("listening"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(SessionState.Active, state.sessionState)
+        assertEquals("google_search_agent", state.lastToolCall)
+        assertEquals(1, state.toolCallCount)
+        assertEquals("I can see OFF on the display.", state.transcript)
+        assertEquals("listening", state.agentState)
+        assertTrue(state.chatTurns.any { it.role == ChatRole.GENIE && it.text.contains("OFF on the display") })
+        assertTrue(state.chatTurns.last().role == ChatRole.USER)
+        assertEquals("", state.chatTurns.last().text)
+        verify { audioManager.playAudioChunk(audioData) }
+    }
+
+    @Test
     fun `audio message triggers playback`() = runTest {
         val vm = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()

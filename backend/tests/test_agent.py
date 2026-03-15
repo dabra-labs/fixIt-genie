@@ -68,3 +68,14 @@ class TestAgentDefinition:
         """Test each tool is either a function or an ADK tool object."""
         for tool in agent.tools:
             assert callable(tool) or isinstance(tool, GoogleSearchTool)
+
+    def test_agent_has_telemetry_callbacks(self):
+        """Test structured telemetry callbacks are wired into the agent."""
+        assert agent.before_agent_callback is not None
+        assert agent.after_agent_callback is not None
+        assert agent.before_model_callback is not None
+        assert agent.after_model_callback is not None
+        assert agent.before_tool_callback is not None
+        assert agent.after_tool_callback is not None
+        assert agent.on_model_error_callback is not None
+        assert agent.on_tool_error_callback is not None
