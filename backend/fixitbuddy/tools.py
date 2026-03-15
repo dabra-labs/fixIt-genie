@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 _VECTOR_EMBED_TIMEOUT_SECONDS = float(
     os.environ.get("VECTOR_EMBED_TIMEOUT_SECONDS", "3.0")
 )
+_VECTOR_EMBED_MODEL = "gemini-embedding-001"
+_VECTOR_EMBED_DIMENSIONS = 1536
 
 # ---------------------------------------------------------------------------
 # Firestore client (lazy singleton)
@@ -244,7 +246,7 @@ def lookup_equipment_knowledge(
         query[:120],
     )
 
-    # Primary: Firestore vector search (semantic similarity via text-embedding-004)
+    # Primary: Firestore vector search using reduced-dimension Gemini embeddings.
     db = _get_db()
     if db:
         _api_key = os.environ.get("GOOGLE_API_KEY", "")
@@ -256,11 +258,18 @@ def lookup_equipment_knowledge(
             try:
                 import requests as _requests
 
-                _embed_model = "gemini-embedding-001"
-                _embed_url = f"https://generativelanguage.googleapis.com/v1beta/models/{_embed_model}:embedContent"
+                _embed_url = (
+                    f"https://generativelanguage.googleapis.com/v1beta/models/"
+                    f"{_VECTOR_EMBED_MODEL}:embedContent"
+                )
                 _embed_resp = _requests.post(
                     _embed_url,
-                    json={"model": f"models/{_embed_model}", "content": {"parts": [{"text": search_text}]}},
+                    json={
+                        "model": f"models/{_VECTOR_EMBED_MODEL}",
+                        "content": {"parts": [{"text": search_text}]},
+                        "taskType": "RETRIEVAL_QUERY",
+                        "outputDimensionality": _VECTOR_EMBED_DIMENSIONS,
+                    },
                     params={"key": _api_key},
                     timeout=_VECTOR_EMBED_TIMEOUT_SECONDS,
                 )

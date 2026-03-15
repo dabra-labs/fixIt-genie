@@ -178,6 +178,7 @@ class TestLookupEquipmentKnowledge:
     def test_vector_search_uses_firestore_distance_measure_enum(self, monkeypatch):
         """Firestore vector lookup should use the SDK DistanceMeasure enum, not protobuf enums."""
         captured: dict[str, object] = {}
+        embed_request: dict[str, object] = {}
 
         class FakeEmbedResponse:
             def raise_for_status(self):
@@ -201,6 +202,7 @@ class TestLookupEquipmentKnowledge:
                 return FakeCollection()
 
         def fake_post(*args, **kwargs):
+            embed_request.update(kwargs["json"])
             return FakeEmbedResponse()
 
         monkeypatch.setattr(tools_module, "_get_db", lambda: FakeDb())
@@ -213,6 +215,8 @@ class TestLookupEquipmentKnowledge:
         )
 
         assert captured["distance_measure"] == DistanceMeasure.COSINE
+        assert embed_request["taskType"] == "RETRIEVAL_QUERY"
+        assert embed_request["outputDimensionality"] == 1536
         assert result["found"] is True
 
     def test_vector_search_is_skipped_without_google_api_key(self, monkeypatch):
