@@ -107,9 +107,19 @@ class SessionViewModel @Inject constructor(
     /** Jobs for streaming forwarding — cancelled on stopSession() */
     private var sessionJob: Job? = null
     private var frameForwardingJob: Job? = null
+    private var audioForwardingJob: Job? = null
     private val bargeInAudioGate = BargeInAudioGate()
 
     private fun hasRunningSessionJob(): Boolean = sessionJob?.isActive == true
+
+    private fun cancelStreamingJobs() {
+        frameForwardingJob?.cancel()
+        frameForwardingJob = null
+        audioForwardingJob?.cancel()
+        audioForwardingJob = null
+        sessionJob?.cancel()
+        sessionJob = null
+    }
 
     init {
         observeConnectionState()
@@ -134,6 +144,11 @@ class SessionViewModel @Inject constructor(
                         )
                         ConnectionState.ERROR -> {
                             genieIsSpeaking = false
+                            cancelStreamingJobs()
+                            audioManager.stopRecording()
+                            audioManager.stopPlayback()
+                            agentSpeaking = false
+                            bargeInAudioGate.reset()
                             current.copy(
                                 sessionState = SessionState.Error,
                                 errorMessage = "Connection failed. Check your network and backend URL."
@@ -142,6 +157,11 @@ class SessionViewModel @Inject constructor(
                         ConnectionState.DISCONNECTED -> {
                             if (current.sessionState != SessionState.Idle) {
                                 genieIsSpeaking = false
+                                cancelStreamingJobs()
+                                audioManager.stopRecording()
+                                audioManager.stopPlayback()
+                                agentSpeaking = false
+                                bargeInAudioGate.reset()
                                 current.copy(
                                     sessionState = SessionState.Idle,
                                     errorMessage = null
@@ -360,7 +380,8 @@ class SessionViewModel @Inject constructor(
             // has built-in VAD, but we still drop low-level mic leakage while the
             // agent is speaking so nearby user speech can interrupt without feeding
             // speaker echo straight back into the model.
-            launch {
+            audioForwardingJob?.cancel()
+            audioForwardingJob = viewModelScope.launch(Dispatchers.IO) {
                 audioManager.audioChunks.collect { chunk ->
                     if (bargeInAudioGate.shouldForward(chunk, agentSpeaking)) {
                         webSocket.sendAudioChunk(chunk)
@@ -410,10 +431,7 @@ class SessionViewModel @Inject constructor(
 
     fun stopSession() {
         // Cancel streaming forwarding jobs
-        frameForwardingJob?.cancel()
-        frameForwardingJob = null
-        sessionJob?.cancel()
-        sessionJob = null
+        cancelStreamingJobs()
         glassesCameraManager.stopStream()
 
         // Save session to history if it was active

@@ -2,8 +2,6 @@
 import os
 import sys
 
-from google.adk.tools.google_search_tool import GoogleSearchTool
-
 # Add parent directory to path to import agent
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -24,15 +22,13 @@ class TestAgentDefinition:
         assert "gemini" in agent.model
 
     def test_agent_has_expected_tools(self):
-        """Test agent exposes the core repair tools plus web search fallback."""
+        """Test agent exposes only the stable live-demo toolset."""
         tool_names = [getattr(tool, "__name__", type(tool).__name__) for tool in agent.tools]
         assert tool_names == [
             "lookup_equipment_knowledge",
             "get_safety_warnings",
             "log_diagnostic_step",
-            "GoogleSearchTool",
         ]
-        assert any(isinstance(tool, GoogleSearchTool) for tool in agent.tools)
 
     def test_agent_instruction_non_empty(self):
         """Test agent has non-empty instruction/system prompt."""
@@ -55,10 +51,6 @@ class TestAgentDefinition:
         """Test system instruction mentions get_safety_warnings."""
         assert "get_safety_warnings" in SYSTEM_INSTRUCTION
 
-    def test_system_instruction_mentions_google_search(self):
-        """Test system instruction mentions google_search."""
-        assert "google_search" in SYSTEM_INSTRUCTION
-
     def test_system_instruction_mentions_partial_ff_ambiguity(self):
         """The prompt should tell the agent not to overconfidently guess from FF alone."""
         assert "partial fridge display like FF" in SYSTEM_INSTRUCTION
@@ -76,9 +68,9 @@ class TestAgentDefinition:
         assert len(agent.description) > 0
 
     def test_tools_are_invocable_or_adk_tools(self):
-        """Test each tool is either a function or an ADK tool object."""
+        """Test each tool is callable."""
         for tool in agent.tools:
-            assert callable(tool) or isinstance(tool, GoogleSearchTool)
+            assert callable(tool)
 
     def test_agent_has_telemetry_callbacks(self):
         """Test structured telemetry callbacks are wired into the agent."""

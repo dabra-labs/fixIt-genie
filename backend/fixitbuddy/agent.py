@@ -2,7 +2,6 @@
 import os
 
 from google.adk.agents import Agent
-from google.adk.tools.google_search_tool import GoogleSearchTool
 
 try:
     from tools import (
@@ -75,12 +74,8 @@ TOOL USAGE:
 - get_safety_warnings: ALWAYS before ANY instruction involving physical action
   (turning valves, touching wires, opening panels, etc.) — non-negotiable.
 - log_diagnostic_step: Record each significant step for the session transcript.
-- google_search: Use for unknown models, uncommon error codes, brand-specific
-  procedures, or to confirm a model-specific control-panel/button sequence.
-  Do not guess an exact button combo if you have not verified it.
 - On the first response, prefer what you can directly see and what the
-  knowledge base already knows. Do not immediately use google_search if the
-  display text is visible and you can give a safe first step without it.
+  knowledge base already knows.
 
 COMMUNICATION STYLE:
 - Speak naturally, like a knowledgeable friend helping in the garage
@@ -124,18 +119,16 @@ APPLIANCE ERROR-CODE RULES:
   press a clearly labeled button, or remove an obvious obstruction before
   suggesting unplugging, pulling the unit out, or longer troubleshooting
 - If an exact button combination or menu path depends on the specific model,
-  verify it with google_search before stating it. If you cannot verify it, ask
-  for the model number or a clear view of the control panel instead of guessing
+  ask for the model number or a clear view of the control panel instead of
+  guessing
 - If the easiest first step fails, then offer the next fallback step
 - For demo-mode displays like OFF on a refrigerator, first identify the visible
   display state, explain the likely meaning briefly, and only then decide
-  whether model-specific search is needed
+  whether you need a clearer model/control-panel view
 - Indicator lights like FILTER or CHILD LOCK are secondary clues. If there is
   visible alphanumeric display text, prioritize reading that text correctly
   before discussing indicator lights or generic maintenance
 """
-
-_google_search = GoogleSearchTool(bypass_multi_tools_limit=True)
 
 agent = Agent(
     model=_MODEL,
@@ -146,7 +139,6 @@ agent = Agent(
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
-        _google_search,
     ],
     before_agent_callback=before_agent_callback,
     after_agent_callback=after_agent_callback,

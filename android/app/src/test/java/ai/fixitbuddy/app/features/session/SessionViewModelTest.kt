@@ -145,6 +145,16 @@ class SessionViewModelTest {
     }
 
     @Test
+    fun `connection state ERROR stops audio cleanup`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.ERROR
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(atLeast = 1) { audioManager.stopRecording() }
+        verify(atLeast = 1) { audioManager.stopPlayback() }
+    }
+
+    @Test
     fun `connection state DISCONNECTED while Active returns to Idle`() = runTest {
         val vm = createViewModel()
         // First set to connected
@@ -157,6 +167,19 @@ class SessionViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
+    }
+
+    @Test
+    fun `connection state DISCONNECTED while Active stops audio cleanup`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        connectionStateFlow.value = ConnectionState.DISCONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(atLeast = 1) { audioManager.stopRecording() }
+        verify(atLeast = 1) { audioManager.stopPlayback() }
     }
 
     @Test
