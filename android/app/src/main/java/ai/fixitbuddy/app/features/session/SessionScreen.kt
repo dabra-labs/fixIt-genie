@@ -12,23 +12,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,10 +41,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -150,20 +136,29 @@ fun SessionScreen(
                 Spacer(modifier = Modifier.width(1.dp))
             }
 
-            Row {
-                IconButton(onClick = onNavigateToHistory) {
-                    Icon(
-                        Icons.Default.History,
-                        contentDescription = "History",
-                        tint = Color.White
-                    )
-                }
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = Color.White
-                    )
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = Color(0xB30B1018),
+                modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(22.dp))
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    IconButton(onClick = onNavigateToHistory) {
+                        Icon(
+                            Icons.Default.History,
+                            contentDescription = "History",
+                            tint = Color.White
+                        )
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = Color.White
+                        )
+                    }
                 }
             }
         }
@@ -189,15 +184,25 @@ fun SessionScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .padding(horizontal = 32.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xCC080810))
-                    .border(1.dp, Color(0x33FF6A1E), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 28.dp, vertical = 20.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color(0xE60A0E18), Color(0xF2141322))
+                        )
+                    )
+                    .border(1.dp, Color(0x40FF6A1E), RoundedCornerShape(28.dp))
+                    .padding(horizontal = 28.dp, vertical = 24.dp)
             ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FeaturePill(text = "Live Camera")
+                    FeaturePill(text = "Voice Help")
+                    FeaturePill(text = "Interrupt Anytime")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Image(
                     painter = painterResource(R.drawable.ic_genie_lamp),
                     contentDescription = null,
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(60.dp)
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -213,6 +218,14 @@ fun SessionScreen(
                     color = Color(0xCCF0F0F5),
                     textAlign = TextAlign.Center,
                     lineHeight = 22.sp
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = stringResource(R.string.session_idle_hint),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xB3FFB07A),
+                    textAlign = TextAlign.Center,
+                    letterSpacing = 0.3.sp
                 )
             }
         }
@@ -232,13 +245,13 @@ fun SessionScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(232.dp)
+                        .height(272.dp)
                         .background(
                             Brush.verticalGradient(
                                 colorStops = arrayOf(
                                     0f to Color.Transparent,
-                                    0.28f to Color(0xE6080810),
-                                    0.55f to Color(0xFB080810),
+                                    0.18f to Color(0xD6080810),
+                                    0.46f to Color(0xF3080810),
                                     1f to Color(0xFF080810)
                                 )
                             )
@@ -259,19 +272,55 @@ fun SessionScreen(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .fillMaxSize()
+                                .fillMaxHeight()
                                 .padding(bottom = 4.dp)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(Color(0x40121624))
-                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
+                                .clip(RoundedCornerShape(26.dp))
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(Color(0xE6141824), Color(0xF60D1018))
+                                    )
+                                )
+                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(26.dp))
                         ) {
-                            GenieTranscript(
-                                chatTurns = uiState.chatTurns,
-                                isGenieStreaming = uiState.agentState == "speaking",
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 8.dp, vertical = 8.dp)
-                            )
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 14.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.transcript_header),
+                                        color = Color.White.copy(alpha = 0.78f),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(999.dp),
+                                        color = sessionTone(uiState.agentState).copy(alpha = 0.16f),
+                                        modifier = Modifier.border(
+                                            1.dp,
+                                            sessionTone(uiState.agentState).copy(alpha = 0.28f),
+                                            RoundedCornerShape(999.dp)
+                                        )
+                                    ) {
+                                        Text(
+                                            text = uiState.agentState.replaceFirstChar { it.uppercase() },
+                                            color = Color.White.copy(alpha = 0.92f),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                        )
+                                    }
+                                }
+                                GenieTranscript(
+                                    chatTurns = uiState.chatTurns,
+                                    isGenieStreaming = uiState.agentState == "speaking",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -374,27 +423,44 @@ fun SessionScreen(
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(Color.Black.copy(alpha = 0.5f))
                 .systemBarsPadding()
                 .padding(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = Color(0xE60B1018),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(28.dp))
             ) {
-                Button(
-                    onClick = {
-                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                        viewModel.startSession()
-                    },
-                    modifier = Modifier.height(56.dp).width(200.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
                 ) {
-                    Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.start_session))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.start_session), style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        text = stringResource(R.string.start_session_hint),
+                        color = Color.White.copy(alpha = 0.78f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            viewModel.startSession()
+                        },
+                        modifier = Modifier
+                            .height(56.dp)
+                            .width(220.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.start_session))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.start_session), style = MaterialTheme.typography.labelLarge)
+                    }
                 }
             }
         }
@@ -424,6 +490,31 @@ fun SessionScreen(
             }
         }
     }
+}
+
+@Composable
+private fun FeaturePill(text: String) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = Color.White.copy(alpha = 0.06f),
+        modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(999.dp))
+    ) {
+        Text(
+            text = text,
+            color = Color.White.copy(alpha = 0.82f),
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+    }
+}
+
+private fun sessionTone(agentState: String): Color = when {
+    agentState == "listening" -> Color(0xFF22C55E)
+    agentState == "thinking" -> Color(0xFFF59E0B)
+    agentState == "speaking" -> Color(0xFF3B82F6)
+    agentState == "wrapping up" -> Color(0xFFFF6A1E)
+    agentState.startsWith("using ") -> Color(0xFF9060DD)
+    else -> Color.White
 }
 
 @Composable
