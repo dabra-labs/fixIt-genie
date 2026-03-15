@@ -108,6 +108,8 @@ class SessionViewModel @Inject constructor(
     private var sessionJob: Job? = null
     private var frameForwardingJob: Job? = null
 
+    private fun hasRunningSessionJob(): Boolean = sessionJob?.isActive == true
+
     init {
         observeConnectionState()
         observeIncomingMessages()
@@ -254,7 +256,7 @@ class SessionViewModel @Inject constructor(
     }
 
     fun switchCameraSource(source: CameraSource) {
-        val sessionActive = sessionJob != null
+        val sessionActive = hasRunningSessionJob()
         Log.i(TAG, "Switching camera source → $source (sessionActive=$sessionActive)")
         _uiState.update { it.copy(cameraSource = source) }
         if (source == CameraSource.GLASSES) {
@@ -291,8 +293,28 @@ class SessionViewModel @Inject constructor(
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun startSession() {
+        if (hasRunningSessionJob() ||
+            _uiState.value.sessionState == SessionState.Connecting ||
+            _uiState.value.sessionState == SessionState.Active
+        ) {
+            Log.d(TAG, "startSession ignored — session already starting or active")
+            return
+        }
+
         sessionStartMs = System.currentTimeMillis()
-        sessionJob = viewModelScope.launch(Dispatchers.IO) {
+        _uiState.update {
+            it.copy(
+                sessionState = SessionState.Connecting,
+                transcript = "",
+                chatTurns = emptyList(),
+                agentState = "connecting",
+                lastToolCall = null,
+                toolCallCount = 0,
+                errorMessage = null
+            )
+        }
+
+        val job = viewModelScope.launch(Dispatchers.IO) {
             val baseUrl = dataStore.data.map { prefs ->
                 prefs[SettingsViewModel.BACKEND_URL_KEY] ?: AppConfig.BACKEND_URL
             }.first()
@@ -340,6 +362,12 @@ class SessionViewModel @Inject constructor(
                         webSocket.sendAudioChunk(chunk)
                     }
                 }
+            }
+        }
+        sessionJob = job
+        job.invokeOnCompletion {
+            if (sessionJob === job) {
+                sessionJob = null
             }
         }
     }
