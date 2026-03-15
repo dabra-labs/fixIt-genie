@@ -35,6 +35,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.math.sqrt
 
 /** A single spoken exchange in the session conversation. */
 data class ChatTurn(val role: ChatRole, val text: String)
@@ -312,11 +315,14 @@ class SessionViewModel @Inject constructor(
             startFrameForwarding(_uiState.value.cameraSource)
 
             // Step 6: Forward audio chunks continuously — Gemini's native audio model
-            // has built-in VAD and AEC; always streaming lets the server detect when
-            // the user speaks mid-response and send `interrupted: true` to cut off playback.
+            // has built-in VAD, but we still drop low-level mic leakage while the
+            // agent is speaking so nearby user speech can interrupt without feeding
+            // speaker echo straight back into the model.
             launch {
                 audioManager.audioChunks.collect { chunk ->
-                    webSocket.sendAudioChunk(chunk)
+                    if (shouldForwardMicChunk(chunk, agentSpeaking)) {
+                        webSocket.sendAudioChunk(chunk)
+                    }
                 }
             }
         }
@@ -420,4 +426,27 @@ class SessionViewModel @Inject constructor(
     companion object {
         private const val TAG = "SessionViewModel"
     }
+}
+
+internal fun shouldForwardMicChunk(chunk: ByteArray, agentSpeaking: Boolean): Boolean {
+    if (!agentSpeaking) return true
+    return normalizedPcmLevel(chunk) >= AppConfig.AUDIO_BARGE_IN_LEVEL
+}
+
+internal fun normalizedPcmLevel(chunk: ByteArray): Float {
+    if (chunk.size < 2) return 0f
+    val shortBuffer = ByteBuffer.wrap(chunk)
+        .order(ByteOrder.LITTLE_ENDIAN)
+        .asShortBuffer()
+    val sampleCount = shortBuffer.remaining()
+    if (sampleCount == 0) return 0f
+
+    var sumSquares = 0.0
+    for (i in 0 until sampleCount) {
+        val sample = shortBuffer[i].toDouble()
+        sumSquares += sample * sample
+    }
+    val rms = sqrt(sumSquares / sampleCount)
+    val db = if (rms > 1.0) 20.0 * Math.log10(rms / 32768.0) else -96.0
+    return ((db + 60.0) / 60.0).coerceIn(0.0, 1.0).toFloat()
 }

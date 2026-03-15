@@ -20,15 +20,20 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
+import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
@@ -155,6 +160,9 @@ class AudioStreamManager @Inject constructor(
 
     fun initPlayback() {
         stopPlayback()
+        // Max out media volume for demo clarity
+        val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxVol, 0)
 
         val bufferSize = AudioTrack.getMinBufferSize(
             AppConfig.AUDIO_OUTPUT_SAMPLE_RATE,
@@ -165,9 +173,6 @@ class AudioStreamManager @Inject constructor(
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    // USAGE_MEDIA → STREAM_MUSIC (15 volume steps, full loudspeaker).
-                    // Software AEC active via VOICE_COMMUNICATION source; hardware AEC
-                    // reference may be mismatched (far-end not on voice call stream).
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
@@ -186,18 +191,13 @@ class AudioStreamManager @Inject constructor(
         audioTrack?.play()
 
         // Drain audio chunks on a dedicated IO thread to avoid blocking Main
-        val ch = Channel<ByteArray>(capacity = 50)
+        val ch = Channel<ByteArray>(capacity = AppConfig.AUDIO_PLAYBACK_QUEUE_CAPACITY)
         playbackChannel = ch
-        playbackJob = playbackScope.launch {
-            for (chunk in ch) {
-                val result = audioTrack?.write(chunk, 0, chunk.size) ?: -99
-                if (result < 0) Log.e(TAG, "AudioTrack.write() error: $result")
-            }
-        }
+        startPlaybackLoop(ch)
     }
 
     fun playAudioChunk(data: ByteArray) {
-        val sent = playbackChannel?.trySend(data)?.isSuccess ?: false
+        val sent = playbackChannel?.trySend(applyOutputGain(data))?.isSuccess ?: false
         if (!sent) Log.w(TAG, "Playback channel full — dropped ${data.size}B audio chunk")
     }
 
@@ -207,7 +207,7 @@ class AudioStreamManager @Inject constructor(
      */
     fun interrupt() {
         val oldChannel = playbackChannel
-        val ch = Channel<ByteArray>(capacity = 50)
+        val ch = Channel<ByteArray>(capacity = AppConfig.AUDIO_PLAYBACK_QUEUE_CAPACITY)
         playbackChannel = ch
         oldChannel?.cancel()  // drops all buffered chunks
         playbackJob?.cancel()
@@ -215,12 +215,7 @@ class AudioStreamManager @Inject constructor(
         // unblocks any in-progress write() call in the old coroutine, preventing a race
         // where the old and new coroutines both write to the same AudioTrack concurrently.
         audioTrack?.flush()
-        playbackJob = playbackScope.launch {
-            for (chunk in ch) {
-                val result = audioTrack?.write(chunk, 0, chunk.size) ?: -99
-                if (result < 0) Log.e(TAG, "AudioTrack.write() error: $result")
-            }
-        }
+        startPlaybackLoop(ch)
         Log.d(TAG, "Playback interrupted — audio queue cleared")
     }
 
@@ -266,6 +261,118 @@ class AudioStreamManager @Inject constructor(
         val db = if (rms > 1.0) 20.0 * Math.log10(rms / 32768.0) else -96.0
         // Map -60dB..0dB → 0..1 (anything below -60dB is silence)
         return ((db + 60.0) / 60.0).coerceIn(0.0, 1.0).toFloat()
+    }
+
+    private fun applyOutputGain(pcm16: ByteArray): ByteArray {
+        if (pcm16.size < 2 || AppConfig.AUDIO_OUTPUT_GAIN <= 1f) return pcm16
+
+        val input = ByteBuffer.wrap(pcm16)
+            .order(ByteOrder.LITTLE_ENDIAN)
+            .asShortBuffer()
+        val sampleCount = input.remaining()
+        if (sampleCount == 0) return pcm16
+
+        var peak = 0
+        for (i in 0 until sampleCount) {
+            peak = maxOf(peak, abs(input[i].toInt()))
+        }
+        if (peak == 0) return pcm16
+
+        val safeGain = min(
+            AppConfig.AUDIO_OUTPUT_GAIN,
+            (Short.MAX_VALUE.toFloat() * 0.92f) / peak.toFloat()
+        )
+        if (safeGain <= 1.01f) return pcm16
+
+        val boosted = ByteArray(pcm16.size)
+        val output = ByteBuffer.wrap(boosted)
+            .order(ByteOrder.LITTLE_ENDIAN)
+            .asShortBuffer()
+        for (i in 0 until sampleCount) {
+            val scaled = (input[i].toFloat() * safeGain)
+                .roundToInt()
+                .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+            output.put(i, scaled.toShort())
+        }
+        if (pcm16.size % 2 != 0) {
+            boosted[pcm16.lastIndex] = pcm16.last()
+        }
+        return boosted
+    }
+
+    private fun startPlaybackLoop(channel: Channel<ByteArray>) {
+        playbackJob = playbackScope.launch {
+            while (true) {
+                val firstChunk = channel.receiveCatching().getOrNull() ?: break
+                val batchedChunk = collectPlaybackBatch(firstChunk, channel)
+                writeFullyToTrack(batchedChunk)
+            }
+        }
+    }
+
+    private suspend fun collectPlaybackBatch(
+        firstChunk: ByteArray,
+        channel: ReceiveChannel<ByteArray>
+    ): ByteArray {
+        if (firstChunk.isEmpty()) return firstChunk
+
+        val parts = ArrayList<ByteArray>(4)
+        var totalBytes = 0
+
+        fun append(chunk: ByteArray) {
+            if (chunk.isEmpty()) return
+            parts += chunk
+            totalBytes += chunk.size
+        }
+
+        append(firstChunk)
+
+        while (totalBytes < AppConfig.AUDIO_PLAYBACK_TARGET_WRITE_BYTES) {
+            val nextChunk = if (parts.size == 1) {
+                withTimeoutOrNull(AppConfig.AUDIO_PLAYBACK_BATCH_WAIT_MS) {
+                    channel.receiveCatching().getOrNull()
+                }
+            } else {
+                channel.tryReceive().getOrNull()
+            } ?: break
+            append(nextChunk)
+        }
+
+        if (parts.size == 1) return firstChunk
+
+        val combined = ByteArray(totalBytes)
+        var offset = 0
+        for (part in parts) {
+            part.copyInto(combined, destinationOffset = offset)
+            offset += part.size
+        }
+        return combined
+    }
+
+    private fun writeFullyToTrack(data: ByteArray) {
+        if (data.isEmpty()) return
+        val track = audioTrack ?: return
+
+        var offset = 0
+        while (offset < data.size) {
+            val written = track.write(
+                data,
+                offset,
+                data.size - offset,
+                AudioTrack.WRITE_BLOCKING
+            )
+            when {
+                written > 0 -> offset += written
+                written == 0 -> {
+                    Log.w(TAG, "AudioTrack.write() returned 0 with ${data.size - offset}B remaining")
+                    break
+                }
+                else -> {
+                    Log.e(TAG, "AudioTrack.write() error: $written")
+                    break
+                }
+            }
+        }
     }
 
     companion object {

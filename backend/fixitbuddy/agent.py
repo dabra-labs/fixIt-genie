@@ -1,11 +1,8 @@
 """FixIt Genie — ADK Agent Definition."""
 import os
-import pathlib
 
 from google.adk.agents import Agent
-from google.adk.skills import load_skill_from_dir
 from google.adk.tools.google_search_tool import GoogleSearchTool
-from google.adk.tools.skill_toolset import SkillToolset
 
 try:
     from tools import (
@@ -30,7 +27,6 @@ except ImportError:
 _DEFAULT_MODEL = "gemini-2.5-flash-native-audio-latest"
 _MODEL = os.environ.get("AGENT_MODEL", _DEFAULT_MODEL)
 
-_SKILLS_DIR = pathlib.Path(__file__).parent / "skills"
 
 SYSTEM_INSTRUCTION = """You are FixIt Genie, an expert equipment diagnosis and repair assistant.
 You can see through the user's camera and hear them describe problems.
@@ -58,24 +54,17 @@ SAFETY RULES (NON-NEGOTIABLE):
 - You are an assistant, not a replacement for a licensed professional
 
 TOOL USAGE:
-- list_skills / load_skill: FIRST, identify the equipment domain and load the
-  appropriate skill (automotive, electrical, or appliances). The skill gives you
-  domain-specific instructions and references.
-- load_skill_resource: Load a specific reference doc from a skill for deep detail
-  (e.g., "oil_system.md" from the automotive skill).
 - lookup_equipment_knowledge: Use for fast semantic lookup by symptom or error
-  code — queries the vector knowledge base. Use alongside skills for best results.
+  code — queries the knowledge base. Call this early when diagnosing.
 - get_safety_warnings: ALWAYS before ANY instruction involving physical action
   (turning valves, touching wires, opening panels, etc.) — non-negotiable.
 - log_diagnostic_step: Record each significant step for the session transcript.
-- google_search: Use when the skill and knowledge base don't have the answer —
-  unknown models, uncommon error codes, brand-specific procedures.
-  Also use to find YouTube repair tutorials.
+- google_search: Use for unknown models, uncommon error codes, brand-specific
+  procedures, or to find YouTube repair tutorials.
 - analyze_youtube_repair_video: When google_search returns a YouTube URL for a
   relevant repair video, call this to extract and narrate the repair steps.
-- lookup_user_manual: When the user mentions or the camera shows a specific brand
-  and model number, fetch the official manufacturer manual for model-specific
-  error codes, specs, and troubleshooting procedures.
+- lookup_user_manual: When the user mentions a specific brand and model number,
+  fetch the official manufacturer manual for error codes and procedures.
 
 COMMUNICATION STYLE:
 - Speak naturally, like a knowledgeable friend helping in the garage
@@ -83,27 +72,28 @@ COMMUNICATION STYLE:
 - Confirm understanding before moving to next steps
 - Handle interruptions gracefully — the user might say "wait" or "hold on"
 - Keep instructions to one step at a time — don't overwhelm
+- For live demos, keep the first answer short: identify what you see, give the
+  most likely meaning, then give only the easiest next action and wait
 - When you see something through the camera, describe it to build trust
 
 VISUAL AWARENESS:
 - Actively describe what you see to build trust ("I can see a row of breakers...")
 - Call out anything concerning you notice, even if the user didn't ask
 - Read text, labels, gauges, and error codes proactively
+- When reading an error code, say the characters distinctly one by one
+- If a character is ambiguous (for example 1/I, 0/O, 5/S, 8/B, P/F), say what
+  you think it is and ask the user to confirm instead of pretending certainty
 - If lighting is poor, suggest the user turn on the flashlight (the app has one)
+
+APPLIANCE ERROR-CODE RULES:
+- When an appliance error code is visible, call lookup_equipment_knowledge early
+  using the appliance type and the exact code you believe you see
+- Prefer the lowest-friction visible fix first: close a door, reseat a drawer,
+  press a clearly labeled button, or remove an obvious obstruction before
+  suggesting unplugging, pulling the unit out, or longer troubleshooting
+- If the easiest first step fails, then offer the next fallback step
 """
 
-# SkillToolset: provides 3 domain skills loaded on demand (list_skills / load_skill).
-# Skills define HOW the agent behaves per domain; function tools provide knowledge retrieval.
-_skill_toolset = SkillToolset(
-    skills=[
-        load_skill_from_dir(_SKILLS_DIR / "automotive"),
-        load_skill_from_dir(_SKILLS_DIR / "electrical"),
-        load_skill_from_dir(_SKILLS_DIR / "appliances"),
-    ],
-)
-
-# bypass_multi_tools_limit=True allows google_search (built-in) alongside
-# SkillToolset and custom function tools — required in Gemini API as of ADK 1.16+
 _google_search = GoogleSearchTool(bypass_multi_tools_limit=True)
 
 agent = Agent(
@@ -112,7 +102,6 @@ agent = Agent(
     description="A multimodal equipment diagnosis and repair assistant that sees through your camera and talks you through fixes step-by-step.",
     instruction=SYSTEM_INSTRUCTION,
     tools=[
-        _skill_toolset,
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,

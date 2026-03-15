@@ -69,7 +69,7 @@ class AgentWebSocket @Inject constructor(
     val sessionId: String = UUID.randomUUID().toString()
     val userId: String = "fixitbuddy_user"
 
-    private val _incomingMessages = MutableSharedFlow<AgentMessage>(extraBufferCapacity = 10)
+    private val _incomingMessages = MutableSharedFlow<AgentMessage>(extraBufferCapacity = 512)
     val incomingMessages: SharedFlow<AgentMessage> = _incomingMessages
 
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
@@ -96,7 +96,6 @@ class AgentWebSocket @Inject constructor(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-                Log.d(TAG, "onMessage: ${text.take(200)}")
                 parseAdkEvent(text)
             }
 
@@ -185,7 +184,6 @@ class AgentWebSocket @Inject constructor(
                     val data = inlineData["data"]?.jsonPrimitive?.content ?: ""
                     if (mimeType.startsWith("audio/") && data.isNotEmpty()) {
                         val audioBytes = JvmBase64.getUrlDecoder().decode(data)
-                        Log.d(TAG, "Audio chunk: mimeType=$mimeType bytes=${audioBytes.size}")
                         emit(AgentMessage.Audio(audioBytes))
                         hasAudio = true
                     }
