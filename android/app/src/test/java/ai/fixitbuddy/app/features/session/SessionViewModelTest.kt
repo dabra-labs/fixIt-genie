@@ -22,6 +22,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
@@ -32,6 +33,7 @@ import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionViewModelTest {
@@ -83,13 +85,20 @@ class SessionViewModelTest {
         val call = mockk<Call>()
         every { webSocket.userId } returns "fixitbuddy_user"
         every { okHttpClient.newCall(any()) } returns call
-        every { call.execute() } returns Response.Builder()
-            .request(Request.Builder().url("https://example.com").build())
-            .protocol(Protocol.HTTP_1_1)
-            .code(200)
-            .message("OK")
-            .body("""{"id":"$sessionId"}""".toResponseBody("application/json".toMediaType()))
-            .build()
+        every { call.cancel() } just Runs
+        every { call.enqueue(any()) } answers {
+            val callback = firstArg<Callback>()
+            callback.onResponse(
+                call,
+                Response.Builder()
+                    .request(Request.Builder().url("https://example.com").build())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("""{"id":"$sessionId"}""".toResponseBody("application/json".toMediaType()))
+                    .build()
+            )
+        }
     }
 
     @Test
@@ -226,6 +235,46 @@ class SessionViewModelTest {
         verify(timeout = 1000, exactly = 1) { webSocket.connect(any()) }
 
         vm.stopSession()
+    }
+
+    @Test
+    fun `stopSession cancels in flight session creation and does not continue startup`() = runTest {
+        val call = mockk<Call>()
+        val callbackRef = AtomicReference<Callback?>()
+        every { webSocket.userId } returns "fixitbuddy_user"
+        every { okHttpClient.newCall(any()) } returns call
+        every { call.cancel() } just Runs
+        every { call.enqueue(any()) } answers {
+            callbackRef.set(firstArg())
+        }
+
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.startSession()
+        verify(timeout = 1000, exactly = 1) { call.enqueue(any()) }
+        assertEquals(SessionState.Connecting, vm.uiState.value.sessionState)
+        assertNotNull(callbackRef.get())
+
+        vm.stopSession()
+        verify(timeout = 1000, exactly = 1) { call.cancel() }
+
+        callbackRef.get()!!.onResponse(
+            call,
+            Response.Builder()
+                .request(Request.Builder().url("https://example.com").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body("""{"id":"session-late"}""".toResponseBody("application/json".toMediaType()))
+                .build()
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(exactly = 0) { webSocket.connect(any()) }
+        verify(exactly = 0) { audioManager.initPlayback() }
+        verify(exactly = 0) { audioManager.startRecording() }
+        assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
     }
 
     @Test
