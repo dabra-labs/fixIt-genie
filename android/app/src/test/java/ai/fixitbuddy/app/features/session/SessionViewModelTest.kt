@@ -313,6 +313,56 @@ class SessionViewModelTest {
     }
 
     @Test
+    fun `complete_session tool call waits for goodbye turn then auto closes`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.ToolCall("complete_session", """{"reason":"fixed"}"""))
+        incomingMessagesFlow.emit(AgentMessage.Status("listening"))
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals("wrapping up", vm.uiState.value.agentState)
+        assertEquals(SessionState.Active, vm.uiState.value.sessionState)
+
+        testDispatcher.scheduler.advanceTimeBy(1499)
+        testDispatcher.scheduler.runCurrent()
+        assertEquals(SessionState.Active, vm.uiState.value.sessionState)
+
+        testDispatcher.scheduler.advanceTimeBy(1)
+        testDispatcher.scheduler.runCurrent()
+        assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
+        verify { webSocket.disconnect() }
+    }
+
+    @Test
+    fun `user transcript cancels pending auto close`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.ToolCall("complete_session", """{"reason":"fixed"}"""))
+        incomingMessagesFlow.emit(AgentMessage.Status("listening"))
+        testDispatcher.scheduler.runCurrent()
+
+        testDispatcher.scheduler.advanceTimeBy(1000)
+        incomingMessagesFlow.emit(
+            AgentMessage.Transcript(
+                "Actually, one more thing",
+                true,
+                TranscriptSpeaker.USER
+            )
+        )
+        testDispatcher.scheduler.runCurrent()
+
+        testDispatcher.scheduler.advanceTimeBy(1000)
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(SessionState.Active, vm.uiState.value.sessionState)
+        verify(exactly = 0) { webSocket.disconnect() }
+    }
+
+    @Test
     fun `live turn flow tracks tool usage transcript audio and turn completion`() = runTest {
         val vm = createViewModel()
         connectionStateFlow.value = ConnectionState.CONNECTED
@@ -329,7 +379,7 @@ class SessionViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
         assertEquals("thinking", vm.uiState.value.agentState)
 
-        incomingMessagesFlow.emit(AgentMessage.ToolCall("google_search_agent", """{"query":"lg fridge off"}"""))
+        incomingMessagesFlow.emit(AgentMessage.ToolCall("lookup_equipment_knowledge", """{"query":"lg fridge off"}"""))
         incomingMessagesFlow.emit(AgentMessage.Transcript("I can see OFF on the display.", false))
         incomingMessagesFlow.emit(AgentMessage.Audio(audioData))
         incomingMessagesFlow.emit(AgentMessage.Status("listening"))
@@ -337,7 +387,7 @@ class SessionViewModelTest {
 
         val state = vm.uiState.value
         assertEquals(SessionState.Active, state.sessionState)
-        assertEquals("google_search_agent", state.lastToolCall)
+        assertEquals("lookup_equipment_knowledge", state.lastToolCall)
         assertEquals(1, state.toolCallCount)
         assertEquals("I can see OFF on the display.", state.transcript)
         assertEquals("listening", state.agentState)
@@ -415,6 +465,20 @@ class SessionViewModelTest {
         vm.stopSession()
 
         verify { webSocket.disconnect() }
+    }
+
+    @Test
+    fun `stopSession ignores follow-up connection error without flashing error state`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.stopSession()
+        connectionStateFlow.value = ConnectionState.ERROR
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
+        assertNull(vm.uiState.value.errorMessage)
     }
 
     @Test

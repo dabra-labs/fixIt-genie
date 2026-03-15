@@ -607,3 +607,21 @@ def log_diagnostic_step(
         "result": result,
     }
     return {"logged": True, "step": step}
+
+
+def complete_session(reason: str = "") -> dict[str, Any]:
+    """Mark the live session ready to close after the final goodbye.
+
+    Call only after the user explicitly confirms the problem is resolved and
+    they do not need anything else.
+
+    Args:
+        reason: Short summary of what was resolved.
+
+    Returns:
+        Confirmation payload for the client to auto-close the session.
+    """
+    return {
+        "completed": True,
+        "reason": reason,
+    }

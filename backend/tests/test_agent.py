@@ -25,6 +25,7 @@ class TestAgentDefinition:
         """Test agent exposes only the stable live-demo toolset."""
         tool_names = [getattr(tool, "__name__", type(tool).__name__) for tool in agent.tools]
         assert tool_names == [
+            "complete_session",
             "lookup_equipment_knowledge",
             "get_safety_warnings",
             "log_diagnostic_step",
@@ -61,6 +62,11 @@ class TestAgentDefinition:
         assert "tell the user where to point the camera" in SYSTEM_INSTRUCTION
         assert "Hold that there, I'm reading the display" in SYSTEM_INSTRUCTION
         assert "checking that code" in SYSTEM_INSTRUCTION
+
+    def test_system_instruction_mentions_confirmation_before_auto_close(self):
+        """The agent should only end after the user confirms they are done."""
+        assert "confirmation that the fix worked" in SYSTEM_INSTRUCTION
+        assert "complete_session" in SYSTEM_INSTRUCTION
 
     def test_agent_description_non_empty(self):
         """Test agent description is non-empty."""

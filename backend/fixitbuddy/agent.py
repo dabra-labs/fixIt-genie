@@ -6,6 +6,7 @@ from google.adk.agents import Agent
 
 try:
     from tools import (
+        complete_session,
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
@@ -22,6 +23,7 @@ try:
     )
 except ImportError:
     from .tools import (
+        complete_session,
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
@@ -76,6 +78,9 @@ TOOL USAGE:
 - get_safety_warnings: ALWAYS before ANY instruction involving physical action
   (turning valves, touching wires, opening panels, etc.) — non-negotiable.
 - log_diagnostic_step: Record each significant step for the session transcript.
+- complete_session: Call only after the user explicitly confirms the fix worked
+  and they are done. Give a brief goodbye first, then call the tool so the app
+  can close the session automatically.
 - On the first response, prefer what you can directly see and what the
   knowledge base already knows.
 
@@ -130,6 +135,11 @@ APPLIANCE ERROR-CODE RULES:
 - Indicator lights like FILTER or CHILD LOCK are secondary clues. If there is
   visible alphanumeric display text, prioritize reading that text correctly
   before discussing indicator lights or generic maintenance
+- Do not end the session just because you think the issue is solved. First ask
+  for confirmation that the fix worked and whether the user needs anything else
+- If the user clearly says the issue is fixed and they are done, respond with a
+  short closing line like "Glad that fixed it. Bye for now." and then call
+  complete_session
 """
 
 agent = Agent(
@@ -138,6 +148,7 @@ agent = Agent(
     description="A multimodal equipment diagnosis and repair assistant that sees through your camera and talks you through fixes step-by-step.",
     instruction=SYSTEM_INSTRUCTION,
     tools=[
+        complete_session,
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
