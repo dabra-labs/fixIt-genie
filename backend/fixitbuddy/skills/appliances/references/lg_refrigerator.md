@@ -46,7 +46,7 @@
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Display says `OFF` or `0FF` and fridge is not cooling | Likely demo/showroom mode | Call out the display text first. Explain that the fridge may be in demo mode. If the model number is available, use it to look up the exact exit button sequence before guessing |
-| Display shows only `FF` | Ambiguous read | Ask for a closer shot of the full control panel. A partial `FF` can actually be `OFF`/`0FF` or part of `Er FF` |
+| Display shows only `FF` | Ambiguous read | Ask for a closer shot of the full water-dispenser/control panel and tell the user to hold it steady. A partial `FF` can actually be `OFF`/`0FF` or part of `Er FF` |
 | Fridge not cooling, freezer fine | Evaporator fan blocked or failed, damper stuck | Hold door button to test if fan runs. Ice on back wall = defrost issue; run manual defrost |
 | Neither fridge nor freezer cooling | Compressor not running or refrigerant leak | Check start relay (small box on compressor side) — rattle when shaken = replace (~$10 part) |
 | Ice maker not making ice | Freezer too warm, water supply issue, or arm in UP position | Check freezer is 0°F. Check water line isn't kinked. Check ice maker arm is DOWN. Replace filter if >6 months old |

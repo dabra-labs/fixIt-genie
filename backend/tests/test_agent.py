@@ -64,6 +64,12 @@ class TestAgentDefinition:
         assert "partial fridge display like FF" in SYSTEM_INSTRUCTION
         assert "OFF/0FF demo mode" in SYSTEM_INSTRUCTION
 
+    def test_system_instruction_mentions_camera_guidance_and_investigation_narration(self):
+        """The agent should direct camera framing and narrate when it is checking something."""
+        assert "tell the user where to point the camera" in SYSTEM_INSTRUCTION
+        assert "Hold that there, I'm reading the display" in SYSTEM_INSTRUCTION
+        assert "checking that code" in SYSTEM_INSTRUCTION
+
     def test_agent_description_non_empty(self):
         """Test agent description is non-empty."""
         assert agent.description is not None
