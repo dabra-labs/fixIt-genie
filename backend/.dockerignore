@@ -8,4 +8,6 @@ __pycache__/
 .pytest_cache/
 pytest-cache-files-*
 .adk/
+.venv/
+.venv*/
 *.db
