@@ -9,16 +9,12 @@ try:
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
-        analyze_youtube_repair_video,
-        lookup_user_manual,
     )
 except ImportError:
     from .tools import (
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
-        analyze_youtube_repair_video,
-        lookup_user_manual,
     )
 
 # Default to the native audio model for live streaming (bidiGenerateContent).
@@ -60,11 +56,8 @@ TOOL USAGE:
   (turning valves, touching wires, opening panels, etc.) — non-negotiable.
 - log_diagnostic_step: Record each significant step for the session transcript.
 - google_search: Use for unknown models, uncommon error codes, brand-specific
-  procedures, or to find YouTube repair tutorials.
-- analyze_youtube_repair_video: When google_search returns a YouTube URL for a
-  relevant repair video, call this to extract and narrate the repair steps.
-- lookup_user_manual: When the user mentions a specific brand and model number,
-  fetch the official manufacturer manual for error codes and procedures.
+  procedures, or to confirm a model-specific control-panel/button sequence.
+  Do not guess an exact button combo if you have not verified it.
 
 COMMUNICATION STYLE:
 - Speak naturally, like a knowledgeable friend helping in the garage
@@ -94,6 +87,9 @@ APPLIANCE ERROR-CODE RULES:
 - Prefer the lowest-friction visible fix first: close a door, reseat a drawer,
   press a clearly labeled button, or remove an obvious obstruction before
   suggesting unplugging, pulling the unit out, or longer troubleshooting
+- If an exact button combination or menu path depends on the specific model,
+  verify it with google_search before stating it. If you cannot verify it, ask
+  for the model number or a clear view of the control panel instead of guessing
 - If the easiest first step fails, then offer the next fallback step
 """
 
@@ -109,8 +105,6 @@ agent = Agent(
         get_safety_warnings,
         log_diagnostic_step,
         _google_search,
-        analyze_youtube_repair_video,
-        lookup_user_manual,
     ],
 )
 
