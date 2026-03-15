@@ -73,6 +73,25 @@ class TestLookupEquipmentKnowledge:
         issue_text = " ".join(issue["issue"] for issue in fridge["common_issues"])
         assert "OFF" in issue_text
 
+    def test_search_lg_fridge_0ff_demo_mode(self):
+        """Test LG fridge 0FF wording ranks refrigerator knowledge first."""
+        result = lookup_equipment_knowledge(
+            query="refrigerator error code 0 FF",
+            category="appliance",
+            error_code="0 FF",
+        )
+        assert result["found"] is True
+        assert result["results"][0]["name"] == "LG Refrigerator"
+
+    def test_search_lg_fridge_ff_query_prefers_refrigerator(self):
+        """Fridge-specific FF queries should not rank generic appliance docs first."""
+        result = lookup_equipment_knowledge(
+            query="refrigerator leaking water dispenser error code FF",
+            category="appliance",
+        )
+        assert result["found"] is True
+        assert result["results"][0]["name"] == "LG Refrigerator"
+
     def test_search_by_error_code_p0520(self):
         """Test search by error code 'P0520' returns oil system."""
         result = lookup_equipment_knowledge(query="", error_code="P0520")
@@ -295,3 +314,9 @@ class TestLogDiagnosticStep:
         assert step["description"] == "Inspect battery terminals"
         assert step["observation"] == "Found white corrosion on positive terminal"
         assert step["result"] == "Terminal cleaned with baking soda solution"
+
+    def test_missing_step_number_defaults_to_zero(self):
+        """Model tool calls sometimes omit step_number; the tool should still succeed."""
+        result = log_diagnostic_step(description="Observed fridge display")
+        assert result["logged"] is True
+        assert result["step"]["step"] == 0

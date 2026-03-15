@@ -59,6 +59,11 @@ class TestAgentDefinition:
         """Test system instruction mentions google_search."""
         assert "google_search" in SYSTEM_INSTRUCTION
 
+    def test_system_instruction_mentions_partial_ff_ambiguity(self):
+        """The prompt should tell the agent not to overconfidently guess from FF alone."""
+        assert "partial fridge display like FF" in SYSTEM_INSTRUCTION
+        assert "OFF/0FF demo mode" in SYSTEM_INSTRUCTION
+
     def test_agent_description_non_empty(self):
         """Test agent description is non-empty."""
         assert agent.description is not None

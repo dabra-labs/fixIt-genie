@@ -107,6 +107,7 @@ class SessionViewModel @Inject constructor(
     /** Jobs for streaming forwarding — cancelled on stopSession() */
     private var sessionJob: Job? = null
     private var frameForwardingJob: Job? = null
+    private val bargeInAudioGate = BargeInAudioGate()
 
     private fun hasRunningSessionJob(): Boolean = sessionJob?.isActive == true
 
@@ -167,6 +168,7 @@ class SessionViewModel @Inject constructor(
                         turnEndJob = launch {
                             delay(1200)
                             agentSpeaking = false
+                            bargeInAudioGate.reset()
                         }
                     }
                     is AgentMessage.Transcript -> {
@@ -216,6 +218,7 @@ class SessionViewModel @Inject constructor(
                             launch {
                                 delay(400)
                                 agentSpeaking = false
+                                bargeInAudioGate.reset()
                             }
                         }
                     }
@@ -223,6 +226,7 @@ class SessionViewModel @Inject constructor(
                         turnEndJob?.cancel()
                         audioManager.interrupt()
                         agentSpeaking = false
+                        bargeInAudioGate.reset()
                     }
                     is AgentMessage.ToolCall -> {
                         // Tool calls are handled server-side; we display them via chip + status
@@ -358,7 +362,7 @@ class SessionViewModel @Inject constructor(
             // speaker echo straight back into the model.
             launch {
                 audioManager.audioChunks.collect { chunk ->
-                    if (shouldForwardMicChunk(chunk, agentSpeaking)) {
+                    if (bargeInAudioGate.shouldForward(chunk, agentSpeaking)) {
                         webSocket.sendAudioChunk(chunk)
                     }
                 }
@@ -431,6 +435,7 @@ class SessionViewModel @Inject constructor(
         sessionStartMs = 0L
         agentSpeaking = false
         genieIsSpeaking = false
+        bargeInAudioGate.reset()
 
         audioManager.stopRecording()
         audioManager.stopPlayback()
@@ -475,6 +480,35 @@ class SessionViewModel @Inject constructor(
 internal fun shouldForwardMicChunk(chunk: ByteArray, agentSpeaking: Boolean): Boolean {
     if (!agentSpeaking) return true
     return normalizedPcmLevel(chunk) >= AppConfig.AUDIO_BARGE_IN_LEVEL
+}
+
+internal class BargeInAudioGate(
+    private val triggerLevel: Float = AppConfig.AUDIO_BARGE_IN_LEVEL,
+    private val holdChunks: Int = AppConfig.AUDIO_BARGE_IN_HOLD_CHUNKS,
+) {
+    private var remainingForwardedChunks = 0
+
+    fun shouldForward(chunk: ByteArray, agentSpeaking: Boolean): Boolean {
+        if (!agentSpeaking) {
+            remainingForwardedChunks = 0
+            return true
+        }
+
+        if (normalizedPcmLevel(chunk) >= triggerLevel) {
+            remainingForwardedChunks = holdChunks
+        }
+
+        if (remainingForwardedChunks > 0) {
+            remainingForwardedChunks -= 1
+            return true
+        }
+
+        return false
+    }
+
+    fun reset() {
+        remainingForwardedChunks = 0
+    }
 }
 
 internal fun normalizedPcmLevel(chunk: ByteArray): Float {
