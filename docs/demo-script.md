@@ -240,7 +240,7 @@ Text card:
 
 > *"See it. Say it. Fix it."*
 > *"FixIt Genie — built with Gemini Live API + Google ADK"*
-> *"github.com/dabra-labs/fixbuddy"*
+> *"github.com/dabra-labs/fixIt-genie"*
 
 *[Fade out.]*
 
