@@ -15,6 +15,12 @@ Built for the **Live Agents** category with **Google ADK** + **Gemini 2.5 Flash 
 
 ---
 
+<p align="center">
+  <img src="images/thumbnail-live-agent-3x2.jpg" alt="FixIt Genie live agent thumbnail" width="100%" />
+</p>
+
+---
+
 ## App Preview
 
 <table>
@@ -236,7 +242,13 @@ fixitgenie/
 
 ---
 
-## Testing
+## Reproducible Testing
+
+Use the steps below to validate the project quickly and consistently.
+
+Recommended test setup: use a **physical Android device** for the full live camera + voice flow. An emulator is useful for app launch and UI validation, but the complete live-agent experience is best tested on hardware.
+
+### 1. Run automated tests
 
 ```bash
 # Backend
@@ -245,6 +257,28 @@ cd backend && python -m pytest tests/ -v
 # Android
 cd android && ./gradlew testDebugUnitTest
 ```
+
+### 2. Run the app locally
+
+```bash
+export GOOGLE_API_KEY=your-gemini-api-key
+./dev.sh --android
+```
+
+### 3. Reproduce the core live-agent flow
+
+1. Launch the Android app and start a live session.
+2. Point the camera at an appliance, electrical panel, or automotive component.
+3. Ask a natural question such as `What do you notice here?`
+4. Let the agent respond, then interrupt it with `wait` or `stop`.
+5. Confirm that the transcript updates and the agent adapts the response in real time.
+
+Expected behavior:
+
+- the app streams camera and voice in real time
+- the agent responds with spoken guidance and on-screen transcript updates
+- the user can interrupt the live response naturally
+- the backend remains live on Google Cloud Run throughout the session
 
 ---
 

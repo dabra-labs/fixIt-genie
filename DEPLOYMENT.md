@@ -13,28 +13,31 @@ This file documents the live Google Cloud deployment of the FixIt Genie backend 
 | **Platform** | Google Cloud Run (managed) |
 | **Region** | us-central1 |
 | **Status** | ✅ Ready |
-| **Current Revision** | fixitbuddy-agent-00010-pf7 |
+| **Current Revision** | fixitbuddy-agent-00034-8z5 |
+| **Traffic** | 100% to latest revision |
 | **Memory / CPU** | 2 GiB / 2 vCPU |
 | **Model** | gemini-2.5-flash-native-audio-latest |
 
 ---
 
-## Deployment History
+## Recent Deployment History
 
-The backend has been deployed **10 times** across the hackathon build — each deploy via `backend/deploy.sh`.
+The backend has been redeployed repeatedly during the hackathon build, with each deploy going through `backend/deploy.sh`. Recent revisions:
 
 | Revision | Deployed |
 |----------|----------|
-| fixitbuddy-agent-00010-pf7 | 2026-03-10 18:04 UTC |
-| fixitbuddy-agent-00009-425 | 2026-03-10 14:30 UTC |
-| fixitbuddy-agent-00008-mtr | 2026-03-09 14:24 UTC |
-| fixitbuddy-agent-00007-jn5 | 2026-03-09 14:16 UTC |
-| fixitbuddy-agent-00006-l59 | 2026-03-09 14:13 UTC |
-| fixitbuddy-agent-00005-lbk | 2026-03-09 14:12 UTC |
-| fixitbuddy-agent-00004-fgz | 2026-03-09 13:31 UTC |
-| fixitbuddy-agent-00003-gqn | 2026-03-09 12:05 UTC |
-| fixitbuddy-agent-00002-l4t | 2026-03-09 11:49 UTC |
-| fixitbuddy-agent-00001-d26 | 2026-03-09 05:30 UTC |
+| fixitbuddy-agent-00034-8z5 | 2026-03-16 05:41 UTC |
+| fixitbuddy-agent-00033-5k7 | 2026-03-16 05:37 UTC |
+| fixitbuddy-agent-00032-pkj | 2026-03-16 05:00 UTC |
+| fixitbuddy-agent-00031-69s | 2026-03-16 00:42 UTC |
+| fixitbuddy-agent-00030-kpg | 2026-03-15 23:48 UTC |
+| fixitbuddy-agent-00029-rkq | 2026-03-15 20:57 UTC |
+| fixitbuddy-agent-00028-fv2 | 2026-03-15 17:46 UTC |
+| fixitbuddy-agent-00027-vxp | 2026-03-15 16:14 UTC |
+| fixitbuddy-agent-00026-fqd | 2026-03-15 15:34 UTC |
+| fixitbuddy-agent-00025-wdh | 2026-03-15 15:32 UTC |
+| fixitbuddy-agent-00024-rwk | 2026-03-15 15:20 UTC |
+| fixitbuddy-agent-00023-5sn | 2026-03-15 15:03 UTC |
 
 ---
 
@@ -46,7 +49,7 @@ The backend has been deployed **10 times** across the hackathon build — each d
 | **Cloud Build** | Builds the Docker container on deploy | [deploy.sh#L73](backend/deploy.sh#L73) |
 | **Artifact Registry** | Stores Docker images | [deploy.sh#L55](backend/deploy.sh#L55) |
 | **Cloud Firestore** | Vector search knowledge base (gemini-embedding-001, 1536-dim COSINE) | [tools.py#L9](backend/fixitbuddy/tools.py#L9) |
-| **Gemini API** | gemini-2.5-flash-native-audio-latest for bidi-streaming | [agent.py#L30](backend/fixitbuddy/agent.py#L30) |
+| **Gemini API** | gemini-2.5-flash-native-audio-latest for live multimodal streaming | [agent.py#L30](backend/fixitbuddy/agent.py#L30) |
 
 ---
 
@@ -77,7 +80,7 @@ cd backend && ./deploy.sh
 ```
 
 What the script does:
-1. Enables Cloud Run, Cloud Build, Artifact Registry, Firestore, and Vertex AI APIs
+1. Enables Cloud Run, Cloud Build, Artifact Registry, Firestore, and required Google AI APIs
 2. Creates an Artifact Registry Docker repository (idempotent)
 3. Builds the container image via Cloud Build
 4. Deploys to Cloud Run with session affinity and 1-hour WebSocket timeout
