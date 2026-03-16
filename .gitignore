@@ -62,6 +62,7 @@ MEMORY.md
 HANDOFF.md
 PROGRESS.md
 .claude/
+.superpowers/brainstorm/
 
 # ─── Misc ────────────────────────────────────────────────
 *.log
