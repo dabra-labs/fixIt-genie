@@ -245,7 +245,7 @@ fun SessionScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(288.dp)
+                        .height(336.dp)
                         .background(
                             Brush.verticalGradient(
                                 colorStops = arrayOf(
@@ -262,7 +262,7 @@ fun SessionScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(top = 54.dp)
+                            .padding(top = 50.dp)
                             .clip(RoundedCornerShape(26.dp))
                             .background(
                                 brush = Brush.verticalGradient(
