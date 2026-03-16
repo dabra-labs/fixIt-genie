@@ -63,6 +63,7 @@ HANDOFF.md
 PROGRESS.md
 .claude/
 .superpowers/brainstorm/
+.internal-docs/
 
 # ─── Misc ────────────────────────────────────────────────
 *.log
