@@ -80,10 +80,10 @@ fun GenieAvatar(
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(96.dp)
+            modifier = Modifier.size(78.dp)
         ) {
             // Golden aura — breathes behind the face
-            Canvas(modifier = Modifier.size(96.dp).scale(auraScale)) {
+            Canvas(modifier = Modifier.size(78.dp).scale(auraScale)) {
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(Color(0x46FF9100), Color.Transparent),
@@ -97,7 +97,7 @@ fun GenieAvatar(
             // Genie face — golden circle with emoji, floats up and down
             Box(
                 modifier = Modifier
-                    .size(74.dp)
+                    .size(58.dp)
                     .graphicsLayer { translationY = hoverOffset }
                     .clip(CircleShape)
                     .background(
@@ -110,14 +110,14 @@ fun GenieAvatar(
                     .border(2.dp, Color(0xCCFFC83C), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "🧞", fontSize = 36.sp)
+                Text(text = "🧞", fontSize = 28.sp)
             }
         }
 
         // Purple smoke tail — overlaps the face slightly
         Box(
             modifier = Modifier
-                .size(width = 32.dp, height = 18.dp)
+                .size(width = 28.dp, height = 14.dp)
                 .offset(y = (-4).dp)
                 .clip(
                     RoundedCornerShape(
@@ -135,10 +135,10 @@ fun GenieAvatar(
         // Ripple rings — only when session is active
         if (sessionState == SessionState.Active) {
             val amplitude = (0.7f + audioLevel * 0.3f).coerceIn(0.7f, 1f)
-            Canvas(modifier = Modifier.size(140.dp)) {
+            Canvas(modifier = Modifier.size(104.dp)) {
                 val cx = size.width / 2
                 val cy = size.height / 2
-                val maxRadius = size.minDimension * 0.75f
+                val maxRadius = size.minDimension * 0.62f
 
                 // 3 rings staggered by 1/3 phase each
                 listOf(0f, 0.333f, 0.667f).forEachIndexed { i, phaseOffset ->

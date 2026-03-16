@@ -55,11 +55,18 @@ object AppConfig {
     const val AUDIO_OUTPUT_GAIN = 1.9f
 
     /**
-     * While the agent is speaking, only forward mic chunks above this normalized
-     * level so nearby user speech can still barge in, but low-level speaker leak
-     * does not get fed straight back into Gemini.
+     * While the agent is speaking, open a local barge-in gate once the mic level
+     * crosses this threshold. Keep it low enough for natural interruptions,
+     * while relying on AEC to reject most speaker leakage.
      */
-    const val AUDIO_BARGE_IN_LEVEL = 0.18f
+    const val AUDIO_BARGE_IN_LEVEL = 0.10f
+
+    /**
+     * After detecting likely user speech during playback, keep forwarding a short
+     * run of subsequent mic chunks so Gemini receives a continuous interruption
+     * instead of a single loud syllable.
+     */
+    const val AUDIO_BARGE_IN_HOLD_CHUNKS = 18
 
     /** App version display */
     const val VERSION = "1.0.0"

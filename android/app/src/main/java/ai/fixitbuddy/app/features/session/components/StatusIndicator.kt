@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.fixitbuddy.app.R
@@ -53,12 +55,12 @@ fun StatusIndicator(
 
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color.Black.copy(alpha = 0.6f),
-        modifier = modifier
+        color = Color(0xCC080810),
+        modifier = modifier.border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
         ) {
             PulsingDot(
                 color = color,
@@ -68,7 +70,9 @@ fun StatusIndicator(
             Text(
                 text = text,
                 color = Color.White,
-                fontSize = 13.sp
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

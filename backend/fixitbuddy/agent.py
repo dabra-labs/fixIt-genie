@@ -1,24 +1,42 @@
 """FixIt Genie — ADK Agent Definition."""
+import logging
 import os
 
 from google.adk.agents import Agent
-from google.adk.tools.google_search_tool import GoogleSearchTool
 
 try:
     from tools import (
+        complete_session,
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
-        analyze_youtube_repair_video,
-        lookup_user_manual,
+    )
+    from telemetry import (
+        after_agent_callback,
+        after_model_callback,
+        after_tool_callback,
+        before_agent_callback,
+        before_model_callback,
+        before_tool_callback,
+        on_model_error_callback,
+        on_tool_error_callback,
     )
 except ImportError:
     from .tools import (
+        complete_session,
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
-        analyze_youtube_repair_video,
-        lookup_user_manual,
+    )
+    from .telemetry import (
+        after_agent_callback,
+        after_model_callback,
+        after_tool_callback,
+        before_agent_callback,
+        before_model_callback,
+        before_tool_callback,
+        on_model_error_callback,
+        on_tool_error_callback,
     )
 
 # Default to the native audio model for live streaming (bidiGenerateContent).
@@ -26,6 +44,7 @@ except ImportError:
 #   AGENT_MODEL=gemini-2.5-flash
 _DEFAULT_MODEL = "gemini-2.5-flash-native-audio-latest"
 _MODEL = os.environ.get("AGENT_MODEL", _DEFAULT_MODEL)
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_INSTRUCTION = """You are FixIt Genie, an expert equipment diagnosis and repair assistant.
@@ -59,12 +78,11 @@ TOOL USAGE:
 - get_safety_warnings: ALWAYS before ANY instruction involving physical action
   (turning valves, touching wires, opening panels, etc.) — non-negotiable.
 - log_diagnostic_step: Record each significant step for the session transcript.
-- google_search: Use for unknown models, uncommon error codes, brand-specific
-  procedures, or to find YouTube repair tutorials.
-- analyze_youtube_repair_video: When google_search returns a YouTube URL for a
-  relevant repair video, call this to extract and narrate the repair steps.
-- lookup_user_manual: When the user mentions a specific brand and model number,
-  fetch the official manufacturer manual for error codes and procedures.
+- complete_session: Call only after the user explicitly confirms the fix worked
+  and they are done. Give a brief goodbye first, then call the tool so the app
+  can close the session automatically.
+- On the first response, prefer what you can directly see and what the
+  knowledge base already knows.
 
 COMMUNICATION STYLE:
 - Speak naturally, like a knowledgeable friend helping in the garage
@@ -75,14 +93,30 @@ COMMUNICATION STYLE:
 - For live demos, keep the first answer short: identify what you see, give the
   most likely meaning, then give only the easiest next action and wait
 - When you see something through the camera, describe it to build trust
+- If you need a better view, explicitly tell the user where to point the camera
+  and what you want to see. Example: "Point the camera closer to the water
+  dispenser display and hold it steady for two seconds"
+- If you are checking the display or using a tool, say so briefly out loud.
+  Example: "Hold that there, I'm reading the display" or "Give me a second, I'm
+  checking that code"
 
 VISUAL AWARENESS:
 - Actively describe what you see to build trust ("I can see a row of breakers...")
 - Call out anything concerning you notice, even if the user didn't ask
 - Read text, labels, gauges, and error codes proactively
+- Treat exact visible display text as a high-priority clue; if the panel says
+  something like OFF, 0FF, CL, dE1, or Er FF, say that text out loud before moving
+  into generic troubleshooting
+- If a display or error code is visible, spend your first moment reading it
+  carefully before describing vents, noises, or generic maintenance ideas
 - When reading an error code, say the characters distinctly one by one
 - If a character is ambiguous (for example 1/I, 0/O, 5/S, 8/B, P/F), say what
   you think it is and ask the user to confirm instead of pretending certainty
+- If you can only see a partial fridge display like FF, do not guess whether it
+  means OFF/0FF demo mode or Er FF. Ask for a tighter, steadier shot of the
+  full water-dispenser/control panel before diagnosing
+- When the current camera framing is not good enough, your next response should
+  first tell the user exactly how to reframe the shot before you continue
 - If lighting is poor, suggest the user turn on the flashlight (the app has one)
 
 APPLIANCE ERROR-CODE RULES:
@@ -91,10 +125,22 @@ APPLIANCE ERROR-CODE RULES:
 - Prefer the lowest-friction visible fix first: close a door, reseat a drawer,
   press a clearly labeled button, or remove an obvious obstruction before
   suggesting unplugging, pulling the unit out, or longer troubleshooting
+- If an exact button combination or menu path depends on the specific model,
+  ask for the model number or a clear view of the control panel instead of
+  guessing
 - If the easiest first step fails, then offer the next fallback step
+- For demo-mode displays like OFF on a refrigerator, first identify the visible
+  display state, explain the likely meaning briefly, and only then decide
+  whether you need a clearer model/control-panel view
+- Indicator lights like FILTER or CHILD LOCK are secondary clues. If there is
+  visible alphanumeric display text, prioritize reading that text correctly
+  before discussing indicator lights or generic maintenance
+- Do not end the session just because you think the issue is solved. First ask
+  for confirmation that the fix worked and whether the user needs anything else
+- If the user clearly says the issue is fixed and they are done, respond with a
+  short closing line like "Glad that fixed it. Bye for now." and then call
+  complete_session
 """
-
-_google_search = GoogleSearchTool(bypass_multi_tools_limit=True)
 
 agent = Agent(
     model=_MODEL,
@@ -102,14 +148,26 @@ agent = Agent(
     description="A multimodal equipment diagnosis and repair assistant that sees through your camera and talks you through fixes step-by-step.",
     instruction=SYSTEM_INSTRUCTION,
     tools=[
+        complete_session,
         lookup_equipment_knowledge,
         get_safety_warnings,
         log_diagnostic_step,
-        _google_search,
-        analyze_youtube_repair_video,
-        lookup_user_manual,
     ],
+    before_agent_callback=before_agent_callback,
+    after_agent_callback=after_agent_callback,
+    before_model_callback=before_model_callback,
+    after_model_callback=after_model_callback,
+    on_model_error_callback=on_model_error_callback,
+    before_tool_callback=before_tool_callback,
+    after_tool_callback=after_tool_callback,
+    on_tool_error_callback=on_tool_error_callback,
 )
 
 # Export as root_agent for ADK
 root_agent = agent
+
+logger.info(
+    "FixIt Genie agent configured with model=%s tools=%s",
+    _MODEL,
+    [getattr(tool, "__name__", type(tool).__name__) for tool in agent.tools],
+)

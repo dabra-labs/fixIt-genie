@@ -3,8 +3,6 @@ package ai.fixitbuddy.app.features.session
 import android.Manifest
 import android.util.Log
 import androidx.annotation.RequiresPermission
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ai.fixitbuddy.app.core.audio.AudioStreamManager
@@ -15,28 +13,34 @@ import ai.fixitbuddy.app.core.config.AppConfig
 import ai.fixitbuddy.app.core.websocket.AgentMessage
 import ai.fixitbuddy.app.core.websocket.AgentWebSocket
 import ai.fixitbuddy.app.core.websocket.ConnectionState
+import ai.fixitbuddy.app.core.websocket.TranscriptSpeaker
 import ai.fixitbuddy.app.features.history.SessionHistoryStore
 import ai.fixitbuddy.app.features.history.SessionRecord
-import ai.fixitbuddy.app.features.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import javax.inject.Inject
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.coroutines.resume
 import kotlin.math.sqrt
 
 /** A single spoken exchange in the session conversation. */
@@ -72,7 +76,6 @@ class SessionViewModel @Inject constructor(
     val glassesCameraManager: GlassesCameraManager,
     private val audioManager: AudioStreamManager,
     private val webSocket: AgentWebSocket,
-    private val dataStore: DataStore<Preferences>,
     private val okHttpClient: OkHttpClient,
     private val historyStore: SessionHistoryStore
 ) : ViewModel() {
@@ -106,6 +109,38 @@ class SessionViewModel @Inject constructor(
     /** Jobs for streaming forwarding — cancelled on stopSession() */
     private var sessionJob: Job? = null
     private var frameForwardingJob: Job? = null
+    private var audioForwardingJob: Job? = null
+    private var autoCloseJob: Job? = null
+    private val bargeInAudioGate = BargeInAudioGate()
+    @Volatile private var pendingAutoClose = false
+    @Volatile private var manualStopInProgress = false
+
+    private fun hasRunningSessionJob(): Boolean = sessionJob?.isActive == true
+
+    private fun cancelStreamingJobs() {
+        frameForwardingJob?.cancel()
+        frameForwardingJob = null
+        audioForwardingJob?.cancel()
+        audioForwardingJob = null
+        sessionJob?.cancel()
+        sessionJob = null
+    }
+
+    private fun cancelAutoClose() {
+        pendingAutoClose = false
+        autoCloseJob?.cancel()
+        autoCloseJob = null
+    }
+
+    private fun scheduleAutoCloseAfterGoodbye() {
+        autoCloseJob?.cancel()
+        autoCloseJob = viewModelScope.launch {
+            delay(AUTO_CLOSE_AFTER_GOODBYE_MS)
+            if (pendingAutoClose && _uiState.value.sessionState == SessionState.Active) {
+                stopSession()
+            }
+        }
+    }
 
     init {
         observeConnectionState()
@@ -122,26 +157,50 @@ class SessionViewModel @Inject constructor(
                             sessionState = SessionState.Connecting,
                             errorMessage = null
                         )
-                        ConnectionState.CONNECTED -> current.copy(
-                            sessionState = SessionState.Active,
-                            agentState = "listening",
-                            errorMessage = null,
-                            chatTurns = listOf(
-                                ChatTurn(ChatRole.GENIE, "✨ Hello! I'm FixIt Genie. Point your camera at whatever needs fixing and tell me what's wrong — I'll guide you through it step by step. What are we tackling today?")
-                            )
-                        )
-                        ConnectionState.ERROR -> {
-                            genieIsSpeaking = false
+                        ConnectionState.CONNECTED -> {
+                            manualStopInProgress = false
                             current.copy(
-                                sessionState = SessionState.Error,
-                                errorMessage = "Connection failed. Check your network and backend URL."
+                                sessionState = SessionState.Active,
+                                agentState = "listening",
+                                errorMessage = null,
+                                chatTurns = emptyList()
                             )
                         }
-                        ConnectionState.DISCONNECTED -> {
-                            if (current.sessionState != SessionState.Idle) {
-                                genieIsSpeaking = false
+                        ConnectionState.ERROR -> {
+                            genieIsSpeaking = false
+                            cancelStreamingJobs()
+                            cancelAutoClose()
+                            audioManager.stopRecording()
+                            audioManager.stopPlayback()
+                            agentSpeaking = false
+                            bargeInAudioGate.reset()
+                            if (manualStopInProgress || current.sessionState == SessionState.Idle) {
+                                manualStopInProgress = false
                                 current.copy(
                                     sessionState = SessionState.Idle,
+                                    agentState = "idle",
+                                    errorMessage = null
+                                )
+                            } else {
+                                current.copy(
+                                    sessionState = SessionState.Error,
+                                    errorMessage = "Connection failed. Check your network and backend URL."
+                                )
+                            }
+                        }
+                        ConnectionState.DISCONNECTED -> {
+                            if (current.sessionState != SessionState.Idle || manualStopInProgress) {
+                                genieIsSpeaking = false
+                                cancelStreamingJobs()
+                                cancelAutoClose()
+                                audioManager.stopRecording()
+                                audioManager.stopPlayback()
+                                agentSpeaking = false
+                                bargeInAudioGate.reset()
+                                manualStopInProgress = false
+                                current.copy(
+                                    sessionState = SessionState.Idle,
+                                    agentState = "idle",
                                     errorMessage = null
                                 )
                             } else {
@@ -166,30 +225,55 @@ class SessionViewModel @Inject constructor(
                         turnEndJob = launch {
                             delay(1200)
                             agentSpeaking = false
+                            bargeInAudioGate.reset()
                         }
                     }
                     is AgentMessage.Transcript -> {
-                        val text = message.text
-                        _uiState.update { current ->
-                            val turns = current.chatTurns.toMutableList()
-                            if (!genieIsSpeaking || turns.isEmpty() || turns.last().role != ChatRole.GENIE) {
-                                genieIsSpeaking = true
-                                turns.add(ChatTurn(ChatRole.GENIE, text))
-                            } else {
-                                turns[turns.lastIndex] = ChatTurn(ChatRole.GENIE, text)
+                        if (message.speaker == TranscriptSpeaker.GENIE) {
+                            val text = message.text
+                            _uiState.update { current ->
+                                val turns = current.chatTurns.toMutableList()
+                                if (!genieIsSpeaking || turns.isEmpty() || turns.last().role != ChatRole.GENIE) {
+                                    genieIsSpeaking = true
+                                    turns.add(ChatTurn(ChatRole.GENIE, text))
+                                } else {
+                                    turns[turns.lastIndex] = ChatTurn(ChatRole.GENIE, text)
+                                }
+                                current.copy(
+                                    transcript = text,
+                                    chatTurns = turns,
+                                    agentState = if (current.agentState == "thinking") "speaking" else current.agentState
+                                )
                             }
-                            current.copy(transcript = text, chatTurns = turns)
+                        } else {
+                            cancelAutoClose()
+                            _uiState.update { current ->
+                                val turns = current.chatTurns.toMutableList()
+                                if (turns.isEmpty() || turns.last().role != ChatRole.USER) {
+                                    turns.add(ChatTurn(ChatRole.USER, message.text))
+                                } else {
+                                    turns[turns.lastIndex] = ChatTurn(ChatRole.USER, message.text)
+                                }
+                                current.copy(
+                                    chatTurns = turns,
+                                    agentState = if (message.isFinal) "thinking" else current.agentState
+                                )
+                            }
                         }
                     }
                     is AgentMessage.Status -> {
                         val state = message.state
                         _uiState.update { current ->
-                            val turns = current.chatTurns.toMutableList()
                             if (state == "listening" && genieIsSpeaking) {
                                 genieIsSpeaking = false
-                                turns.add(ChatTurn(ChatRole.USER, ""))
                             }
-                            current.copy(agentState = state, chatTurns = turns)
+                            current.copy(
+                                agentState = if (state == "listening" && pendingAutoClose) {
+                                    "wrapping up"
+                                } else {
+                                    state
+                                }
+                            )
                         }
                         if (state == "listening") {
                             // Cancel the 1200ms fallback timer — we got the real turn-end signal.
@@ -198,22 +282,35 @@ class SessionViewModel @Inject constructor(
                             launch {
                                 delay(400)
                                 agentSpeaking = false
+                                bargeInAudioGate.reset()
+                            }
+                            if (pendingAutoClose) {
+                                scheduleAutoCloseAfterGoodbye()
                             }
                         }
                     }
                     is AgentMessage.Interrupted -> {
                         turnEndJob?.cancel()
+                        cancelAutoClose()
                         audioManager.interrupt()
                         agentSpeaking = false
+                        bargeInAudioGate.reset()
                     }
                     is AgentMessage.ToolCall -> {
                         // Tool calls are handled server-side; we display them via chip + status
                         // Increment toolCallCount so the chip retriggers even for repeated tool names
+                        if (message.toolName == "complete_session") {
+                            pendingAutoClose = true
+                        }
                         _uiState.update {
                             it.copy(
                                 lastToolCall = message.toolName,
                                 toolCallCount = it.toolCallCount + 1,
-                                agentState = "using ${message.toolName}"
+                                agentState = if (message.toolName == "complete_session") {
+                                    "wrapping up"
+                                } else {
+                                    "using ${message.toolName}"
+                                }
                             )
                         }
                     }
@@ -238,7 +335,7 @@ class SessionViewModel @Inject constructor(
     }
 
     fun switchCameraSource(source: CameraSource) {
-        val sessionActive = sessionJob != null
+        val sessionActive = hasRunningSessionJob()
         Log.i(TAG, "Switching camera source → $source (sessionActive=$sessionActive)")
         _uiState.update { it.copy(cameraSource = source) }
         if (source == CameraSource.GLASSES) {
@@ -275,11 +372,31 @@ class SessionViewModel @Inject constructor(
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun startSession() {
+        if (hasRunningSessionJob() ||
+            _uiState.value.sessionState == SessionState.Connecting ||
+            _uiState.value.sessionState == SessionState.Active
+        ) {
+            Log.d(TAG, "startSession ignored — session already starting or active")
+            return
+        }
+
         sessionStartMs = System.currentTimeMillis()
-        sessionJob = viewModelScope.launch(Dispatchers.IO) {
-            val baseUrl = dataStore.data.map { prefs ->
-                prefs[SettingsViewModel.BACKEND_URL_KEY] ?: AppConfig.BACKEND_URL
-            }.first()
+        manualStopInProgress = false
+        cancelAutoClose()
+        _uiState.update {
+            it.copy(
+                sessionState = SessionState.Connecting,
+                transcript = "",
+                chatTurns = emptyList(),
+                agentState = "connecting",
+                lastToolCall = null,
+                toolCallCount = 0,
+                errorMessage = null
+            )
+        }
+
+        val job = viewModelScope.launch(Dispatchers.IO) {
+            val baseUrl = AppConfig.BACKEND_URL
 
             // Step 1: Create ADK session via REST
             val sessionId = createAdkSession(baseUrl, webSocket.userId)
@@ -292,6 +409,7 @@ class SessionViewModel @Inject constructor(
                 }
                 return@launch
             }
+            currentCoroutineContext().ensureActive()
 
             // Step 2: Build WebSocket URL with required ADK query params
             val wsBase = baseUrl
@@ -305,10 +423,12 @@ class SessionViewModel @Inject constructor(
 
             // Step 3: Connect WebSocket
             webSocket.connect(wsUrl)
+            currentCoroutineContext().ensureActive()
 
             // Step 4: Init audio — done here (inside coroutine, after session is confirmed)
             // so the mic is never left running if createAdkSession() failed above.
             withContext(Dispatchers.Main) { audioManager.initPlayback() }
+            currentCoroutineContext().ensureActive()
             audioManager.startRecording()
 
             // Step 5: Forward camera frames — restartable via switchCameraSource()
@@ -318,12 +438,19 @@ class SessionViewModel @Inject constructor(
             // has built-in VAD, but we still drop low-level mic leakage while the
             // agent is speaking so nearby user speech can interrupt without feeding
             // speaker echo straight back into the model.
-            launch {
+            audioForwardingJob?.cancel()
+            audioForwardingJob = viewModelScope.launch(Dispatchers.IO) {
                 audioManager.audioChunks.collect { chunk ->
-                    if (shouldForwardMicChunk(chunk, agentSpeaking)) {
+                    if (bargeInAudioGate.shouldForward(chunk, agentSpeaking)) {
                         webSocket.sendAudioChunk(chunk)
                     }
                 }
+            }
+        }
+        sessionJob = job
+        job.invokeOnCompletion {
+            if (sessionJob === job) {
+                sessionJob = null
             }
         }
     }
@@ -334,38 +461,62 @@ class SessionViewModel @Inject constructor(
      * Returns the session ID on success, null on failure.
      */
     private suspend fun createAdkSession(baseUrl: String, userId: String): String? =
-        withContext(Dispatchers.IO) {
+        suspendCancellableCoroutine { continuation ->
             try {
                 val url = "$baseUrl/apps/fixitbuddy/users/$userId/sessions"
                 val request = Request.Builder()
                     .url(url)
                     .post("{}".toRequestBody("application/json".toMediaType()))
                     .build()
-                okHttpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        Log.w(TAG, "ADK session creation failed: HTTP ${response.code}")
-                        return@withContext null
-                    }
-                    val body = response.body?.string() ?: run {
-                        Log.w(TAG, "ADK session creation failed: empty response body")
-                        return@withContext null
-                    }
-                    // Parse {"id":"..."} from response
-                    val match = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(body)
-                    match?.groupValues?.get(1)
+                val call = okHttpClient.newCall(request)
+
+                continuation.invokeOnCancellation {
+                    call.cancel()
                 }
+
+                call.enqueue(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        if (!continuation.isActive) return
+                        Log.w(TAG, "Failed to create ADK session", e)
+                        continuation.resume(null)
+                    }
+
+                    override fun onResponse(call: Call, response: Response) {
+                        response.use { httpResponse ->
+                            val sessionId = if (!httpResponse.isSuccessful) {
+                                Log.w(TAG, "ADK session creation failed: HTTP ${httpResponse.code}")
+                                null
+                            } else {
+                                val body = httpResponse.body?.string()
+                                if (body.isNullOrBlank()) {
+                                    Log.w(TAG, "ADK session creation failed: empty response body")
+                                    null
+                                } else {
+                                    Regex("\"id\"\\s*:\\s*\"([^\"]+)\"")
+                                        .find(body)
+                                        ?.groupValues
+                                        ?.get(1)
+                                }
+                            }
+                            if (continuation.isActive) {
+                                continuation.resume(sessionId)
+                            }
+                        }
+                    }
+                })
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to create ADK session", e)
-                null
+                if (continuation.isActive) {
+                    Log.w(TAG, "Failed to create ADK session", e)
+                    continuation.resume(null)
+                }
             }
         }
 
     fun stopSession() {
+        manualStopInProgress = true
+        cancelAutoClose()
         // Cancel streaming forwarding jobs
-        frameForwardingJob?.cancel()
-        frameForwardingJob = null
-        sessionJob?.cancel()
-        sessionJob = null
+        cancelStreamingJobs()
         glassesCameraManager.stopStream()
 
         // Save session to history if it was active
@@ -387,6 +538,7 @@ class SessionViewModel @Inject constructor(
         sessionStartMs = 0L
         agentSpeaking = false
         genieIsSpeaking = false
+        bargeInAudioGate.reset()
 
         audioManager.stopRecording()
         audioManager.stopPlayback()
@@ -425,12 +577,42 @@ class SessionViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "SessionViewModel"
+        private const val AUTO_CLOSE_AFTER_GOODBYE_MS = 1500L
     }
 }
 
 internal fun shouldForwardMicChunk(chunk: ByteArray, agentSpeaking: Boolean): Boolean {
     if (!agentSpeaking) return true
     return normalizedPcmLevel(chunk) >= AppConfig.AUDIO_BARGE_IN_LEVEL
+}
+
+internal class BargeInAudioGate(
+    private val triggerLevel: Float = AppConfig.AUDIO_BARGE_IN_LEVEL,
+    private val holdChunks: Int = AppConfig.AUDIO_BARGE_IN_HOLD_CHUNKS,
+) {
+    private var remainingForwardedChunks = 0
+
+    fun shouldForward(chunk: ByteArray, agentSpeaking: Boolean): Boolean {
+        if (!agentSpeaking) {
+            remainingForwardedChunks = 0
+            return true
+        }
+
+        if (normalizedPcmLevel(chunk) >= triggerLevel) {
+            remainingForwardedChunks = holdChunks
+        }
+
+        if (remainingForwardedChunks > 0) {
+            remainingForwardedChunks -= 1
+            return true
+        }
+
+        return false
+    }
+
+    fun reset() {
+        remainingForwardedChunks = 0
+    }
 }
 
 internal fun normalizedPcmLevel(chunk: ByteArray): Float {

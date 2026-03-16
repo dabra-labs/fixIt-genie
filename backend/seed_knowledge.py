@@ -1,4 +1,4 @@
-"""Seed Firestore with equipment knowledge base data + text-embedding-004 vectors."""
+"""Seed Firestore with equipment knowledge base data + Gemini embeddings."""
 from __future__ import annotations
 
 import os
@@ -7,10 +7,11 @@ from google.cloud import firestore
 
 
 _EMBED_MODEL = "gemini-embedding-001"
+_EMBED_DIMENSIONS = 1536
 
 
-def _embed_text(text: str) -> list[float]:
-    """Generate a 3072-dim embedding vector via the Gemini REST API."""
+def _embed_text(text: str, title: str = "") -> list[float]:
+    """Generate a Firestore-compatible embedding vector via the Gemini REST API."""
     import requests
 
     api_key = os.environ["GOOGLE_API_KEY"]
@@ -18,7 +19,11 @@ def _embed_text(text: str) -> list[float]:
     payload = {
         "model": f"models/{_EMBED_MODEL}",
         "content": {"parts": [{"text": text}]},
+        "taskType": "RETRIEVAL_DOCUMENT",
+        "outputDimensionality": _EMBED_DIMENSIONS,
     }
+    if title:
+        payload["title"] = title
     resp = requests.post(url, json=payload, params={"key": api_key}, timeout=30)
     resp.raise_for_status()
     return resp.json()["embedding"]["values"]
@@ -48,7 +53,7 @@ def seed() -> None:
         embed_text = " ".join(p for p in embed_parts if p)
 
         print(f"  Embedding {doc_id}...", end=" ", flush=True)
-        embedding = _embed_text(embed_text)
+        embedding = _embed_text(embed_text, title=data.get("name", doc_id))
 
         doc_data = {**data, "embedding": embedding}
         db.collection("equipment").document(doc_id).set(doc_data)

@@ -1,7 +1,5 @@
 package ai.fixitbuddy.app.features.session
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 import ai.fixitbuddy.app.core.audio.AudioStreamManager
 import ai.fixitbuddy.app.core.camera.CameraManager
 import ai.fixitbuddy.app.core.camera.GlassesCameraManager
@@ -9,21 +7,29 @@ import ai.fixitbuddy.app.core.camera.GlassesState
 import ai.fixitbuddy.app.core.websocket.AgentMessage
 import ai.fixitbuddy.app.core.websocket.AgentWebSocket
 import ai.fixitbuddy.app.core.websocket.ConnectionState
+import ai.fixitbuddy.app.core.websocket.TranscriptSpeaker
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
+import okhttp3.MediaType.Companion.toMediaType
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionViewModelTest {
@@ -33,7 +39,6 @@ class SessionViewModelTest {
     private lateinit var glassesCameraManager: GlassesCameraManager
     private lateinit var audioManager: AudioStreamManager
     private lateinit var webSocket: AgentWebSocket
-    private lateinit var dataStore: DataStore<Preferences>
     private lateinit var okHttpClient: OkHttpClient
     private lateinit var historyStore: ai.fixitbuddy.app.features.history.SessionHistoryStore
 
@@ -48,7 +53,6 @@ class SessionViewModelTest {
         glassesCameraManager = mockk(relaxed = true)
         audioManager = mockk(relaxed = true)
         webSocket = mockk(relaxed = true)
-        dataStore = mockk(relaxed = true)
         okHttpClient = mockk(relaxed = true)
         historyStore = mockk(relaxed = true)
 
@@ -59,7 +63,6 @@ class SessionViewModelTest {
         every { glassesCameraManager.connectionState } returns MutableStateFlow(GlassesState.DISCONNECTED)
         every { audioManager.audioChunks } returns MutableSharedFlow()
         every { audioManager.audioLevel } returns MutableStateFlow(0f)
-        every { dataStore.data } returns flowOf(mockk(relaxed = true))
     }
 
     @After
@@ -68,7 +71,27 @@ class SessionViewModelTest {
     }
 
     private fun createViewModel(): SessionViewModel {
-        return SessionViewModel(cameraManager, glassesCameraManager, audioManager, webSocket, dataStore, okHttpClient, historyStore)
+        return SessionViewModel(cameraManager, glassesCameraManager, audioManager, webSocket, okHttpClient, historyStore)
+    }
+
+    private fun mockSuccessfulSessionCreation(sessionId: String = "session-123") {
+        val call = mockk<Call>()
+        every { webSocket.userId } returns "fixitbuddy_user"
+        every { okHttpClient.newCall(any()) } returns call
+        every { call.cancel() } just Runs
+        every { call.enqueue(any()) } answers {
+            val callback = firstArg<Callback>()
+            callback.onResponse(
+                call,
+                Response.Builder()
+                    .request(Request.Builder().url("https://example.com").build())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("""{"id":"$sessionId"}""".toResponseBody("application/json".toMediaType()))
+                    .build()
+            )
+        }
     }
 
     @Test
@@ -115,12 +138,24 @@ class SessionViewModelTest {
     @Test
     fun `connection state ERROR updates UI with error message`() = runTest {
         val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTING
+        testDispatcher.scheduler.advanceUntilIdle()
         connectionStateFlow.value = ConnectionState.ERROR
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(SessionState.Error, vm.uiState.value.sessionState)
         assertNotNull(vm.uiState.value.errorMessage)
         assertTrue(vm.uiState.value.errorMessage!!.contains("Connection failed"))
+    }
+
+    @Test
+    fun `connection state ERROR stops audio cleanup`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.ERROR
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(atLeast = 1) { audioManager.stopRecording() }
+        verify(atLeast = 1) { audioManager.stopPlayback() }
     }
 
     @Test
@@ -139,6 +174,19 @@ class SessionViewModelTest {
     }
 
     @Test
+    fun `connection state DISCONNECTED while Active stops audio cleanup`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        connectionStateFlow.value = ConnectionState.DISCONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(atLeast = 1) { audioManager.stopRecording() }
+        verify(atLeast = 1) { audioManager.stopPlayback() }
+    }
+
+    @Test
     fun `connection state DISCONNECTED while Idle stays Idle`() = runTest {
         val vm = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -147,6 +195,78 @@ class SessionViewModelTest {
         connectionStateFlow.value = ConnectionState.DISCONNECTED
         testDispatcher.scheduler.advanceUntilIdle()
 
+        assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
+    }
+
+    @Test
+    fun `startSession immediately updates UI to Connecting`() = runTest {
+        mockSuccessfulSessionCreation()
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.startSession()
+
+        assertEquals(SessionState.Connecting, vm.uiState.value.sessionState)
+        assertEquals("connecting", vm.uiState.value.agentState)
+        assertNull(vm.uiState.value.errorMessage)
+        verify(timeout = 1000, exactly = 1) { okHttpClient.newCall(any()) }
+
+        vm.stopSession()
+    }
+
+    @Test
+    fun `startSession ignores repeated taps while connecting`() = runTest {
+        mockSuccessfulSessionCreation()
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.startSession()
+        vm.startSession()
+
+        assertEquals(SessionState.Connecting, vm.uiState.value.sessionState)
+        verify(timeout = 1000, exactly = 1) { okHttpClient.newCall(any()) }
+        verify(timeout = 1000, exactly = 1) { webSocket.connect(any()) }
+
+        vm.stopSession()
+    }
+
+    @Test
+    fun `stopSession cancels in flight session creation and does not continue startup`() = runTest {
+        val call = mockk<Call>()
+        val callbackRef = AtomicReference<Callback?>()
+        every { webSocket.userId } returns "fixitbuddy_user"
+        every { okHttpClient.newCall(any()) } returns call
+        every { call.cancel() } just Runs
+        every { call.enqueue(any()) } answers {
+            callbackRef.set(firstArg())
+        }
+
+        val vm = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.startSession()
+        verify(timeout = 1000, exactly = 1) { call.enqueue(any()) }
+        assertEquals(SessionState.Connecting, vm.uiState.value.sessionState)
+        assertNotNull(callbackRef.get())
+
+        vm.stopSession()
+        verify(timeout = 1000, exactly = 1) { call.cancel() }
+
+        callbackRef.get()!!.onResponse(
+            call,
+            Response.Builder()
+                .request(Request.Builder().url("https://example.com").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body("""{"id":"session-late"}""".toResponseBody("application/json".toMediaType()))
+                .build()
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(exactly = 0) { webSocket.connect(any()) }
+        verify(exactly = 0) { audioManager.initPlayback() }
+        verify(exactly = 0) { audioManager.startRecording() }
         assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
     }
 
@@ -237,6 +357,90 @@ class SessionViewModelTest {
     }
 
     @Test
+    fun `complete_session tool call waits for goodbye turn then auto closes`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.ToolCall("complete_session", """{"reason":"fixed"}"""))
+        incomingMessagesFlow.emit(AgentMessage.Status("listening"))
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals("wrapping up", vm.uiState.value.agentState)
+        assertEquals(SessionState.Active, vm.uiState.value.sessionState)
+
+        testDispatcher.scheduler.advanceTimeBy(1499)
+        testDispatcher.scheduler.runCurrent()
+        assertEquals(SessionState.Active, vm.uiState.value.sessionState)
+
+        testDispatcher.scheduler.advanceTimeBy(1)
+        testDispatcher.scheduler.runCurrent()
+        assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
+        verify { webSocket.disconnect() }
+    }
+
+    @Test
+    fun `user transcript cancels pending auto close`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        incomingMessagesFlow.emit(AgentMessage.ToolCall("complete_session", """{"reason":"fixed"}"""))
+        incomingMessagesFlow.emit(AgentMessage.Status("listening"))
+        testDispatcher.scheduler.runCurrent()
+
+        testDispatcher.scheduler.advanceTimeBy(1000)
+        incomingMessagesFlow.emit(
+            AgentMessage.Transcript(
+                "Actually, one more thing",
+                true,
+                TranscriptSpeaker.USER
+            )
+        )
+        testDispatcher.scheduler.runCurrent()
+
+        testDispatcher.scheduler.advanceTimeBy(1000)
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(SessionState.Active, vm.uiState.value.sessionState)
+        verify(exactly = 0) { webSocket.disconnect() }
+    }
+
+    @Test
+    fun `live turn flow tracks tool usage transcript audio and turn completion`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val audioData = byteArrayOf(1, 2, 3, 4)
+        incomingMessagesFlow.emit(
+            AgentMessage.Transcript(
+                "my fridge is not cooling",
+                true,
+                TranscriptSpeaker.USER
+            )
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals("thinking", vm.uiState.value.agentState)
+
+        incomingMessagesFlow.emit(AgentMessage.ToolCall("lookup_equipment_knowledge", """{"query":"lg fridge off"}"""))
+        incomingMessagesFlow.emit(AgentMessage.Transcript("I can see OFF on the display.", false))
+        incomingMessagesFlow.emit(AgentMessage.Audio(audioData))
+        incomingMessagesFlow.emit(AgentMessage.Status("listening"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(SessionState.Active, state.sessionState)
+        assertEquals("lookup_equipment_knowledge", state.lastToolCall)
+        assertEquals(1, state.toolCallCount)
+        assertEquals("I can see OFF on the display.", state.transcript)
+        assertEquals("listening", state.agentState)
+        assertTrue(state.chatTurns.any { it.role == ChatRole.USER && it.text == "my fridge is not cooling" })
+        assertTrue(state.chatTurns.any { it.role == ChatRole.GENIE && it.text.contains("OFF on the display") })
+        verify { audioManager.playAudioChunk(audioData) }
+    }
+
+    @Test
     fun `audio message triggers playback`() = runTest {
         val vm = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -281,6 +485,8 @@ class SessionViewModelTest {
     @Test
     fun `stopSession clears error message`() = runTest {
         val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTING
+        testDispatcher.scheduler.advanceUntilIdle()
         connectionStateFlow.value = ConnectionState.ERROR
         testDispatcher.scheduler.advanceUntilIdle()
         assertNotNull(vm.uiState.value.errorMessage)
@@ -308,8 +514,40 @@ class SessionViewModelTest {
     }
 
     @Test
+    fun `stopSession ignores follow-up connection error without flashing error state`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.stopSession()
+        connectionStateFlow.value = ConnectionState.ERROR
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
+        assertNull(vm.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `stopSession ignores late error after disconnect callback`() = runTest {
+        val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.stopSession()
+        connectionStateFlow.value = ConnectionState.DISCONNECTED
+        testDispatcher.scheduler.advanceUntilIdle()
+        connectionStateFlow.value = ConnectionState.ERROR
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(SessionState.Idle, vm.uiState.value.sessionState)
+        assertNull(vm.uiState.value.errorMessage)
+    }
+
+    @Test
     fun `dismissError clears error message`() = runTest {
         val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTING
+        testDispatcher.scheduler.advanceUntilIdle()
         connectionStateFlow.value = ConnectionState.ERROR
         testDispatcher.scheduler.advanceUntilIdle()
         assertNotNull(vm.uiState.value.errorMessage)
@@ -408,6 +646,8 @@ class SessionViewModelTest {
     @Test
     fun `error message from connection error contains helpful text`() = runTest {
         val vm = createViewModel()
+        connectionStateFlow.value = ConnectionState.CONNECTING
+        testDispatcher.scheduler.advanceUntilIdle()
         connectionStateFlow.value = ConnectionState.ERROR
         testDispatcher.scheduler.advanceUntilIdle()
 

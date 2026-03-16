@@ -45,7 +45,7 @@ The backend has been deployed **10 times** across the hackathon build — each d
 | **Cloud Run** | Hosts the ADK agent with persistent WebSocket + session affinity | [deploy.sh](backend/deploy.sh) |
 | **Cloud Build** | Builds the Docker container on deploy | [deploy.sh#L73](backend/deploy.sh#L73) |
 | **Artifact Registry** | Stores Docker images | [deploy.sh#L55](backend/deploy.sh#L55) |
-| **Cloud Firestore** | Vector search knowledge base (gemini-embedding-001, 3072-dim COSINE) | [tools.py#L9](backend/fixitbuddy/tools.py#L9) |
+| **Cloud Firestore** | Vector search knowledge base (gemini-embedding-001, 1536-dim COSINE) | [tools.py#L9](backend/fixitbuddy/tools.py#L9) |
 | **Gemini API** | gemini-2.5-flash-native-audio-latest for bidi-streaming | [agent.py#L30](backend/fixitbuddy/agent.py#L30) |
 
 ---

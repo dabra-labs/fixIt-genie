@@ -15,9 +15,11 @@ import androidx.annotation.RequiresPermission
 import dagger.hilt.android.qualifiers.ApplicationContext
 import ai.fixitbuddy.app.core.config.AppConfig
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -56,6 +58,7 @@ class AudioStreamManager @Inject constructor(
 ) {
 
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private val audioTrackLock = Any()
 
     // ── Recording (mic → backend) ──────────────────────────
 
@@ -170,25 +173,34 @@ class AudioStreamManager @Inject constructor(
             AudioFormat.ENCODING_PCM_16BIT
         )
 
-        audioTrack = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
-            )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setSampleRate(AppConfig.AUDIO_OUTPUT_SAMPLE_RATE)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .build()
-            )
-            .setBufferSizeInBytes(bufferSize * 8)
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
+        synchronized(audioTrackLock) {
+            audioTrack = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setSampleRate(AppConfig.AUDIO_OUTPUT_SAMPLE_RATE)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .build()
+                )
+                .setBufferSizeInBytes(bufferSize * 8)
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
 
-        audioTrack?.play()
+            try {
+                audioTrack?.play()
+            } catch (e: IllegalStateException) {
+                Log.e(TAG, "AudioTrack.play() failed during init", e)
+                audioTrack?.release()
+                audioTrack = null
+                return
+            }
+        }
 
         // Drain audio chunks on a dedicated IO thread to avoid blocking Main
         val ch = Channel<ByteArray>(capacity = AppConfig.AUDIO_PLAYBACK_QUEUE_CAPACITY)
@@ -214,7 +226,13 @@ class AudioStreamManager @Inject constructor(
         // flush() discards data already submitted to AudioTrack's hardware buffer and
         // unblocks any in-progress write() call in the old coroutine, preventing a race
         // where the old and new coroutines both write to the same AudioTrack concurrently.
-        audioTrack?.flush()
+        synchronized(audioTrackLock) {
+            try {
+                audioTrack?.flush()
+            } catch (e: IllegalStateException) {
+                Log.w(TAG, "AudioTrack.flush() failed during interrupt", e)
+            }
+        }
         startPlaybackLoop(ch)
         Log.d(TAG, "Playback interrupted — audio queue cleared")
     }
@@ -224,13 +242,15 @@ class AudioStreamManager @Inject constructor(
         playbackChannel = null
         playbackJob?.cancel()
         playbackJob = null
-        try {
-            audioTrack?.stop()
-            audioTrack?.release()
-        } catch (e: IllegalStateException) {
-            Log.w(TAG, "AudioTrack already stopped", e)
+        synchronized(audioTrackLock) {
+            try {
+                audioTrack?.stop()
+                audioTrack?.release()
+            } catch (e: IllegalStateException) {
+                Log.w(TAG, "AudioTrack already stopped", e)
+            }
+            audioTrack = null
         }
-        audioTrack = null
     }
 
     fun releaseAll() {
@@ -302,10 +322,24 @@ class AudioStreamManager @Inject constructor(
 
     private fun startPlaybackLoop(channel: Channel<ByteArray>) {
         playbackJob = playbackScope.launch {
-            while (true) {
-                val firstChunk = channel.receiveCatching().getOrNull() ?: break
-                val batchedChunk = collectPlaybackBatch(firstChunk, channel)
-                writeFullyToTrack(batchedChunk)
+            try {
+                while (isActive) {
+                    val firstChunk = channel.receiveCatching().getOrNull() ?: break
+                    val batchedChunk = collectPlaybackBatch(firstChunk, channel)
+                    writeFullyToTrack(batchedChunk)
+                }
+            } catch (_: CancellationException) {
+                // Normal shutdown path.
+            } catch (t: Throwable) {
+                Log.e(TAG, "Playback loop aborted after audio pipeline failure", t)
+                synchronized(audioTrackLock) {
+                    try {
+                        audioTrack?.pause()
+                        audioTrack?.flush()
+                    } catch (trackError: IllegalStateException) {
+                        Log.w(TAG, "AudioTrack cleanup failed after playback loop abort", trackError)
+                    }
+                }
             }
         }
     }
@@ -351,25 +385,32 @@ class AudioStreamManager @Inject constructor(
 
     private fun writeFullyToTrack(data: ByteArray) {
         if (data.isEmpty()) return
-        val track = audioTrack ?: return
+        synchronized(audioTrackLock) {
+            val track = audioTrack ?: return
 
-        var offset = 0
-        while (offset < data.size) {
-            val written = track.write(
-                data,
-                offset,
-                data.size - offset,
-                AudioTrack.WRITE_BLOCKING
-            )
-            when {
-                written > 0 -> offset += written
-                written == 0 -> {
-                    Log.w(TAG, "AudioTrack.write() returned 0 with ${data.size - offset}B remaining")
+            var offset = 0
+            while (offset < data.size) {
+                val written = try {
+                    track.write(
+                        data,
+                        offset,
+                        data.size - offset,
+                        AudioTrack.WRITE_BLOCKING
+                    )
+                } catch (t: Throwable) {
+                    Log.w(TAG, "AudioTrack.write() aborted because the track became invalid", t)
                     break
                 }
-                else -> {
-                    Log.e(TAG, "AudioTrack.write() error: $written")
-                    break
+                when {
+                    written > 0 -> offset += written
+                    written == 0 -> {
+                        Log.w(TAG, "AudioTrack.write() returned 0 with ${data.size - offset}B remaining")
+                        break
+                    }
+                    else -> {
+                        Log.e(TAG, "AudioTrack.write() error: $written")
+                        break
+                    }
                 }
             }
         }
