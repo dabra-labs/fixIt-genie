@@ -8,8 +8,10 @@ Built for the **Live Agents** category with **Google ADK** + **Gemini 2.5 Flash 
 
 ## Quick Links
 
+- [Demo Video](https://youtu.be/tN_XgblrCSc)
 - [Live Demo Site](https://fixit-genie.web.app)
 - [Technical Blog](https://fixit-genie.web.app/blog.html)
+- [Technical Reference (PDF)](docs/fixit-genie-technical-reference.pdf)
 - [Cloud Deployment Proof](DEPLOYMENT.md)
 - [Architecture Diagram](docs/architecture.mermaid)
 

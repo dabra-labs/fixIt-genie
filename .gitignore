@@ -67,8 +67,13 @@ PROGRESS.md
 .local-backups/
 .playwright-mcp/
 recordings/
+docs/submission.html
+docs/architecture-one-pager.md
+images/devpost-3x2/06-architecture-overview.jpg
+hosting/.firebase/hosting.cHVibGlj.cache
 
 # ─── Misc ────────────────────────────────────────────────
 *.log
 *.tmp
 *.pdf
+!docs/fixit-genie-technical-reference.pdf
