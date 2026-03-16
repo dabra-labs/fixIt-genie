@@ -2,24 +2,52 @@
 
 **See. Hear. Fix.** Point your phone camera at broken equipment, describe the problem, and get expert step-by-step voice guidance in real time.
 
-Built with **Google ADK** + **Gemini 2.5 Flash Native Audio** for the [Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/).
+Built for the **Live Agents** category with **Google ADK** + **Gemini 2.5 Flash Native Audio**, and deployed on **Google Cloud Run** for the [Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/).
 
 ---
 
-**[→ Live Demo Site](https://fixit-genie.web.app)** &nbsp;·&nbsp; **[→ Technical Blog](https://fixit-genie.web.app/blog.html)** &nbsp;·&nbsp; **[→ Cloud Deployment Proof](DEPLOYMENT.md)** &nbsp;·&nbsp; **[→ Architecture Diagram](docs/architecture.mermaid)**
+## Quick Links
+
+- [Live Demo Site](https://fixit-genie.web.app)
+- [Technical Blog](https://fixit-genie.web.app/blog.html)
+- [Cloud Deployment Proof](DEPLOYMENT.md)
+- [Architecture Diagram](docs/architecture.mermaid)
 
 ---
 
 ## App Preview
 
-<p align="center">
-  <img src="images/01-onboarding-intro.png" alt="FixIt Genie onboarding intro screen" width="32%" />
-  <img src="images/03-onboarding-coverage.png" alt="FixIt Genie onboarding coverage screen" width="32%" />
-</p>
-<p align="center">
-  <img src="images/04-session-idle.png" alt="FixIt Genie idle session screen" width="32%" />
-  <img src="images/06-session-speaking.png" alt="FixIt Genie live speaking session screen" width="32%" />
-</p>
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="images/01-onboarding-intro.png" alt="FixIt Genie onboarding intro screen" width="90%" /><br />
+      <strong>Onboarding Intro</strong><br />
+      <sub>Sets the product promise immediately: camera, voice, and guided repair.</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="images/02-onboarding-how-it-works.png" alt="FixIt Genie onboarding how it works screen" width="90%" /><br />
+      <strong>How It Works</strong><br />
+      <sub>Explains the core interaction simply: see it, say it, fix it.</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="images/03-onboarding-coverage.png" alt="FixIt Genie onboarding coverage screen" width="90%" /><br />
+      <strong>Domain Coverage</strong><br />
+      <sub>Shows the starting repair categories without overwhelming the user.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="images/04-session-idle.png" alt="FixIt Genie idle session screen" width="90%" /><br />
+      <strong>Ready to Start</strong><br />
+      <sub>Keeps the camera view primary and the next action obvious.</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="images/06-session-speaking.png" alt="FixIt Genie live speaking session screen" width="90%" /><br />
+      <strong>Live Guidance</strong><br />
+      <sub>Shows the transcript, speaking state, and camera view together during a real session.</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
