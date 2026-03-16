@@ -103,7 +103,7 @@ private fun UserBubble(text: String) {
             } else {
                 Box(
                     modifier = Modifier
-                        .widthIn(max = 312.dp)
+                        .widthIn(max = 340.dp)
                         .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp))
                         .background(Color(0xFF1B2331))
                         .border(
@@ -141,7 +141,7 @@ private fun GenieBubble(text: String, showCursor: Boolean) {
             Spacer(modifier = Modifier.height(3.dp))
             Box(
                 modifier = Modifier
-                    .widthIn(max = 324.dp)
+                    .widthIn(max = 352.dp)
                     .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp))
                     .background(
                         brush = Brush.verticalGradient(

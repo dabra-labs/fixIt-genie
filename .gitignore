@@ -64,6 +64,8 @@ PROGRESS.md
 .claude/
 .superpowers/brainstorm/
 .internal-docs/
+.playwright-mcp/
+recordings/
 
 # ─── Misc ────────────────────────────────────────────────
 *.log
