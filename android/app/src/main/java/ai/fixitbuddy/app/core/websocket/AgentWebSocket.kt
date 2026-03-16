@@ -29,7 +29,11 @@ enum class ConnectionState {
 
 /** Sealed hierarchy of messages received from the ADK agent. */
 sealed class AgentMessage {
-    data class Transcript(val text: String, val isFinal: Boolean) : AgentMessage()
+    data class Transcript(
+        val text: String,
+        val isFinal: Boolean,
+        val speaker: TranscriptSpeaker = TranscriptSpeaker.GENIE
+    ) : AgentMessage()
     data class Audio(val data: ByteArray) : AgentMessage() {
         override fun equals(other: Any?) = other is Audio && data.contentEquals(other.data)
         override fun hashCode() = data.contentHashCode()
@@ -39,6 +43,8 @@ sealed class AgentMessage {
     /** Server interrupted the current response (VAD detected user speaking mid-playback). */
     data object Interrupted : AgentMessage()
 }
+
+enum class TranscriptSpeaker { USER, GENIE }
 
 // ADK LiveRequest format — sent from client to server
 @Serializable
@@ -66,6 +72,7 @@ class AgentWebSocket @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) {
     private var webSocket: WebSocket? = null
+    @Volatile private var intentionalDisconnect = false
     val sessionId: String = UUID.randomUUID().toString()
     val userId: String = "fixitbuddy_user"
 
@@ -84,14 +91,20 @@ class AgentWebSocket @Inject constructor(
      * SessionViewModel is responsible for creating the session via REST before calling connect().
      */
     fun connect(url: String) {
-        disconnect()  // Clean up any existing connection
+        disconnectInternal(updateState = false)  // Clean up any existing connection
 
         val request = Request.Builder().url(url).build()
+        intentionalDisconnect = false
         _connectionState.value = ConnectionState.CONNECTING
 
         webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                if (!isCurrentSocket(webSocket)) {
+                    Log.d(TAG, "Ignoring stale onOpen callback")
+                    return
+                }
                 Log.d(TAG, "WebSocket connected")
+                intentionalDisconnect = false
                 _connectionState.value = ConnectionState.CONNECTED
             }
 
@@ -105,17 +118,34 @@ class AgentWebSocket @Inject constructor(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                Log.e(TAG, "WebSocket failure: ${t.message}", t)
-                _connectionState.value = ConnectionState.ERROR
+                if (!isCurrentSocket(webSocket)) {
+                    Log.d(TAG, "Ignoring stale WebSocket failure: ${t.message}")
+                    return
+                }
+                if (intentionalDisconnect) {
+                    Log.d(TAG, "Ignoring WebSocket failure after intentional disconnect: ${t.message}")
+                    _connectionState.value = ConnectionState.DISCONNECTED
+                } else {
+                    Log.e(TAG, "WebSocket failure: ${t.message}", t)
+                    _connectionState.value = ConnectionState.ERROR
+                }
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                if (!isCurrentSocket(webSocket)) {
+                    Log.d(TAG, "Ignoring stale onClosing callback: code=$code")
+                    return
+                }
                 Log.d(TAG, "WebSocket closing: code=$code reason=$reason")
                 _connectionState.value = ConnectionState.DISCONNECTED
                 webSocket.close(1000, null)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                if (!isCurrentSocket(webSocket)) {
+                    Log.d(TAG, "Ignoring stale onClosed callback: code=$code")
+                    return
+                }
                 Log.d(TAG, "WebSocket closed: code=$code reason=$reason")
                 _connectionState.value = ConnectionState.DISCONNECTED
             }
@@ -154,6 +184,10 @@ class AgentWebSocket @Inject constructor(
             }
 
             val author = obj["author"]?.jsonPrimitive?.content ?: ""
+            val inputTranscript = parseTranscription(obj, "inputTranscription", TranscriptSpeaker.USER)
+            val outputTranscript = parseTranscription(obj, "outputTranscription", TranscriptSpeaker.GENIE)
+            inputTranscript?.let(::emit)
+            outputTranscript?.let(::emit)
 
             // ADK turn-complete event: {"turnComplete": true} — no content field.
             // This is the definitive end-of-turn signal from the server; open mic gate.
@@ -163,18 +197,32 @@ class AgentWebSocket @Inject constructor(
                 return
             }
 
-            val content = obj["content"]?.jsonObject ?: return
+            val content = obj["content"]?.jsonObject
+            if (content == null) {
+                if (author == "fixitbuddy" && outputTranscript?.isFinal == false) {
+                    emit(AgentMessage.Status("speaking"))
+                }
+                return
+            }
             val parts = content["parts"]?.jsonArray ?: return
             val isPartial = obj["partial"]?.jsonPrimitive?.content == "true"
 
             var hasAudio = false
+            var emittedGenieText = outputTranscript != null
             for (part in parts) {
                 val partObj = part.jsonObject
 
                 // Text response
                 partObj["text"]?.jsonPrimitive?.content?.let { txt ->
-                    if (txt.isNotBlank()) {
-                        emit(AgentMessage.Transcript(txt, isFinal = !isPartial))
+                    if (txt.isNotBlank() && !emittedGenieText) {
+                        emit(
+                            AgentMessage.Transcript(
+                                txt,
+                                isFinal = !isPartial,
+                                speaker = TranscriptSpeaker.GENIE
+                            )
+                        )
+                        emittedGenieText = true
                     }
                 }
 
@@ -203,12 +251,25 @@ class AgentWebSocket @Inject constructor(
             // data is present. The !hasAudio guard is load-bearing: emitting on audio frames
             // would open the mic gate mid-response. isPartial is an additional heuristic to
             // avoid emitting on final non-audio echo frames at the end of a turn.
-            if (author == "fixitbuddy" && isPartial && !hasAudio) {
+            val hasStreamingTranscript = outputTranscript?.isFinal == false
+            if (author == "fixitbuddy" && !hasAudio && (isPartial || hasStreamingTranscript)) {
                 emit(AgentMessage.Status("speaking"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse ADK event: ${text.take(200)}", e)
         }
+    }
+
+    private fun parseTranscription(
+        obj: kotlinx.serialization.json.JsonObject,
+        fieldName: String,
+        speaker: TranscriptSpeaker
+    ): AgentMessage.Transcript? {
+        val transcription = obj[fieldName]?.jsonObject ?: return null
+        val text = transcription["text"]?.jsonPrimitive?.content ?: return null
+        if (text.isBlank()) return null
+        val finished = transcription["finished"]?.jsonPrimitive?.content == "true"
+        return AgentMessage.Transcript(text = text, isFinal = finished, speaker = speaker)
     }
 
     /**
@@ -250,14 +311,24 @@ class AgentWebSocket @Inject constructor(
     }
 
     fun disconnect() {
+        disconnectInternal(updateState = true)
+    }
+
+    private fun disconnectInternal(updateState: Boolean) {
+        val currentSocket = webSocket
+        intentionalDisconnect = true
         try {
-            webSocket?.close(1000, "User disconnected")
+            webSocket = null
+            currentSocket?.close(1000, "User disconnected")
         } catch (e: Exception) {
             Log.w(TAG, "Error closing WebSocket", e)
         }
-        webSocket = null
-        _connectionState.value = ConnectionState.DISCONNECTED
+        if (updateState) {
+            _connectionState.value = ConnectionState.DISCONNECTED
+        }
     }
+
+    private fun isCurrentSocket(socket: WebSocket): Boolean = webSocket === socket
 
     val isConnected: Boolean
         get() = _connectionState.value == ConnectionState.CONNECTED

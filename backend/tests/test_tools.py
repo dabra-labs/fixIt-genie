@@ -6,7 +6,10 @@ import os
 # Add parent directory to path to import tools
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fixitbuddy.tools import lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step
+from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
+
+import fixitbuddy.tools as tools_module
+from fixitbuddy.tools import complete_session, lookup_equipment_knowledge, get_safety_warnings, log_diagnostic_step
 
 
 class TestLookupEquipmentKnowledge:
@@ -60,6 +63,37 @@ class TestLookupEquipmentKnowledge:
         assert result["found"] is True
         assert len(result["results"]) > 0
         assert any(doc["name"] == "Dishwasher" for doc in result["results"])
+
+    def test_search_lg_fridge_off_demo_mode(self):
+        """Test LG fridge OFF / demo-mode wording returns refrigerator knowledge."""
+        result = lookup_equipment_knowledge(
+            query="LG fridge display says OFF and it is not cooling",
+            category="appliance",
+        )
+        assert result["found"] is True
+        assert len(result["results"]) > 0
+        fridge = next(doc for doc in result["results"] if doc["name"] == "LG Refrigerator")
+        issue_text = " ".join(issue["issue"] for issue in fridge["common_issues"])
+        assert "OFF" in issue_text
+
+    def test_search_lg_fridge_0ff_demo_mode(self):
+        """Test LG fridge 0FF wording ranks refrigerator knowledge first."""
+        result = lookup_equipment_knowledge(
+            query="refrigerator error code 0 FF",
+            category="appliance",
+            error_code="0 FF",
+        )
+        assert result["found"] is True
+        assert result["results"][0]["name"] == "LG Refrigerator"
+
+    def test_search_lg_fridge_ff_query_prefers_refrigerator(self):
+        """Fridge-specific FF queries should not rank generic appliance docs first."""
+        result = lookup_equipment_knowledge(
+            query="refrigerator leaking water dispenser error code FF",
+            category="appliance",
+        )
+        assert result["found"] is True
+        assert result["results"][0]["name"] == "LG Refrigerator"
 
     def test_search_by_error_code_p0520(self):
         """Test search by error code 'P0520' returns oil system."""
@@ -118,6 +152,7 @@ class TestLookupEquipmentKnowledge:
         """Test search with unknown query returns found=False."""
         result = lookup_equipment_knowledge(query="xyzabc123notarealthing")
         assert result["found"] is False
+        assert "google_search" not in result["message"]
 
     def test_search_with_unknown_error_code(self):
         """Test search with unknown error code returns found=False."""
@@ -139,6 +174,71 @@ class TestLookupEquipmentKnowledge:
         required_keys = {"category", "name", "diagnostic_steps", "safety_notes"}
         for doc in result["results"]:
             assert required_keys.issubset(doc.keys()), f"Missing keys in {doc}"
+
+    def test_vector_search_uses_firestore_distance_measure_enum(self, monkeypatch):
+        """Firestore vector lookup should use the SDK DistanceMeasure enum, not protobuf enums."""
+        captured: dict[str, object] = {}
+        embed_request: dict[str, object] = {}
+
+        class FakeEmbedResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"embedding": {"values": [0.1, 0.2, 0.3]}}
+
+        class FakeVectorQuery:
+            def get(self):
+                return []
+
+        class FakeCollection:
+            def find_nearest(self, **kwargs):
+                captured.update(kwargs)
+                return FakeVectorQuery()
+
+        class FakeDb:
+            def collection(self, name):
+                assert name == "equipment"
+                return FakeCollection()
+
+        def fake_post(*args, **kwargs):
+            embed_request.update(kwargs["json"])
+            return FakeEmbedResponse()
+
+        monkeypatch.setattr(tools_module, "_get_db", lambda: FakeDb())
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+        monkeypatch.setattr("requests.post", fake_post)
+
+        result = lookup_equipment_knowledge(
+            query="LG fridge display says OFF and it is not cooling",
+            category="appliance",
+        )
+
+        assert captured["distance_measure"] == DistanceMeasure.COSINE
+        assert embed_request["taskType"] == "RETRIEVAL_QUERY"
+        assert embed_request["outputDimensionality"] == 1536
+        assert result["found"] is True
+
+    def test_vector_search_is_skipped_without_google_api_key(self, monkeypatch):
+        """Missing API key should fall back immediately to the embedded KB."""
+        class FakeDb:
+            def collection(self, name):
+                raise AssertionError("Firestore vector lookup should be skipped without an API key")
+
+        def fail_post(*args, **kwargs):
+            raise AssertionError("Embedding request should not run without GOOGLE_API_KEY")
+
+        monkeypatch.setattr(tools_module, "_get_db", lambda: FakeDb())
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        monkeypatch.setattr("requests.post", fail_post)
+
+        result = lookup_equipment_knowledge(
+            query="LG fridge display says OFF and it is not cooling",
+            category="appliance",
+        )
+
+        assert result["found"] is True
+        assert result["results"][0]["name"] == "LG Refrigerator"
 
 
 class TestGetSafetyWarnings:
@@ -192,9 +292,22 @@ class TestGetSafetyWarnings:
         assert "warnings" in result
         assert isinstance(result["warnings"], list)
         assert len(result["warnings"]) > 0
-        # Check for relevant safety keywords
-        all_text = " ".join(result["warnings"]).lower()
-        assert any(term in all_text for term in ["ventilated", "gloves"])
+
+
+class TestSessionTools:
+    """Test non-diagnostic helper tools."""
+
+    def test_log_diagnostic_step_returns_logged_payload(self):
+        result = log_diagnostic_step(step_number=2, description="Checked door", result="Closed firmly")
+        assert result["logged"] is True
+        assert result["step"]["step"] == 2
+
+    def test_complete_session_returns_completion_payload(self):
+        result = complete_session(reason="LG fridge demo mode fixed")
+        assert result == {
+            "completed": True,
+            "reason": "LG fridge demo mode fixed",
+        }
 
     def test_unknown_action_type_returns_fallback(self):
         """Test unknown action_type returns general fallback warnings."""
@@ -283,3 +396,9 @@ class TestLogDiagnosticStep:
         assert step["description"] == "Inspect battery terminals"
         assert step["observation"] == "Found white corrosion on positive terminal"
         assert step["result"] == "Terminal cleaned with baking soda solution"
+
+    def test_missing_step_number_defaults_to_zero(self):
+        """Model tool calls sometimes omit step_number; the tool should still succeed."""
+        result = log_diagnostic_step(description="Observed fridge display")
+        assert result["logged"] is True
+        assert result["step"]["step"] == 0

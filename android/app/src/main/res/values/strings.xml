@@ -9,6 +9,9 @@
     <string name="flashlight_toggle">Toggle Flashlight</string>
     <string name="session_idle_title">FixIt Genie</string>
     <string name="session_idle_subtitle">Point your camera at equipment\nand tap Start Session</string>
+    <string name="session_idle_hint">Best results: hold the camera steady and interrupt naturally when needed.</string>
+    <string name="start_session_hint">Show the problem, then let FixIt Genie talk you through the fix.</string>
+    <string name="transcript_header">LIVE CONVERSATION</string>
 
     <!-- Status indicators -->
     <string name="status_idle">Ready</string>
@@ -40,7 +43,7 @@
     <string name="settings_connection">Connection</string>
     <string name="settings_backend_url">Backend URL</string>
     <string name="settings_backend_hint">https://fixitbuddy-agent-xxx-uc.a.run.app</string>
-    <string name="settings_backend_helper">The Cloud Run URL where FixIt Genie\'s ADK agent is deployed.</string>
+    <string name="settings_backend_helper">This demo build always uses the built-in Cloud Run backend URL.</string>
     <string name="settings_test_connection">Test Connection</string>
     <string name="settings_about">About FixIt Genie</string>
     <string name="settings_app_name_label">App Name</string>

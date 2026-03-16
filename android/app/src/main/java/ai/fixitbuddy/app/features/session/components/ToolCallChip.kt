@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Icon
@@ -69,19 +70,21 @@ fun ToolCallChip(
         exit = fadeOut() + slideOutVertically { -it },
         modifier = modifier
     ) {
+        val accent = toolAccent(displayName)
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = StatusListening.copy(alpha = 0.85f),
-            shadowElevation = 4.dp
+            shape = RoundedCornerShape(22.dp),
+            color = Color(0xE60C1119),
+            shadowElevation = 6.dp
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                modifier = Modifier
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = accent,
                     modifier = Modifier.size(14.dp)
                 )
                 Spacer(Modifier.width(6.dp))
@@ -98,11 +101,20 @@ fun ToolCallChip(
 private fun formatToolCall(toolName: String): Pair<String, ImageVector> {
     return when {
         toolName.contains("safety", ignoreCase = true) ->
-            "Checking safety warnings" to Icons.Default.Shield
+            "Checking safety" to Icons.Default.Shield
+        toolName.contains("complete_session", ignoreCase = true) ->
+            "Wrapping up session" to Icons.Default.CheckCircle
         toolName.contains("knowledge", ignoreCase = true) || toolName.contains("lookup", ignoreCase = true) ->
-            "Searching knowledge base" to Icons.Default.Search
+            "Checking repair knowledge" to Icons.Default.Search
         toolName.contains("log", ignoreCase = true) || toolName.contains("diagnostic", ignoreCase = true) ->
-            "Logging diagnostic step" to Icons.Default.Build
-        else -> toolName to Icons.Default.Build
+            "Logging progress" to Icons.Default.Build
+        else -> toolName.replace('_', ' ') to Icons.Default.Build
     }
+}
+
+private fun toolAccent(displayName: String): Color = when {
+    displayName.contains("safety", ignoreCase = true) -> Color(0xFF22C55E)
+    displayName.contains("knowledge", ignoreCase = true) -> Color(0xFFF59E0B)
+    displayName.contains("wrapping", ignoreCase = true) -> Color(0xFFFF6A1E)
+    else -> StatusListening
 }

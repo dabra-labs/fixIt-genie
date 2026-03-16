@@ -4,11 +4,19 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Any
 
 from google.cloud import firestore
+from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
+from google.cloud.firestore_v1.types import StructuredQuery
 
 logger = logging.getLogger(__name__)
+_VECTOR_EMBED_TIMEOUT_SECONDS = float(
+    os.environ.get("VECTOR_EMBED_TIMEOUT_SECONDS", "3.0")
+)
+_VECTOR_EMBED_MODEL = "gemini-embedding-001"
+_VECTOR_EMBED_DIMENSIONS = 1536
 
 # ---------------------------------------------------------------------------
 # Firestore client (lazy singleton)
@@ -134,12 +142,12 @@ _KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         "category": "appliance",
         "name": "Washing Machine",
         "description": "Common washing machine error codes and troubleshooting across major brands",
-        "error_codes": ["E1", "E2", "E3", "E4", "F1", "F2", "F21", "UE", "OE", "LE", "dE", "IE"],
+        "error_codes": ["E1", "E2", "E3", "E4", "F1", "F2", "F21", "UE", "OE", "LE", "dE", "dE1", "IE"],
         "keywords": ["washing machine", "washer", "laundry", "won't drain", "won't spin", "error code", "leak", "vibration"],
         "diagnostic_steps": [
             {"step": 1, "instruction": "Note the error code displayed", "visual_cue": "Error code appears on the display panel — may be letters + numbers"},
-            {"step": 2, "instruction": "Try power cycling: unplug for 60 seconds, then plug back in", "visual_cue": "This resets the control board and clears many temporary errors"},
-            {"step": 3, "instruction": "Check the door/lid — make sure it's fully closed and latched", "visual_cue": "Many errors are caused by the door not being detected as closed"},
+            {"step": 2, "instruction": "Check the door/lid first — make sure it's fully closed and latched", "visual_cue": "Many errors are caused by the door not being detected as closed"},
+            {"step": 3, "instruction": "Only if the simple visible check did not fix it, try power cycling: unplug for 60 seconds, then plug back in", "visual_cue": "This resets the control board and clears many temporary errors"},
             {"step": 4, "instruction": "Check water supply valves behind the machine — both should be fully open", "visual_cue": "Hot and cold valves, handles should be parallel to the hose (open)"},
             {"step": 5, "instruction": "Check the drain hose — shouldn't be kinked or inserted too far into the drain pipe", "visual_cue": "Drain hose should only go 6-8 inches into the standpipe"}
         ],
@@ -147,7 +155,7 @@ _KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             {"issue": "Error E4 or IE (Water supply issue)", "cause": "Water not reaching the machine", "fix": "Check that supply valves are fully open. Check inlet hose for kinks. Clean inlet filter screens"},
             {"issue": "Error UE (Unbalanced load)", "cause": "Clothes bunched to one side during spin", "fix": "Redistribute clothes evenly in the drum. Don't overload. Check that machine is level"},
             {"issue": "Error OE or F21 (Drain issue)", "cause": "Water not draining properly", "fix": "Check drain hose for kinks. Clean the drain pump filter (small door at bottom front). Remove any debris"},
-            {"issue": "Error dE (Door issue)", "cause": "Door/lid not properly closed or latch malfunction", "fix": "Clean the door seal/gasket. Check for obstructions preventing door from closing"},
+            {"issue": "Error dE or dE1 (Door issue)", "cause": "Door/lid not properly closed or latch malfunction", "fix": "Push the door fully closed until it clicks. Remove any clothing or debris from the gasket area. If the code remains, press Power once and retry the cycle"},
             {"issue": "Error LE (Motor issue)", "cause": "Motor overloaded or rotor position sensor issue", "fix": "Reduce load size. Unplug for 30 min and retry. If persistent, motor may need professional service"}
         ],
         "safety_notes": ["Always unplug before inspecting internal components", "Water + electricity = danger — mop up any water before working near outlets", "The drain pump filter may release water when opened — have towels ready"]
@@ -156,20 +164,22 @@ _KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         "category": "appliance",
         "name": "LG Refrigerator",
         "description": "LG refrigerator troubleshooting — cooling issues, error codes, ice maker, water dispenser",
-        "error_codes": ["Er IF", "Er FF", "Er CF", "Er dF", "Er rF", "Er CO", "Er FS", "Er IS", "Er SS", "Er 1F", "Er FF", "CL", "dH"],
-        "keywords": ["refrigerator", "fridge", "not cooling", "not cold", "lg", "freezer", "ice maker", "ice", "water dispenser", "compressor", "temperature", "warm", "er if", "er ff", "er cf"],
+        "error_codes": ["OFF", "0FF", "Er IF", "Er FF", "Er CF", "Er dF", "Er rF", "Er CO", "Er FS", "Er IS", "Er SS", "Er 1F", "CL", "dH"],
+        "keywords": ["refrigerator", "fridge", "not cooling", "not cold", "lg", "freezer", "ice maker", "ice", "water dispenser", "compressor", "temperature", "warm", "demo mode", "showroom mode", "display says off", "off display", "0ff", "panel says ff", "dispenser panel", "er if", "er ff", "er cf"],
         "diagnostic_steps": [
-            {"step": 1, "instruction": "Check the temperature display — fridge should be 37°F (3°C), freezer 0°F (-18°C)", "visual_cue": "Display panel is usually on the front of the door or inside at the top"},
-            {"step": 2, "instruction": "Check if the condenser coils on the back/bottom are dusty", "visual_cue": "Dusty coils look grey/brown and restrict airflow — clean with a vacuum brush attachment"},
+            {"step": 1, "instruction": "Check the temperature display first — if the panel says OFF or 0FF on an LG fridge, treat that as a likely demo/showroom mode clue before deeper cooling diagnostics. If you can only make out FF, ask for a closer view of the full dispenser/control panel before deciding what it means", "visual_cue": "Display panel is usually on the front door or inside at the top; OFF or 0FF on the panel means the unit may not be actively cooling, while a partial FF read is ambiguous"},
+            {"step": 2, "instruction": "If the display is not showing OFF, check if the condenser coils on the back/bottom are dusty", "visual_cue": "Dusty coils look grey/brown and restrict airflow — clean with a vacuum brush attachment"},
             {"step": 3, "instruction": "Check the door seals all around — they should be airtight", "visual_cue": "Close a piece of paper in the door — if it slides out easily, the seal is weak"},
             {"step": 4, "instruction": "Check that the door vents inside aren't blocked by food containers", "visual_cue": "Cold air vents are usually on the back wall inside — leave a few inches of clearance"},
             {"step": 5, "instruction": "Listen for the compressor — it should cycle on and off", "visual_cue": "Compressor is at the back bottom — a humming sound means it's running"}
         ],
         "common_issues": [
+            {"issue": "Display shows OFF / 0FF / demo mode", "cause": "The refrigerator is likely in showroom or demo mode, which leaves lights and display on but disables normal cooling", "fix": "Call out the OFF or 0FF display first. Tell the user this likely indicates demo mode. If the exact model is known, look up the specific exit sequence before giving a button combo"},
+            {"issue": "Display shows FF but the first character is unclear", "cause": "A partial or glary panel view can make OFF or 0FF look like FF; it can also hide the Er in Er FF", "fix": "Ask for a tighter, steady shot of the full dispenser/control panel before diagnosing. If it resolves to OFF or 0FF, explain demo mode first. If it clearly shows Er FF, then discuss a freezer-fan fault"},
             {"issue": "Fridge not cooling but freezer works", "cause": "Evaporator fan blocked or failed, or damper stuck closed", "fix": "Check if fan runs when door is open (hold door switch). Ice buildup on back wall means defrost issue — run manual defrost"},
             {"issue": "Neither fridge nor freezer cooling", "cause": "Compressor not running, refrigerant leak, or start relay failure", "fix": "Listen for compressor — if silent, check start relay (small box on compressor side). Shake it — a rattle means it needs replacement (~$10 part)"},
             {"issue": "Error Er IF (Ice maker fan)", "cause": "Ice maker fan is blocked or frozen", "fix": "Remove all ice from ice maker. Power cycle the fridge. If error persists, ice maker fan motor may need replacement"},
-            {"issue": "Error Er FF (Freezer fan)", "cause": "Freezer evaporator fan failure", "fix": "Power cycle the fridge. If error persists, evaporator fan needs replacement. Defrost first to check if ice is blocking it"},
+            {"issue": "Error Er FF (Freezer fan)", "cause": "Freezer evaporator fan failure", "fix": "If the panel clearly shows Er FF, first check for heavy frost or ice blocking the freezer fan and defrost if needed. If the code persists after that, the evaporator fan may need replacement"},
             {"issue": "Error Er CF (Condenser fan)", "cause": "Condenser fan at back/bottom is blocked or failed", "fix": "Clean debris from condenser area at back bottom. Check fan blade isn't blocked. Power cycle"},
             {"issue": "Error Er dF (Defrost)", "cause": "Defrost heater or defrost sensor failure", "fix": "Run a manual defrost cycle: press and hold both temperature buttons for 3-5 seconds. If error returns, defrost heater needs replacement"},
             {"issue": "Ice maker not making ice", "cause": "Freezer too warm, water supply issue, or ice maker turned off", "fix": "Check freezer is at 0°F. Check water line isn't kinked. Check ice maker arm is in DOWN position. Check water filter age"},
@@ -229,51 +239,73 @@ def lookup_equipment_knowledge(
         search_text = f"{category} {search_text}"
 
     results: list[dict[str, Any]] = []
+    logger.info(
+        "lookup_equipment_knowledge called: category=%s error_code=%s query=%s",
+        category,
+        error_code,
+        query[:120],
+    )
 
-    # Primary: Firestore vector search (semantic similarity via text-embedding-004)
+    # Primary: Firestore vector search using reduced-dimension Gemini embeddings.
     db = _get_db()
     if db:
-        try:
-            import requests as _requests
-
-            _api_key = os.environ.get("GOOGLE_API_KEY", "")
-            _embed_model = "gemini-embedding-001"
-            _embed_url = f"https://generativelanguage.googleapis.com/v1beta/models/{_embed_model}:embedContent"
-            _embed_resp = _requests.post(
-                _embed_url,
-                json={"model": f"models/{_embed_model}", "content": {"parts": [{"text": search_text}]}},
-                params={"key": _api_key},
-                timeout=15,
+        _api_key = os.environ.get("GOOGLE_API_KEY", "")
+        if not _api_key:
+            logger.info(
+                "GOOGLE_API_KEY missing — skipping vector search and using embedded KB"
             )
-            _embed_resp.raise_for_status()
-            query_embedding = _embed_resp.json()["embedding"]["values"]
+        else:
+            try:
+                import requests as _requests
 
-            collection = db.collection("equipment")
-            vector_results = collection.find_nearest(
-                vector_field="embedding",
-                query_vector=query_embedding,
-                distance_measure=firestore.DistanceMeasure.COSINE,
-                limit=3,
-            ).get()
+                _embed_url = (
+                    f"https://generativelanguage.googleapis.com/v1beta/models/"
+                    f"{_VECTOR_EMBED_MODEL}:embedContent"
+                )
+                _embed_resp = _requests.post(
+                    _embed_url,
+                    json={
+                        "model": f"models/{_VECTOR_EMBED_MODEL}",
+                        "content": {"parts": [{"text": search_text}]},
+                        "taskType": "RETRIEVAL_QUERY",
+                        "outputDimensionality": _VECTOR_EMBED_DIMENSIONS,
+                    },
+                    params={"key": _api_key},
+                    timeout=_VECTOR_EMBED_TIMEOUT_SECONDS,
+                )
+                _embed_resp.raise_for_status()
+                query_embedding = _embed_resp.json()["embedding"]["values"]
 
-            for doc in vector_results:
-                data = doc.to_dict()
-                # Strip the embedding field — it's large and not useful to the agent
-                data.pop("embedding", None)
-                results.append(data)
+                collection = db.collection("equipment")
+                vector_results = collection.find_nearest(
+                    vector_field="embedding",
+                    query_vector=query_embedding,
+                    distance_measure=DistanceMeasure.COSINE,
+                    limit=3,
+                ).get()
 
-        except Exception:
-            logger.warning("Vector search failed — falling back to embedded KB", exc_info=True)
+                for doc in vector_results:
+                    data = doc.to_dict()
+                    # Strip the embedding field — it's large and not useful to the agent
+                    data.pop("embedding", None)
+                    results.append(data)
+
+            except Exception:
+                logger.warning(
+                    "Vector search failed — falling back to embedded KB",
+                    exc_info=True,
+                )
 
     # Fallback: keyword matching against embedded knowledge base
     if not results:
         results = _keyword_lookup(query, category, error_code)
 
     if results:
-        return {"found": True, "results": results[:3]}
+        ranked_results = _rank_knowledge_results(results, query, category, error_code)
+        return {"found": True, "results": ranked_results[:3]}
     return {
         "found": False,
-        "message": "No specific knowledge found. Use general expertise and google_search for specific model information.",
+        "message": "No specific knowledge found. Ask for the exact model number or a clearer view of the display before escalating.",
     }
 
 
@@ -281,18 +313,78 @@ def _keyword_lookup(
     query: str, category: str = "", error_code: str = ""
 ) -> list[dict[str, Any]]:
     """Keyword-based fallback lookup against the embedded knowledge base."""
-    results: list[dict[str, Any]] = []
+    scored_results: list[tuple[int, dict[str, Any]]] = []
     query_lower = query.lower()
+    normalized_error = _normalize_error_code(error_code)
     for _doc_id, data in _KNOWLEDGE_BASE.items():
-        if error_code and error_code.upper() in data.get("error_codes", []):
-            results.append(data)
+        if category and data.get("category") != category.lower():
             continue
-        if category and data.get("category") == category.lower():
-            if any(kw in query_lower for kw in data.get("keywords", [])):
-                results.append(data)
-        elif any(kw in query_lower for kw in data.get("keywords", [])):
-            results.append(data)
-    return results
+        score = _score_knowledge_result(data, query_lower, normalized_error)
+        if score > 0:
+            scored_results.append((score, data))
+    scored_results.sort(key=lambda item: item[0], reverse=True)
+    return [data for _, data in scored_results]
+
+
+def _normalize_error_code(value: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", value.upper())
+
+
+def _score_knowledge_result(
+    data: dict[str, Any],
+    query_lower: str,
+    normalized_error: str = "",
+) -> int:
+    score = 0
+    keywords = data.get("keywords", [])
+    normalized_codes = {_normalize_error_code(code) for code in data.get("error_codes", [])}
+    issue_text = " ".join(issue.get("issue", "") for issue in data.get("common_issues", [])).lower()
+    fix_text = " ".join(issue.get("fix", "") for issue in data.get("common_issues", [])).lower()
+    name_text = data.get("name", "").lower()
+
+    if normalized_error:
+        if normalized_error in normalized_codes:
+            score += 100
+        elif any(normalized_error in code or code in normalized_error for code in normalized_codes if code):
+            score += 60
+
+    keyword_matches = sum(1 for kw in keywords if kw in query_lower)
+    score += keyword_matches * 12
+
+    if name_text and name_text in query_lower:
+        score += 24
+    if "fridge" in query_lower and "refrigerator" in name_text:
+        score += 20
+    if "water dispenser" in query_lower and "water dispenser" in fix_text:
+        score += 18
+    if any(term in query_lower for term in ("off", "0ff", "ff")) and any(
+        term in issue_text for term in ("off", "0ff", "ff")
+    ):
+        score += 16
+    if any(term in query_lower for term in ("demo mode", "showroom mode")) and "demo mode" in issue_text:
+        score += 20
+
+    return score
+
+
+def _rank_knowledge_results(
+    results: list[dict[str, Any]],
+    query: str,
+    category: str = "",
+    error_code: str = "",
+) -> list[dict[str, Any]]:
+    query_lower = query.lower()
+    normalized_error = _normalize_error_code(error_code)
+    ranked = sorted(
+        results,
+        key=lambda data: _score_knowledge_result(data, query_lower, normalized_error),
+        reverse=True,
+    )
+    if category:
+        return [data for data in ranked if data.get("category") == category.lower()] + [
+            data for data in ranked if data.get("category") != category.lower()
+        ]
+    return ranked
 
 
 def get_safety_warnings(
@@ -515,12 +607,12 @@ def lookup_user_manual(brand: str, model_number: str) -> dict[str, Any]:
 
 
 def log_diagnostic_step(
-    step_number: int, description: str, observation: str = "", result: str = ""
+    step_number: int = 0, description: str = "", observation: str = "", result: str = ""
 ) -> dict[str, Any]:
     """Log a diagnostic step for the session transcript.
 
     Args:
-        step_number: Sequential step number
+        step_number: Sequential step number. Defaults to 0 if the model omits it.
         description: What action was taken or recommended
         observation: What was observed (visual or audio)
         result: Outcome of the step
@@ -535,3 +627,21 @@ def log_diagnostic_step(
         "result": result,
     }
     return {"logged": True, "step": step}
+
+
+def complete_session(reason: str = "") -> dict[str, Any]:
+    """Mark the live session ready to close after the final goodbye.
+
+    Call only after the user explicitly confirms the problem is resolved and
+    they do not need anything else.
+
+    Args:
+        reason: Short summary of what was resolved.
+
+    Returns:
+        Confirmation payload for the client to auto-close the session.
+    """
+    return {
+        "completed": True,
+        "reason": reason,
+    }
