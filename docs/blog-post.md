@@ -204,4 +204,4 @@ FixIt Genie is one application. The category is wide open.
 
 *Built for the Gemini Live Agent Challenge using Google ADK, Gemini 2.5 Flash Native Audio, Cloud Run, and a native Android app with CameraX, Ray-Ban Meta glasses support, and Jetpack Compose.*
 
-*[GitHub Repository](https://github.com/dabra-labs/fixbuddy) | [Live Demo Page](https://fixit-genie.web.app) | [Demo Video](https://youtube.com/watch?v=REPLACE_WITH_ACTUAL_LINK)*
+*[GitHub Repository](https://github.com/dabra-labs/fixIt-genie) | [Live Demo Page](https://fixit-genie.web.app) | [Demo Video](https://youtube.com/watch?v=REPLACE_WITH_ACTUAL_LINK)*
