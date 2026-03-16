@@ -264,84 +264,55 @@
   }
   .phone-screen {
     width: 100%; height: 100%;
-    background: linear-gradient(180deg, #0a0a18 0%, #12121e 100%);
-    display: flex; flex-direction: column;
-    padding: 40px 14px 20px;
-  }
-  .phone-status { font-size: 9px; color: rgba(255,255,255,0.3); text-align: right; margin-bottom: 8px; }
-  .phone-camera-view {
-    flex: 1;
-    background: linear-gradient(135deg, #1a2010 0%, #0a1505 100%);
-    border-radius: 16px;
-    margin-bottom: 12px;
-    overflow: hidden;
     position: relative;
-    display: flex; align-items: center; justify-content: center;
+    background: #0a0a14;
+    overflow: hidden;
   }
-  .camera-grid {
-    position: absolute; inset: 0;
-    background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-    background-size: 20px 20px;
+  .phone-slides {
+    position: absolute;
+    inset: 0;
   }
-  .camera-crosshair {
-    width: 40px; height: 40px;
-    border: 1px solid rgba(255,106,30,0.6);
-    border-radius: 4px;
-    animation: crosshair-pulse 3s ease-in-out infinite;
+  .phone-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.45s ease;
   }
-  .camera-tag {
-    position: absolute; bottom: 8px; left: 8px;
-    background: rgba(255,106,30,0.2); border: 1px solid rgba(255,106,30,0.4);
-    color: var(--orange); font-size: 8px; padding: 2px 6px; border-radius: 4px;
+  .phone-slide.is-active {
+    opacity: 1;
   }
-  @keyframes crosshair-pulse {
-    0%,100% { border-color: rgba(255,106,30,0.6); box-shadow: none; }
-    50% { border-color: rgba(255,106,30,1); box-shadow: 0 0 12px rgba(255,106,30,0.4); }
+  .phone-shot {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    display: block;
   }
-  .phone-avatar-row {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  .phone-dots {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(8,8,16,0.62);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(12px);
   }
-  .phone-avatar {
-    width: 32px; height: 32px; border-radius: 50%;
-    background: var(--orange-dim); border: 1.5px solid var(--orange);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-    box-shadow: 0 0 16px var(--orange-glow);
-    flex-shrink: 0;
+  .phone-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    transition: transform 0.25s ease, background 0.25s ease;
   }
-  .phone-bubble-genie {
-    background: rgba(255,106,30,0.12); border: 1px solid rgba(255,106,30,0.2);
-    border-radius: 12px 12px 12px 0; padding: 7px 10px;
-    font-size: 9px; color: rgba(255,255,255,0.85); line-height: 1.5;
-    max-width: 140px;
-  }
-  .phone-bubble-user {
-    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px 12px 0 12px; padding: 7px 10px;
-    font-size: 9px; color: rgba(255,255,255,0.85);
-    align-self: flex-end; margin-left: auto;
-    max-width: 120px;
-  }
-  .phone-chat { display: flex; flex-direction: column; gap: 8px; }
-  .phone-waves {
-    display: flex; align-items: center; justify-content: center; gap: 3px;
-    padding: 10px 0;
-  }
-  .wave-bar {
-    width: 3px; background: var(--orange); border-radius: 2px;
-    animation: wave-anim 1.2s ease-in-out infinite;
-  }
-  .wave-bar:nth-child(1) { height: 8px; animation-delay: 0s; }
-  .wave-bar:nth-child(2) { height: 18px; animation-delay: 0.1s; }
-  .wave-bar:nth-child(3) { height: 24px; animation-delay: 0.2s; }
-  .wave-bar:nth-child(4) { height: 16px; animation-delay: 0.15s; }
-  .wave-bar:nth-child(5) { height: 28px; animation-delay: 0.05s; }
-  .wave-bar:nth-child(6) { height: 14px; animation-delay: 0.25s; }
-  .wave-bar:nth-child(7) { height: 20px; animation-delay: 0.1s; }
-  @keyframes wave-anim {
-    0%,100% { transform: scaleY(0.4); opacity: 0.5; }
-    50% { transform: scaleY(1); opacity: 1; }
+  .phone-dot.is-active {
+    background: var(--orange);
+    transform: scale(1.15);
+    box-shadow: 0 0 12px rgba(255,106,30,0.35);
   }
 
   /* Glow ring around phone */
@@ -362,24 +333,6 @@
   @keyframes ring-breathe {
     0%,100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1); }
     50% { opacity: 1; transform: translate(-50%,-50%) scale(1.02); }
-  }
-
-  /* ── SCROLL INDICATOR ── */
-  .scroll-hint {
-    position: relative; z-index: 1;
-    margin-top: 48px;
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    color: var(--muted); font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-    opacity: 0.6;
-    animation: float-hint 3s ease-in-out infinite;
-  }
-  .scroll-line {
-    width: 1px; height: 32px;
-    background: linear-gradient(to bottom, rgba(255,106,30,0.6), transparent);
-  }
-  @keyframes float-hint {
-    0%,100% { transform: translateY(0); opacity: 0.6; }
-    50% { transform: translateY(6px); opacity: 0.9; }
   }
 
   /* ── CAPABILITIES SECTION ── */
@@ -419,13 +372,26 @@
   .shot-track {
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(250px, 300px);
-    gap: 18px;
+    grid-auto-columns: minmax(300px, 360px);
+    gap: 22px;
     overflow-x: auto;
-    padding-bottom: 10px;
+    padding-bottom: 14px;
     scroll-snap-type: x mandatory;
     scrollbar-width: thin;
     scrollbar-color: rgba(255,106,30,0.45) transparent;
+  }
+  .screens-section {
+    max-width: 1260px;
+  }
+  .screens-shell {
+    margin-top: 12px;
+    padding: 28px;
+    border-radius: 28px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background:
+      radial-gradient(circle at top left, rgba(255,106,30,0.08), transparent 32%),
+      linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
   }
   .shot-track::-webkit-scrollbar { height: 8px; }
   .shot-track::-webkit-scrollbar-thumb {
@@ -434,18 +400,18 @@
   }
   .shot-card {
     scroll-snap-align: start;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 22px;
+    background: rgba(12,12,22,0.86);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 26px;
     overflow: hidden;
-    box-shadow: 0 18px 48px rgba(0,0,0,0.24);
+    box-shadow: 0 22px 56px rgba(0,0,0,0.26);
   }
   .shot-card:hover {
     border-color: rgba(255,106,30,0.28);
-    box-shadow: 0 24px 60px rgba(0,0,0,0.32);
+    box-shadow: 0 30px 72px rgba(0,0,0,0.34);
   }
   .shot-image-wrap {
-    padding: 14px;
+    padding: 18px;
     background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
   }
   .shot-image {
@@ -458,7 +424,7 @@
     background: #12121e;
   }
   .shot-copy {
-    padding: 0 18px 18px;
+    padding: 2px 22px 22px;
   }
   .shot-step {
     display: inline-flex;
@@ -477,13 +443,13 @@
     letter-spacing: 1px;
   }
   .shot-title {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--text);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
   .shot-desc {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--muted);
     line-height: 1.6;
   }
@@ -649,7 +615,7 @@
 
   <div class="hero-badge">
     <div class="badge-dot"></div>
-    Gemini Live Agent Challenge — Google
+    Gemini Live Agent Challenge · Live Agents
   </div>
 
   <h1 class="hero-headline">
@@ -662,7 +628,7 @@
 
   <p class="hero-sub">
     Point your camera at anything broken. Talk naturally.
-    FixIt Genie sees what you see, hears what you say,
+    FixIt Genie is a multimodal live agent that sees what you see, hears what you say,
     and walks you through the fix — in real time.
   </p>
 
@@ -679,38 +645,34 @@
       <div class="phone-outer">
         <div class="phone-notch"></div>
         <div class="phone-screen">
-          <div class="phone-status">FixIt Genie · Live</div>
-          <div class="phone-camera-view">
-            <div class="camera-grid"></div>
-            <div class="camera-crosshair"></div>
-            <div class="camera-tag">🔴 LIVE</div>
+          <div class="phone-slides">
+            <div class="phone-slide is-active">
+              <img class="phone-shot" src="/images/01-onboarding-intro.png" alt="FixIt Genie onboarding intro on Android" />
+            </div>
+            <div class="phone-slide">
+              <img class="phone-shot" src="/images/02-onboarding-how-it-works.png" alt="FixIt Genie onboarding how it works on Android" />
+            </div>
+            <div class="phone-slide">
+              <img class="phone-shot" src="/images/03-onboarding-coverage.png" alt="FixIt Genie onboarding coverage on Android" />
+            </div>
+            <div class="phone-slide">
+              <img class="phone-shot" src="/images/04-session-idle.png" alt="FixIt Genie idle session on Android" />
+            </div>
+            <div class="phone-slide">
+              <img class="phone-shot" src="/images/06-session-speaking.png" alt="FixIt Genie live speaking session on Android" />
+            </div>
           </div>
-          <div class="phone-chat">
-            <div class="phone-avatar-row">
-              <div class="phone-avatar">🧞</div>
-              <div class="phone-bubble-genie">I can see your car battery — there's corrosion on the terminal.</div>
-            </div>
-            <div class="phone-bubble-user">What should I do?</div>
-            <div class="phone-waves">
-              <div class="wave-bar"></div>
-              <div class="wave-bar"></div>
-              <div class="wave-bar"></div>
-              <div class="wave-bar"></div>
-              <div class="wave-bar"></div>
-              <div class="wave-bar"></div>
-              <div class="wave-bar"></div>
-            </div>
+          <div class="phone-dots">
+            <span class="phone-dot is-active"></span>
+            <span class="phone-dot"></span>
+            <span class="phone-dot"></span>
+            <span class="phone-dot"></span>
+            <span class="phone-dot"></span>
           </div>
         </div>
       </div>
     </div>
   </div>
-
-  <div class="scroll-hint">
-    <div class="scroll-line"></div>
-    scroll
-  </div>
-
 </section>
 
 <!-- TECH STRIP -->
@@ -730,7 +692,7 @@
 <div id="capabilities" class="section">
   <div class="section-label">Core Capabilities</div>
   <h2 class="section-title">Not a chatbot. A conversation.</h2>
-  <p class="section-sub">Bidirectional audio streaming means you talk naturally — no commands, no buttons, no waiting.</p>
+  <p class="section-sub">Bidirectional audio streaming means you talk naturally, interrupt naturally, and get real-time multimodal guidance without push-to-talk friction.</p>
 
   <div class="caps-grid">
     <div class="cap-card">
@@ -767,53 +729,66 @@
 </div>
 
 <!-- APP SCREENS -->
-<div id="screens" class="section">
-  <div class="section-label">App Screens</div>
-  <h2 class="section-title">Real screens from the Android app.</h2>
+<div id="screens" class="section screens-section">
+  <div class="section-label">Product Tour</div>
+  <h2 class="section-title">From onboarding to live guidance.</h2>
   <p class="section-sub">A quick walkthrough of the product flow: clear onboarding, a focused start state, and a live transcript that stays readable while the agent listens and talks back.</p>
 
-  <div class="shot-track">
-    <div class="shot-card">
-      <div class="shot-image-wrap">
-        <img class="shot-image" src="/images/01-onboarding-intro.png" alt="FixIt Genie onboarding intro screen" loading="lazy" />
+  <div class="screens-shell">
+    <div class="shot-track">
+      <div class="shot-card">
+        <div class="shot-image-wrap">
+          <img class="shot-image" src="/images/01-onboarding-intro.png" alt="FixIt Genie onboarding intro screen" loading="lazy" />
+        </div>
+        <div class="shot-copy">
+          <div class="shot-step">01</div>
+          <div class="shot-title">Clear first-run onboarding</div>
+          <div class="shot-desc">The app introduces the core interaction model immediately: camera, voice, and guided repair.</div>
+        </div>
       </div>
-      <div class="shot-copy">
-        <div class="shot-step">01</div>
-        <div class="shot-title">Clear first-run onboarding</div>
-        <div class="shot-desc">The app introduces the core interaction model immediately: camera, voice, and guided repair.</div>
-      </div>
-    </div>
 
-    <div class="shot-card">
-      <div class="shot-image-wrap">
-        <img class="shot-image" src="/images/03-onboarding-coverage.png" alt="FixIt Genie onboarding coverage screen" loading="lazy" />
+      <div class="shot-card">
+        <div class="shot-image-wrap">
+          <img class="shot-image" src="/images/02-onboarding-how-it-works.png" alt="FixIt Genie onboarding how it works screen" loading="lazy" />
+        </div>
+        <div class="shot-copy">
+          <div class="shot-step">02</div>
+          <div class="shot-title">See it. Say it. Fix it.</div>
+          <div class="shot-desc">The onboarding flow explains the product interaction in plain language before the user ever starts a session.</div>
+        </div>
       </div>
-      <div class="shot-copy">
-        <div class="shot-step">02</div>
-        <div class="shot-title">Focused domain coverage</div>
-        <div class="shot-desc">The onboarding flow makes the initial repair categories obvious without overwhelming the user with options.</div>
-      </div>
-    </div>
 
-    <div class="shot-card">
-      <div class="shot-image-wrap">
-        <img class="shot-image" src="/images/04-session-idle.png" alt="FixIt Genie idle session screen" loading="lazy" />
+      <div class="shot-card">
+        <div class="shot-image-wrap">
+          <img class="shot-image" src="/images/03-onboarding-coverage.png" alt="FixIt Genie onboarding coverage screen" loading="lazy" />
+        </div>
+        <div class="shot-copy">
+          <div class="shot-step">03</div>
+          <div class="shot-title">Focused domain coverage</div>
+          <div class="shot-desc">The onboarding flow makes the initial repair categories obvious without overwhelming the user with options.</div>
+        </div>
       </div>
-      <div class="shot-copy">
-        <div class="shot-step">03</div>
-        <div class="shot-title">Ready-to-start session view</div>
-        <div class="shot-desc">Before a live session begins, the UI keeps the camera feed primary and the call to action unambiguous.</div>
-      </div>
-    </div>
 
-    <div class="shot-card">
-      <div class="shot-image-wrap">
-        <img class="shot-image" src="/images/06-session-speaking.png" alt="FixIt Genie live speaking session screen" loading="lazy" />
+      <div class="shot-card">
+        <div class="shot-image-wrap">
+          <img class="shot-image" src="/images/04-session-idle.png" alt="FixIt Genie idle session screen" loading="lazy" />
+        </div>
+        <div class="shot-copy">
+          <div class="shot-step">04</div>
+          <div class="shot-title">Ready-to-start session view</div>
+          <div class="shot-desc">Before a live session begins, the UI keeps the camera feed primary and the call to action unambiguous.</div>
+        </div>
       </div>
-      <div class="shot-copy">
-        <div class="shot-step">04</div>
-        <div class="shot-title">Readable live guidance</div>
-        <div class="shot-desc">During the session, the transcript, speaking state, and camera view stay visible together so the user can follow along in real time.</div>
+
+      <div class="shot-card">
+        <div class="shot-image-wrap">
+          <img class="shot-image" src="/images/06-session-speaking.png" alt="FixIt Genie live speaking session screen" loading="lazy" />
+        </div>
+        <div class="shot-copy">
+          <div class="shot-step">05</div>
+          <div class="shot-title">Readable live guidance</div>
+          <div class="shot-desc">During the session, the transcript, speaking state, and camera view stay visible together so the user can follow along in real time.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1131,6 +1106,21 @@
     el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
     observer.observe(el);
   });
+
+  // ── HERO PHONE SLIDES ──
+  const phoneSlides = Array.from(document.querySelectorAll('.phone-slide'));
+  const phoneDots = Array.from(document.querySelectorAll('.phone-dot'));
+  let phoneSlideIndex = 0;
+
+  if (phoneSlides.length > 1 && phoneDots.length === phoneSlides.length) {
+    setInterval(() => {
+      phoneSlides[phoneSlideIndex].classList.remove('is-active');
+      phoneDots[phoneSlideIndex].classList.remove('is-active');
+      phoneSlideIndex = (phoneSlideIndex + 1) % phoneSlides.length;
+      phoneSlides[phoneSlideIndex].classList.add('is-active');
+      phoneDots[phoneSlideIndex].classList.add('is-active');
+    }, 2200);
+  }
 </script>
 
 </body>
