@@ -136,7 +136,7 @@ The production architecture uses two complementary layers:
 
 **ADK Skills** — Each skill package is a `SKILL.md` with behavioral instructions plus `references/` markdown docs. The behavioral layer (how the agent diagnoses, what questions it asks, when it escalates) is separate from the knowledge layer. Agents that mix behavior and facts in a single blob become brittle.
 
-**Firestore Vector Search** — Equipment documents are embedded with `gemini-embedding-001` (3072 dimensions) and stored in Firestore with a COSINE vector index. `lookup_equipment_knowledge` calls `find_nearest()` — "engine oil pressure alarm" semantically matches the oil system document with zero keyword overlap. The original Python dict stays as a last-resort fallback so the tool never fails silently.
+**Firestore Vector Search** — Equipment documents are embedded with `gemini-embedding-001` (1536 dimensions) and stored in Firestore with a COSINE vector index. `lookup_equipment_knowledge` calls `find_nearest()` — "engine oil pressure alarm" semantically matches the oil system document with zero keyword overlap. The original Python dict stays as a last-resort fallback so the tool never fails silently.
 
 Fully Google-native: Gemini API for embeddings, Firestore for vector storage, ADK for the skill layer.
 
