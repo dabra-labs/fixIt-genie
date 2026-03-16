@@ -27,6 +27,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -305,21 +306,23 @@ private fun DarkFeaturePill(icon: ImageVector, label: String) {
             .clip(CircleShape)
             .background(AppCard)
             .border(1.dp, AppBorder, CircleShape)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Icon(
             icon,
             contentDescription = null,
             tint = GenieOrange,
-            modifier = Modifier.size(13.dp)
+            modifier = Modifier.size(12.dp)
         )
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
             color = TextSecondary,
-            letterSpacing = 0.2.sp
+            letterSpacing = 0.15.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Clip
         )
     }
 }
