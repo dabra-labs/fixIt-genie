@@ -6,7 +6,7 @@ Built with **Google ADK** + **Gemini 2.5 Flash Native Audio** for the [Gemini Li
 
 ---
 
-**[→ Live Demo Site](https://fixit-genie.web.app)** &nbsp;·&nbsp; **[→ Technical Blog](https://fixit-genie.web.app/blog.html)** &nbsp;·&nbsp; **[→ Live Backend on Cloud Run](https://fixitbuddy-agent-hybxqwgczq-uc.a.run.app)** &nbsp;·&nbsp; **[→ Cloud Deployment Proof](DEPLOYMENT.md)**
+**[→ Live Demo Site](https://fixit-genie.web.app)** &nbsp;·&nbsp; **[→ Technical Blog](https://fixit-genie.web.app/blog.html)** &nbsp;·&nbsp; **[→ Cloud Deployment Proof](DEPLOYMENT.md)** &nbsp;·&nbsp; **[→ Architecture Diagram](docs/architecture.mermaid)**
 
 ---
 
@@ -20,7 +20,7 @@ FixIt Genie is built for the **Live Agent** category — here's what that means 
 | **Bidirectional streaming** | OkHttp WebSocket + ADK LiveRequest/LiveEvent protocol. Audio (16kHz PCM) and video (1 FPS JPEG) stream up; audio (24kHz PCM) and transcripts stream back — simultaneously, in real time. |
 | **Agent sees without being told** | Camera frames arrive continuously. The agent identifies equipment, reads error codes and gauges, and calls out what it notices — without you naming anything. |
 | **Natural pacing** | Gemini's native VAD handles turn detection automatically. No push-to-talk, no start/stop signals. Say "wait" or "hold on" mid-response and the agent stops. |
-| **Function calls mid-conversation** | The agent queries the knowledge base, searches the web, or fetches a YouTube transcript without pausing the conversation flow. |
+| **Function calls mid-conversation** | The agent can consult the knowledge base and supporting reference tools without breaking the live conversation flow. |
 
 ## What It Does
 
@@ -56,14 +56,12 @@ flowchart TD
     end
 
     subgraph CloudRun["Cloud Run — ADK Agent (Python)"]
-        ADK["Google ADK · adk web\nGemini 2.5 Flash Native Audio\nSkillToolset (3 skills · 9 refs)\n6 Function Tools\nVector KB via Firestore"]
+        ADK["Google ADK · adk web\nGemini 2.5 Flash Native Audio\nDomain skills + Firestore KB\nSafety-first repair agent"]
     end
 
-    subgraph External["External Services"]
+    subgraph External["Supporting Services"]
         GEMINI["Gemini 2.5 Flash\nNative Audio\n(bidi-streaming)"]
-        SEARCH["Google Search\n(grounding)"]
-        YT["YouTube\nTranscripts"]
-        PDF["Manufacturer\nPDF Manuals"]
+        REFS["Search + Reference Lookup"]
         FS["Firestore\nVector Search\n(gemini-embedding-001)"]
     end
 
@@ -75,9 +73,7 @@ flowchart TD
     CloudRun -->|"Audio PCM 24kHz\nTranscripts"| APP
 
     ADK --- GEMINI
-    ADK --- SEARCH
-    ADK --- YT
-    ADK --- PDF
+    ADK --- REFS
     ADK --- FS
 ```
 
@@ -100,15 +96,15 @@ flowchart TD
 
 ## Quick Start
 
-### Option 1 — Talk to the Live Backend
+### Option 1 — Run the Android App Against a Deployed Backend
 
-The backend is already deployed. Clone the repo, set your backend URL, and run the Android app against it.
+Point `BACKEND_URL` in `android/gradle.properties` at your deployed service, then install the Android app.
 
 ```bash
 git clone https://github.com/dabra-labs/fixIt-genie
 cd fixIt-genie/android
 
-# The live Cloud Run URL is pre-configured in gradle.properties
+# Configure BACKEND_URL in gradle.properties first
 ./gradlew installDebug
 ```
 
@@ -160,9 +156,9 @@ Three domain skills loaded on demand — the agent calls `list_skills` to discov
 | `lookup_equipment_knowledge` | Semantic vector search via Firestore `find_nearest()` + `gemini-embedding-001` (1536-dim COSINE). Fallback: keyword matching |
 | `get_safety_warnings` | Safety warnings before any physical action — non-negotiable in the system prompt |
 | `log_diagnostic_step` | Session transcript logging |
-| `google_search` | Real-time web search for unknown error codes and model-specific procedures |
-| `analyze_youtube_repair_video` | Fetches transcript via `youtube-transcript-api`, summarizes with Gemini — works for any captioned video |
-| `lookup_user_manual` | Grounded search for official manufacturer PDF + `pypdf` extraction |
+| `google_search` | Web grounding for unknown error codes and model-specific procedures |
+| `lookup_user_manual` | Pulls in official manufacturer documentation when the embedded KB is not enough |
+| `analyze_youtube_repair_video` | Optional transcript-based repair-video summarization for long-tail troubleshooting cases |
 
 ---
 
@@ -176,14 +172,14 @@ fixitgenie/
 │   │   ├── features/           # Session, History, Settings, Onboarding
 │   │   ├── navigation/         # Compose NavHost
 │   │   └── design/             # Material 3 theme (Safety Orange + Tool Blue)
-│   └── app/src/test/           # 119 unit tests
+│   └── app/src/test/           # Android unit tests
 ├── backend/
 │   ├── fixitbuddy/             # ADK agent package
 │   │   ├── agent.py            # Agent definition + SkillToolset
-│   │   ├── tools.py            # 6 function tools + embedded KB fallback
+│   │   ├── tools.py            # Agent tools + embedded KB fallback
 │   │   ├── config.py           # Environment config
 │   │   └── skills/             # automotive/, electrical/, appliances/
-│   ├── tests/                  # 115 backend tests
+│   ├── tests/                  # Backend test suite
 │   ├── Dockerfile              # python:3.12-slim → adk web
 │   ├── deploy.sh               # IaC: Cloud Run deployment
 │   └── requirements.txt
@@ -192,7 +188,7 @@ fixitgenie/
 │       ├── index.html          # Demo landing page
 │       └── blog.html           # Technical blog post
 ├── dev.sh                      # Local dev: backend + Android emulator
-└── docs/                       # Architecture diagrams, screenshots, demo scripts
+└── docs/                       # Public architecture diagrams and screenshots
 ```
 
 ---
@@ -200,31 +196,29 @@ fixitgenie/
 ## Testing
 
 ```bash
-# Backend (115 tests)
+# Backend
 cd backend && python -m pytest tests/ -v
 
-# Android (119 tests)
+# Android
 cd android && ./gradlew testDebugUnitTest
 ```
 
 ---
 
-## Google Cloud Services Used
+## Google Cloud + Gemini Services Used
 
 | Service | Purpose |
 |---------|---------|
 | **Cloud Run** | Hosts the ADK agent — persistent WebSocket, session affinity, auto-scaling |
 | **Cloud Build** | Builds the container image via `deploy.sh` |
 | **Artifact Registry** | Stores the Docker image |
-| **Cloud Firestore** | Vector search knowledge base (`gemini-embedding-001`, 3072-dim COSINE) |
-| **Vertex AI / Gemini API** | `gemini-2.5-flash-native-audio-latest` for bidi-streaming, `gemini-2.5-flash` for tools |
-
-Live backend: `https://fixitbuddy-agent-hybxqwgczq-uc.a.run.app`
+| **Cloud Firestore** | Vector search knowledge base (`gemini-embedding-001`, 1536-dim COSINE) |
+| **Gemini API** | `gemini-2.5-flash-native-audio-latest` for bidi-streaming, `gemini-2.5-flash` for supporting tool calls |
 
 ---
 
 ## License
 
-MIT — [Max Safari](https://github.com/dabra-labs)
+MIT — Munish Dabra
 
 Built for the [Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/).
