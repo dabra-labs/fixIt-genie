@@ -415,6 +415,79 @@
   .cap-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
   .cap-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
+  /* ── APP GALLERY ── */
+  .shot-track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(250px, 300px);
+    gap: 18px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,106,30,0.45) transparent;
+  }
+  .shot-track::-webkit-scrollbar { height: 8px; }
+  .shot-track::-webkit-scrollbar-thumb {
+    background: rgba(255,106,30,0.45);
+    border-radius: 999px;
+  }
+  .shot-card {
+    scroll-snap-align: start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 18px 48px rgba(0,0,0,0.24);
+  }
+  .shot-card:hover {
+    border-color: rgba(255,106,30,0.28);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.32);
+  }
+  .shot-image-wrap {
+    padding: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  }
+  .shot-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 9 / 20;
+    object-fit: cover;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: #12121e;
+  }
+  .shot-copy {
+    padding: 0 18px 18px;
+  }
+  .shot-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+    background: rgba(255,106,30,0.14);
+    border: 1px solid rgba(255,106,30,0.28);
+    color: var(--orange);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .shot-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .shot-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
   /* ── TECH STACK ── */
   .tech-section {
     padding: 60px 24px;
@@ -564,6 +637,7 @@
   </a>
   <div class="nav-links">
     <a href="#capabilities">How it works</a>
+    <a href="#screens">Screens</a>
     <a href="#blog">Blog</a>
     <a href="https://github.com/dabra-labs/fixIt-genie" target="_blank">GitHub</a>
     <a href="#demo" class="nav-cta">▶ Watch Demo</a>
@@ -688,6 +762,59 @@
       <div class="cap-icon">🕶️</div>
       <div class="cap-title">Hands-Free with Ray-Ban</div>
       <div class="cap-desc">Switch to Ray-Ban Meta glasses with one tap. Same AI, now watching through your eyewear — no phone to hold.</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP SCREENS -->
+<div id="screens" class="section">
+  <div class="section-label">App Screens</div>
+  <h2 class="section-title">Real screens from the Android app.</h2>
+  <p class="section-sub">A quick walkthrough of the product flow: clear onboarding, a focused start state, and a live transcript that stays readable while the agent listens and talks back.</p>
+
+  <div class="shot-track">
+    <div class="shot-card">
+      <div class="shot-image-wrap">
+        <img class="shot-image" src="/images/01-onboarding-intro.png" alt="FixIt Genie onboarding intro screen" loading="lazy" />
+      </div>
+      <div class="shot-copy">
+        <div class="shot-step">01</div>
+        <div class="shot-title">Clear first-run onboarding</div>
+        <div class="shot-desc">The app introduces the core interaction model immediately: camera, voice, and guided repair.</div>
+      </div>
+    </div>
+
+    <div class="shot-card">
+      <div class="shot-image-wrap">
+        <img class="shot-image" src="/images/03-onboarding-coverage.png" alt="FixIt Genie onboarding coverage screen" loading="lazy" />
+      </div>
+      <div class="shot-copy">
+        <div class="shot-step">02</div>
+        <div class="shot-title">Focused domain coverage</div>
+        <div class="shot-desc">The onboarding flow makes the initial repair categories obvious without overwhelming the user with options.</div>
+      </div>
+    </div>
+
+    <div class="shot-card">
+      <div class="shot-image-wrap">
+        <img class="shot-image" src="/images/04-session-idle.png" alt="FixIt Genie idle session screen" loading="lazy" />
+      </div>
+      <div class="shot-copy">
+        <div class="shot-step">03</div>
+        <div class="shot-title">Ready-to-start session view</div>
+        <div class="shot-desc">Before a live session begins, the UI keeps the camera feed primary and the call to action unambiguous.</div>
+      </div>
+    </div>
+
+    <div class="shot-card">
+      <div class="shot-image-wrap">
+        <img class="shot-image" src="/images/06-session-speaking.png" alt="FixIt Genie live speaking session screen" loading="lazy" />
+      </div>
+      <div class="shot-copy">
+        <div class="shot-step">04</div>
+        <div class="shot-title">Readable live guidance</div>
+        <div class="shot-desc">During the session, the transcript, speaking state, and camera view stay visible together so the user can follow along in real time.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -998,7 +1125,7 @@
     });
   }, { threshold: 0.1 });
 
-  document.querySelectorAll('.cap-card, .section-title, .section-sub').forEach(el => {
+  document.querySelectorAll('.cap-card, .shot-card, .section-title, .section-sub').forEach(el => {
     el.style.opacity = '0';
     el.style.transform = 'translateY(20px)';
     el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';

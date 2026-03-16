@@ -10,6 +10,19 @@ Built with **Google ADK** + **Gemini 2.5 Flash Native Audio** for the [Gemini Li
 
 ---
 
+## App Preview
+
+<p align="center">
+  <img src="images/01-onboarding-intro.png" alt="FixIt Genie onboarding intro screen" width="32%" />
+  <img src="images/03-onboarding-coverage.png" alt="FixIt Genie onboarding coverage screen" width="32%" />
+</p>
+<p align="center">
+  <img src="images/04-session-idle.png" alt="FixIt Genie idle session screen" width="32%" />
+  <img src="images/06-session-speaking.png" alt="FixIt Genie live speaking session screen" width="32%" />
+</p>
+
+---
+
 ## Live Agent Capabilities
 
 FixIt Genie is built for the **Live Agent** category — here's what that means in practice:
@@ -183,12 +196,14 @@ fixitgenie/
 │   ├── Dockerfile              # python:3.12-slim → adk web
 │   ├── deploy.sh               # IaC: Cloud Run deployment
 │   └── requirements.txt
+├── images/                     # Curated app screenshots for README and website
 ├── hosting/                    # Firebase Hosting (fixit-genie.web.app)
 │   └── public/
 │       ├── index.html          # Demo landing page
-│       └── blog.html           # Technical blog post
+│       ├── blog.html           # Technical blog post
+│       └── images/             # Hosted screenshots for the demo site
 ├── dev.sh                      # Local dev: backend + Android emulator
-└── docs/                       # Public architecture diagrams and screenshots
+└── docs/                       # Public architecture diagrams and blog source
 ```
 
 ---
