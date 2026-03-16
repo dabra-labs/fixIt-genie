@@ -737,7 +737,7 @@ agent = Agent(
           <div class="kstack-layer-num">2</div>
           <div>
             <div class="kstack-layer-title">Firestore Vector Search</div>
-            <div class="kstack-layer-sub">Semantic similarity · 3072-dim embeddings · COSINE index</div>
+            <div class="kstack-layer-sub">Semantic similarity · 1536-dim embeddings · COSINE index</div>
           </div>
           <div class="kstack-chips">
             <span class="kstack-chip kstack-chip-blue">find_nearest()</span>
@@ -775,7 +775,7 @@ agent = Agent(
 
   <p><strong>ADK Skills</strong> — Each skill package is a <code>SKILL.md</code> with behavioral instructions plus <code>references/</code> markdown docs. The behavioral layer (how the agent diagnoses, what questions it asks, when it escalates) is separate from the knowledge layer. Agents that mix behavior and facts in a single blob become brittle.</p>
 
-  <p><strong>Firestore Vector Search</strong> — Equipment documents are embedded with <code>gemini-embedding-001</code> (3072 dimensions) and stored in Firestore with a COSINE vector index. <code>lookup_equipment_knowledge</code> calls <code>find_nearest()</code> — "engine oil pressure alarm" semantically matches the oil system document with zero keyword overlap.</p>
+  <p><strong>Firestore Vector Search</strong> — Equipment documents are embedded with <code>gemini-embedding-001</code> (1536 dimensions) and stored in Firestore with a COSINE vector index. <code>lookup_equipment_knowledge</code> calls <code>find_nearest()</code> — "engine oil pressure alarm" semantically matches the oil system document with zero keyword overlap.</p>
 
   <h3>Handling the Long Tail</h3>
 
